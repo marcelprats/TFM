@@ -17,7 +17,7 @@ const handleLogout = () => {
 
 <template>
   <div class="home">
-    <h1>Benvingut a l'aplicació!</h1>
+    <h1>Benvingut a la plataforma per al comerç local!</h1>
 
     <div v-if="user">
       <p>Estàs loguejat com <strong>{{ user.email }}</strong></p>

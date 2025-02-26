@@ -5,11 +5,7 @@ const API_URL = "http://127.0.0.1:8000/api";
 // Registra un usuari
 export async function registerUser(name: string, email: string, password: string) {
     try {
-        const response = await axios.post(`${API_URL}/register`, {
-            name,
-            email,
-            password
-        });
+        const response = await axios.post(`${API_URL}/register`, { name, email, password });
         return response.data;
     } catch (error: any) {
         console.error("Error en el registre:", error.response?.data || error.message);
