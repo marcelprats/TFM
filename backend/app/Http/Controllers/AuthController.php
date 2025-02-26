@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use App\Models\User;
 
 class AuthController extends Controller
 {
+    /**
+     * Registre d'usuari
+     */
     public function register(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|unique:users',
             'password' => 'required|string|min:6',
         ]);
 
@@ -23,36 +27,37 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        return response()->json([
-            'user' => $user,
-            'token' => $user->createToken('API Token')->plainTextToken,
-        ], 201);
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json(['token' => $token, 'user' => $user], 201);
     }
 
+    /**
+     * Login d'usuari
+     */
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required|string',
+            'email' => 'required|email',
+            'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Les credencials no són vàlides.'],
-            ]);
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json(['message' => 'Credencials incorrectes'], 401);
         }
 
-        return response()->json([
-            'user' => $user,
-            'token' => $user->createToken('API Token')->plainTextToken,
-        ]);
+        $user = Auth::user();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json(['token' => $token, 'user' => $user], 200);
     }
 
+    /**
+     * Logout de l'usuari (opcional)
+     */
     public function logout(Request $request)
     {
         $request->user()->tokens()->delete();
-        return response()->json(['message' => 'Sessió tancada correctament']);
+        return response()->json(['message' => 'Sessió tancada correctament'], 200);
     }
 }
