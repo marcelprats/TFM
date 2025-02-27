@@ -2,46 +2,73 @@ import axios from "axios";
 
 const API_URL = "http://127.0.0.1:8000/api";
 
-// Registra un usuari
-export async function registerUser(name: string, email: string, password: string) {
+// Registra un nou usuari
+export const registerUser = async (name: string, email: string, password: string) => {
+  const response = await axios.post(`${API_URL}/register`, {
+    name,
+    email,
+    password,
+  });
+  return response.data;
+};
+
+// Inicia sessió i guarda el token
+export const loginUser = async (email: string, password: string) => {
+  const response = await axios.post(`${API_URL}/login`, {
+    email,
+    password,
+  });
+
+  if (response.data.token) {
+    localStorage.setItem("userToken", response.data.token);
+  }
+  return response.data;
+};
+
+// Comprova si l'usuari està autenticat
+export const isLoggedIn = () => {
+  return !!localStorage.getItem("userToken");
+};
+
+// Obté les dades de l'usuari autenticat
+export const fetchUser = async () => {
+  const token = localStorage.getItem("userToken");
+  if (!token) return null;
+
+  try {
+    const response = await axios.get(`${API_URL}/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch {
+    return null;
+  }
+};
+
+// Retorna l'usuari si està guardat en localStorage
+export const getUser = () => {
+  const user = localStorage.getItem("user");
+  return user ? JSON.parse(user) : null;
+};
+
+// Tanca sessió i elimina el token
+export const logout = () => {
+  localStorage.removeItem("userToken");
+  localStorage.removeItem("user");
+};
+
+
+export async function updateUser(userData: { name: string; email: string }) {
     try {
-        const response = await axios.post(`${API_URL}/register`, { name, email, password });
-        return response.data;
-    } catch (error: any) {
-        console.error("Error en el registre:", error.response?.data || error.message);
-        throw error.response?.data || error.message;
-    }
-}
-
-// Comprova si hi ha un token guardat
-export function isLoggedIn(): boolean {
-    return !!localStorage.getItem("token");
-}
-
-// Retorna la informació de l'usuari des de localStorage
-export function getUser() {
-    return JSON.parse(localStorage.getItem("user") || "null");
-}
-
-// Logout: Elimina el token i l'usuari
-export function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.reload();
-}
-
-// Funció per obtenir les dades de l'usuari des de l'API
-export async function fetchUser() {
-    try {
-        const response = await axios.get(`${API_URL}/user`, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-        });
-        localStorage.setItem("user", JSON.stringify(response.data));
-        return response.data;
+      const token = localStorage.getItem("token");
+      const response = await axios.put("http://127.0.0.1:8000/api/user", userData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return { success: true, user: response.data };
     } catch (error) {
-        console.error("Error obtenint l'usuari:", error);
-        logout();
+      console.error("Error actualitzant l'usuari:", error);
+      return { success: false };
     }
-}
+  }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { isLoggedIn, getUser, logout, fetchUser } from "../services/authService";
+import { useRouter } from "vue-router";
 
+const router = useRouter();
 const loggedIn = ref(isLoggedIn());
 const user = ref(getUser());
 
@@ -15,6 +17,7 @@ const handleLogout = () => {
   logout();
   loggedIn.value = false;
   user.value = null;
+  router.push("/"); // Redirigir a la pàgina inicial després de logout
 };
 
 const links = [
@@ -35,7 +38,7 @@ const links = [
       </nav>
       <div class="auth">
         <template v-if="loggedIn">
-          <span class="user-name">Hola, {{ user?.name }}</span>
+          <router-link to="/perfil" class="user-name">Hola, {{ user?.name }}</router-link>
           <button @click="handleLogout" class="logout-btn">Tancar Sessió</button>
         </template>
         <template v-else>
@@ -103,6 +106,15 @@ const links = [
 
 .user-name {
   font-weight: bold;
+  text-decoration: none;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  background: #34495e;
+}
+
+.user-name:hover {
+  background: #1e2d40;
 }
 
 .logout-btn {
@@ -120,6 +132,7 @@ const links = [
 
 .auth a {
   color: white;
+  border: none;
   text-decoration: none;
   font-weight: bold;
   padding: 8px 12px;

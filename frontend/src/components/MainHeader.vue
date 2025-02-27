@@ -36,7 +36,7 @@ const links = [
       </nav>
       <div class="auth">
         <template v-if="loggedIn">
-          <span class="user-name">Hola, {{ user?.name }}</span>
+          <router-link to="/perfil" class="user-name">Hola, {{ user?.name }}</router-link>
           <button @click="handleLogout" class="logout-btn">Tancar Sessió</button>
         </template>
         <template v-else>
@@ -104,6 +104,15 @@ const links = [
 
 .user-name {
   font-weight: bold;
+  text-decoration: none;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  background: #1e2d40;
+}
+
+.user-name:hover {
+  background: #2c3e50;
 }
 
 .logout-btn {
