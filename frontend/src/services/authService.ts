@@ -12,6 +12,11 @@ export const registerUser = async (name: string, email: string, password: string
   return response.data;
 };
 
+export async function registerVendor(userData: { name: string; email: string; password: string }) {
+    return await axios.post(`${API_URL}/register-vendor`, userData);
+}
+
+
 // Inicia sessió i guarda el token
 export const loginUser = async (email: string, password: string) => {
   const response = await axios.post(`${API_URL}/login`, {
