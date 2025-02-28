@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { getUser, isLoggedIn, fetchUser } from "../services/authService";
-import { useRouter } from "vue-router";
+import { getUser, getUserType } from "../services/authService";
 
-const router = useRouter();
-const user = ref(getUser()); // Inicialitzem amb el que tenim guardat
+const user = ref(getUser());
+const userType = ref(getUserType()); // Obtenim si és user o vendor
+const role = ref("");
 
-onMounted(async () => {
-  if (!isLoggedIn()) {
-    router.push("/login"); // Redirigir si no està logejat
+onMounted(() => {
+  if (user.value) {
+    role.value = userType.value === "vendor" ? "Venedor" : "Comprador"; // Assignem el rol en funció de la taula d'origen
   } else {
-    user.value = await fetchUser(); // ⬅️ Forcem la càrrega de l'usuari
+    console.error("Usuari no trobat.");
   }
 });
 </script>
@@ -18,12 +18,11 @@ onMounted(async () => {
 <template>
   <div class="profile-container">
     <h1>Perfil d'Usuari</h1>
-
     <div v-if="user">
       <p><strong>Nom:</strong> {{ user.name }}</p>
       <p><strong>Email:</strong> {{ user.email }}</p>
+      <p><strong>Rol:</strong> {{ role }}</p>
     </div>
-
     <div v-else>
       <p>Carregant informació...</p>
     </div>
@@ -33,7 +32,7 @@ onMounted(async () => {
 <style scoped>
 .profile-container {
   max-width: 500px;
-  margin: 80px auto;
+  margin: 50px auto;
   padding: 20px;
   background: white;
   border-radius: 10px;

@@ -1,72 +1,66 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { loginUser, loginVendor } from "../services/authService"; // 🆕 Importem els dos login
+import { loginUser } from "../services/authService";
 import { useRouter } from "vue-router";
-import AuthLayout from "../layouts/AuthLayout.vue";
 
 const router = useRouter();
 const email = ref("");
 const password = ref("");
+const isVendor = ref(false); // Per defecte és comprador
 const errorMessage = ref("");
-const isVendorLogin = ref(false); // 🆕 Switch per a canviar entre usuaris i venedors
 
 const handleLogin = async () => {
   errorMessage.value = "";
-
   try {
-    if (isVendorLogin.value) {
-      await loginVendor(email.value, password.value); // 🆕 Login de venedor
-      router.push("/perfil");
-    } else {
-      await loginUser(email.value, password.value); // 🆕 Login de comprador
-      router.push("/perfil");
-    }
+    const user = await loginUser(email.value, password.value, isVendor.value);
+    console.log("Usuari loguejat:", user);
+    router.push("/perfil"); // Redirigir a la pàgina de perfil
   } catch (error) {
-    errorMessage.value = "Credencials incorrectes.";
+    errorMessage.value = "Credencials incorrectes";
   }
 };
 </script>
 
 <template>
-  <AuthLayout title="Iniciar Sessió">
+  <div class="login-container">
+    <h1>Iniciar Sessió</h1>
     <form @submit.prevent="handleLogin">
       <input type="email" v-model="email" placeholder="Email" required />
       <input type="password" v-model="password" placeholder="Contrasenya" required />
 
-      <!-- 🆕 Switch per canviar entre 'Comprador' i 'Venedor' -->
+      <!-- Boto per escollir entre comprador o venedor -->
       <div class="switch-container">
         <label>
-          <input type="checkbox" v-model="isVendorLogin" />
-          Iniciar sessió com a venedor
+          <input type="checkbox" v-model="isVendor" />
+          <span>{{ isVendor ? "Venedor" : "Comprador" }}</span>
         </label>
       </div>
 
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-      <button type="submit" class="auth-button">Iniciar Sessió</button>
+      <button type="submit" class="auth-button">Entrar</button>
     </form>
 
-    <template #switch-link>
+    <p>
       No tens compte?
-      <router-link to="/register" class="switch-link">Registra't aquí</router-link>
-    </template>
-  </AuthLayout>
+      <router-link to="/register">Registra't</router-link>
+    </p>
+  </div>
 </template>
 
 <style scoped>
+.login-container {
+  max-width: 400px;
+  margin: auto;
+  padding: 20px;
+  text-align: center;
+}
+
 input {
   width: 100%;
   padding: 10px;
   margin: 8px 0;
   border: 1px solid #ccc;
   border-radius: 5px;
-  font-size: 14px;
-}
-
-.switch-container {
-  margin: 10px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .auth-button {
@@ -77,22 +71,13 @@ input {
   width: 100%;
   cursor: pointer;
   border-radius: 5px;
-  font-size: 14px;
   margin-top: 10px;
 }
 
-.auth-button:hover {
-  background: #368a6d;
-}
-
-.switch-link {
-  color: #42b983;
-  text-decoration: none;
-  font-weight: bold;
-}
-
-.switch-link:hover {
-  text-decoration: underline;
+.switch-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
 }
 
 .error {
