@@ -14,18 +14,26 @@ export const registerUser = async (name: string, email: string, password: string
 
 // Registra un nou venedor
 export const registerVendor = async (name: string, email: string, password: string) => {
-  const response = await axios.post(`${API_URL}/register-vendor`, {
-    name,
-    email,
-    password,
-  });
-  return response.data;
-};
+    console.log("Dades enviades a /register-vendor:", { name, email, password }); // 👈 Afegit per depuració
+  
+    try {
+      const response = await axios.post(`${API_URL}/register-vendor`, {
+        name: String(name),  // 👈 Assegura't que són strings
+        email: String(email),
+        password: String(password),
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Error en el registre:", error.response?.data || error.message);
+      return { success: false, message: error.response?.data?.message || "Error desconegut" };
+    }
+  };
+  
+  
 
 // Funció comuna per fer login, diferenciant si és comprador o venedor
 export const loginUser = async (email: string, password: string, isVendor: boolean) => {
-  const endpoint = isVendor ? "/login-vendor" : "/login"; // Decideix si és vendor o user
-  const response = await axios.post(`${API_URL}${endpoint}`, { email, password });
+  const response = await axios.post(`${API_URL}/login`, { email, password, is_vendor: isVendor });
 
   if (response.data.token) {
     localStorage.setItem("userToken", response.data.token);
@@ -48,9 +56,7 @@ export const fetchUser = async () => {
 
   try {
     const response = await axios.get(`${API_URL}/user`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     localStorage.setItem("user", JSON.stringify(response.data));

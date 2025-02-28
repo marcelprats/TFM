@@ -7,11 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register-vendor', [AuthController::class, 'registerVendor']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
-
-Route::post('/register-vendor', [VendorAuthController::class, 'registerVendor']);
-Route::post('/login-vendor', [VendorAuthController::class, 'login']);
 
 // Ruta per obtenir l'usuari autenticat
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

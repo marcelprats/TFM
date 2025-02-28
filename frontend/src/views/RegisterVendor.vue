@@ -13,8 +13,8 @@ const errorMessage = ref("");
 const handleRegister = async () => {
   errorMessage.value = "";
   try {
-    await registerVendor({ name: name.value, email: email.value, password: password.value });
-    router.push("/login-vendor");
+    await registerVendor(name.value, email.value, password.value);
+    router.push("/login");
   } catch (error) {
     errorMessage.value = "Error en el registre. Potser el correu ja està registrat.";
   }
@@ -22,21 +22,27 @@ const handleRegister = async () => {
 </script>
 
 <template>
-  <AuthLayout title="Registre de Venedors">
+  <AuthLayout title="Registra't com a Venedor">
     <form @submit.prevent="handleRegister">
       <input type="text" v-model="name" placeholder="Nom" required />
       <input type="email" v-model="email" placeholder="Email" required />
       <input type="password" v-model="password" placeholder="Contrasenya" required />
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-      <button type="submit" class="auth-button">Registrar-se com a Venedor</button>
+      <button type="submit" class="auth-button">Registrar-se</button>
     </form>
+
     <template #switch-link>
-      Ja ets venedor? <router-link to="/login-vendor" class="switch-link">Inicia sessió aquí</router-link>
+      Ja tens compte? <router-link to="/login" class="switch-link">Inicia sessió aquí</router-link>
     </template>
+
+    <div class="toggle-register">
+      <p>Vols comprar? <router-link to="/register" class="switch-link">Registra't com a Comprador</router-link></p>
+    </div>
   </AuthLayout>
 </template>
 
 <style scoped>
+/* Estils iguals a Register.vue */
 input {
   width: 100%;
   padding: 10px;
@@ -75,5 +81,10 @@ input {
 .error {
   color: red;
   margin: 10px 0;
+}
+
+.toggle-register {
+  text-align: center;
+  margin-top: 15px;
 }
 </style>
