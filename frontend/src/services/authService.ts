@@ -30,6 +30,20 @@ export const loginUser = async (email: string, password: string) => {
   return response.data;
 };
 
+export async function loginVendor(email: string, password: string) {
+    const response = await axios.post(`${API_URL}/login-vendor`, {
+      email,
+      password,
+    });
+  
+    if (response.data.token) {
+      localStorage.setItem("userToken", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+    }
+  
+    return response.data.user;
+  } 
+
 // Comprova si l'usuari està autenticat
 export const isLoggedIn = () => {
   return !!localStorage.getItem("userToken");

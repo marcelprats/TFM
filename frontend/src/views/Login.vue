@@ -1,91 +1,102 @@
-<template>
-  <div class="auth-container">
-    <div class="auth-box">
-      <h2>Iniciar Sessió</h2>
-      <form @submit.prevent="handleLogin">
-        <label for="email">Email</label>
-        <input type="email" id="email" v-model="email" required />
+<script setup lang="ts">
+import { ref } from "vue";
+import { loginUser, loginVendor } from "../services/authService"; // 🆕 Importem els dos login
+import { useRouter } from "vue-router";
+import AuthLayout from "../layouts/AuthLayout.vue";
 
-        <label for="password">Contrasenya</label>
-        <input type="password" id="password" v-model="password" required />
-
-        <button type="submit">Entrar</button>
-      </form>
-      <p class="switch-link">No tens compte? <router-link to="/register">Registra't aquí</router-link></p>
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { loginUser } from '../services/authService';
-
-const email = ref('');
-const password = ref('');
 const router = useRouter();
+const email = ref("");
+const password = ref("");
+const errorMessage = ref("");
+const isVendorLogin = ref(false); // 🆕 Switch per a canviar entre usuaris i venedors
 
 const handleLogin = async () => {
+  errorMessage.value = "";
+
   try {
-    await loginUser(email.value, password.value);
-    router.push('/');
+    if (isVendorLogin.value) {
+      await loginVendor(email.value, password.value); // 🆕 Login de venedor
+      router.push("/perfil");
+    } else {
+      await loginUser(email.value, password.value); // 🆕 Login de comprador
+      router.push("/perfil");
+    }
   } catch (error) {
-    alert('Error al iniciar sessió. Revisa les credencials.');
+    errorMessage.value = "Credencials incorrectes.";
   }
 };
 </script>
 
+<template>
+  <AuthLayout title="Iniciar Sessió">
+    <form @submit.prevent="handleLogin">
+      <input type="email" v-model="email" placeholder="Email" required />
+      <input type="password" v-model="password" placeholder="Contrasenya" required />
+
+      <!-- 🆕 Switch per canviar entre 'Comprador' i 'Venedor' -->
+      <div class="switch-container">
+        <label>
+          <input type="checkbox" v-model="isVendorLogin" />
+          Iniciar sessió com a venedor
+        </label>
+      </div>
+
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+      <button type="submit" class="auth-button">Iniciar Sessió</button>
+    </form>
+
+    <template #switch-link>
+      No tens compte?
+      <router-link to="/register" class="switch-link">Registra't aquí</router-link>
+    </template>
+  </AuthLayout>
+</template>
+
 <style scoped>
-.auth-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 80vh;
-}
-
-.auth-box {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  width: 300px;
-}
-
-h2 {
-  margin-bottom: 15px;
-}
-
 input {
   width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-button {
-  width: 100%;
   padding: 10px;
-  background: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  margin: 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
 }
 
-button:hover {
+.switch-container {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-button {
+  background: #42b983;
+  border: none;
+  color: white;
+  padding: 10px;
+  width: 100%;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.auth-button:hover {
   background: #368a6d;
 }
 
 .switch-link {
-  margin-top: 10px;
-  font-size: 0.9em;
-}
-
-.switch-link a {
   color: #42b983;
   text-decoration: none;
   font-weight: bold;
+}
+
+.switch-link:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: red;
+  margin: 10px 0;
 }
 </style>

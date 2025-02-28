@@ -26,12 +26,20 @@ class VendorAuthController extends Controller {
         return response()->json(['message' => 'Venedor registrat correctament!']);
     }
 
-    public function loginVendor(Request $request) {
-        if (!Auth::guard('vendor')->attempt($request->only('email', 'password'))) {
+    public function login(Request $request) {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $vendor = Vendor::where('email', $request->email)->first();
+
+        if (!$vendor || !Hash::check($request->password, $vendor->password)) {
             return response()->json(['message' => 'Credencials incorrectes'], 401);
         }
 
-        $vendor = Auth::guard('vendor')->user();
-        return response()->json(['message' => 'Login correcte', 'vendor' => $vendor]);
+        $token = $vendor->createToken('auth_token')->plainTextToken;
+
+        return response()->json(['token' => $token, 'user' => $vendor], 200);
     }
 }
