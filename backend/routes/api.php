@@ -32,6 +32,7 @@ Route::get('/vendors', function () {
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/botigues', [BotigaController::class, 'index']);
     Route::post('/botigues', [BotigaController::class, 'store']);
+    Route::put('/botigues/{id}', [BotigaController::class, 'update']);
     Route::delete('/botigues/{id}', [BotigaController::class, 'destroy']);
 });
 
@@ -39,5 +40,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/productes', [ProducteController::class, 'index']);
     Route::post('/productes', [ProducteController::class, 'store']);
+    Route::put('/productes/{id}', [ProducteController::class, 'update']);
     Route::delete('/productes/{id}', [ProducteController::class, 'destroy']);
 });

@@ -49,6 +49,36 @@ class BotigaController extends Controller
     }
 
     /**
+     * Actualitza una botiga només si pertany al venedor autenticat.
+     */
+    public function update(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->getTable() !== 'vendors') {
+            return response()->json(['message' => 'No autoritzat'], 403);
+        }
+
+        $botiga = Botiga::where('vendor_id', $user->id)->where('id', $id)->first();
+
+        if (!$botiga) {
+            return response()->json(['message' => 'Botiga no trobada'], 404);
+        }
+
+        $request->validate([
+            'nom' => 'required|string|max:255',
+            'descripcio' => 'nullable|string',
+        ]);
+
+        $botiga->update([
+            'nom' => $request->nom,
+            'descripcio' => $request->descripcio,
+        ]);
+
+        return response()->json(['message' => 'Botiga actualitzada amb èxit', 'botiga' => $botiga], 200);
+    }
+
+    /**
      * Elimina una botiga només si pertany al venedor autenticat.
      */
     public function destroy($id)

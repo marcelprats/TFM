@@ -77,11 +77,13 @@ const updateBotiga = async () => {
   if (editBotiga.value) {
     try {
       const token = localStorage.getItem("userToken");
-      await axios.put(`${API_URL}/botigues/${editBotiga.value.id}`, editBotiga.value, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      await axios.put(`${API_URL}/botigues/${editBotiga.value.id}`, {
+        nom: editBotiga.value.nom,
+        descripcio: editBotiga.value.descripcio
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
+
       showEditModal.value = false;
       fetchBotigues();
     } catch (error) {
