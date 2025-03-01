@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\VendorAuthController;
+use App\Http\Controllers\BotigaController;
+use App\Http\Controllers\ProducteController;
 use App\Models\User;
 use App\Models\Vendor;
 use Illuminate\Http\Request;
@@ -23,4 +25,19 @@ Route::get('/users', function () {
 
 Route::get('/vendors', function () {
     return response()->json(Vendor::all());
+});
+
+
+// Rutes de botigues (només per a venedors)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/botigues', [BotigaController::class, 'index']);
+    Route::post('/botigues', [BotigaController::class, 'store']);
+    Route::delete('/botigues/{id}', [BotigaController::class, 'destroy']);
+});
+
+// Rutes de productes (només per a venedors)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/productes', [ProducteController::class, 'index']);
+    Route::post('/productes', [ProducteController::class, 'store']);
+    Route::delete('/productes/{id}', [ProducteController::class, 'destroy']);
 });
