@@ -120,8 +120,9 @@ const links = [
 .logout-btn {
   background: red;
   border: none;
+  font-weight: bold;
   color: white;
-  padding: 8px 12px;
+  padding: 10.5px 12px;
   cursor: pointer;
   border-radius: 5px;
 }
