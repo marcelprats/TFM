@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { isLoggedIn, getUser, logout, fetchUser } from "../services/authService";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const loggedIn = ref(isLoggedIn());
 const user = ref(getUser());
@@ -15,6 +18,7 @@ const handleLogout = () => {
   logout();
   loggedIn.value = false;
   user.value = null;
+  router.push("/");
 };
 
 const links = [
