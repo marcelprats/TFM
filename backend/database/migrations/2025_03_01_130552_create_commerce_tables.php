@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('password');
             $table->timestamps();
         });
-    
+
         Schema::create('botigues', function (Blueprint $table) {
             $table->id();
             $table->string('nom');
@@ -26,32 +26,33 @@ return new class extends Migration
             $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade');
             $table->timestamps();
         });
-    
-        Schema::create('products', function (Blueprint $table) {
+
+        Schema::create('productes', function (Blueprint $table) {
             $table->id();
             $table->string('nom');
             $table->text('descripcio')->nullable();
             $table->decimal('preu', 10, 2);
             $table->integer('stock');
             $table->string('imatge')->nullable();
-            $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade'); // 👈 Cada producte està lligat a un venedor
+            $table->foreignId('vendor_id')->constrained('vendors')->onDelete('cascade'); // Cada producte està lligat a un venedor
             $table->timestamps();
         });
-    
+
         Schema::create('botiga_productes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('botiga_id')->constrained('botigues')->onDelete('cascade');
-            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
+            $table->foreignId('product_id')->constrained('productes')->onDelete('cascade');
+            $table->decimal('preu_personalitzat', 10, 2)->nullable(); // Permet que cada botiga tingui preus diferents
+            $table->integer('stock_individual')->nullable(); // Stock independent per cada botiga
             $table->timestamps();
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('botiga_productes');
-        Schema::dropIfExists('products');
+        Schema::dropIfExists('productes');
         Schema::dropIfExists('botigues');
         Schema::dropIfExists('vendors');
     }
-    
 };

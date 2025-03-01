@@ -36,10 +36,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/botigues/{id}', [BotigaController::class, 'destroy']);
 });
 
-// Rutes de productes (només per a venedors)
+// Rutes de productes (només per a venedors autenticats)
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/productes', [ProducteController::class, 'index']);
     Route::post('/productes', [ProducteController::class, 'store']);
     Route::put('/productes/{id}', [ProducteController::class, 'update']);
     Route::delete('/productes/{id}', [ProducteController::class, 'destroy']);
 });
+
