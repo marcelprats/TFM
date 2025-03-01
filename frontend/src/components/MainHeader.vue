@@ -23,9 +23,8 @@ const handleLogout = () => {
 
 const links = [
   { path: "/", name: "Inici" },
-  { path: "/shop", name: "Botiga" },
-  { path: "/about", name: "Sobre Nosaltres" },
-  { path: "/contact", name: "Contacte" },
+  { path: "/area-personal-botigues", name: "AP Botigues" },
+  { path: "/area-personal-productes", name: "AP Productes" },
 ];
 </script>
 
