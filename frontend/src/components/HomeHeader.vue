@@ -19,11 +19,6 @@ const handleLogout = () => {
   user.value = null;
   router.push("/"); // Redirigir a la pàgina inicial després de logout
 };
-
-const links = [
-  { path: "/area-personal-botigues", name: "AP Botigues" },
-  { path: "/area-personal-productes", name: "AP Productes" },
-];
 </script>
 
 <template>
@@ -31,9 +26,14 @@ const links = [
     <div class="container">
       <h1 class="logo">TOTAKI</h1>
       <nav class="navigation">
-        <router-link v-for="(link, index) in links" :key="index" :to="link.path">
-          {{ link.name }}
-        </router-link>
+        <router-link to="/store">Botiga</router-link>
+        <div class="dropdown">
+          <button class="dropbtn">Àrea Personal</button>
+          <div class="dropdown-content">
+            <router-link to="/area-personal-botigues">Botigues</router-link>
+            <router-link to="/area-personal-productes">Productes</router-link>
+          </div>
+        </div>
       </nav>
       <div class="auth">
         <template v-if="loggedIn">
@@ -83,6 +83,7 @@ const links = [
 
 .navigation {
   display: flex;
+  align-items: center;
   gap: 20px;
   margin-right: 40px;
 }
@@ -142,5 +143,57 @@ const links = [
 
 .auth a:hover {
   background: #368a6d;
+}
+
+/* Estil del desplegable */
+.dropdown {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 160px; /* Ajusta perquè tingui la mateixa amplada que el desplegable */
+}
+
+.dropbtn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px 12px;
+  width: 100%; /* Assegura que ocupa tot l'espai disponible */
+  text-align: center;
+  display: block;
+  min-width: 160px; /* Mateixa amplada que el desplegable */
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: white;
+  min-width: 160px; /* Mateixa amplada que el botó */
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  border-radius: 5px;
+  top: 100%; /* Col·loca el desplegable just sota el botó */
+  left: 0; /* Assegura que està alineat correctament amb el botó */
+}
+
+
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  display: block;
+  text-decoration: none;
+}
+
+.dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
 }
 </style>
