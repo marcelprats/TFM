@@ -26,7 +26,7 @@ const handleLogout = () => {
     <div class="container">
       <h1 class="logo">TOTAKI</h1>
       <nav class="navigation">
-        <router-link to="/store">Botiga</router-link>
+        <router-link to="/botiga">Botiga</router-link>
         <div class="dropdown">
           <button class="dropbtn">Àrea Personal</button>
           <div class="dropdown-content">
