@@ -96,33 +96,36 @@ onMounted(() => {
         <h3>Afegir Producte</h3>
         
         <table class="modal-table">
-        <tr>
-            <td><strong>Nom:</strong></td>
-            <td><input v-model="newProduct.nom" placeholder="Nom del producte" /></td>
-        </tr>
-        <tr>
-            <td><strong>Descripció:</strong></td>
-            <td><textarea v-model="newProduct.descripcio" placeholder="Descripció"></textarea></td>
-        </tr>
-        <tr>
-            <td><strong>Preu:</strong></td>
-            <td><input v-model="newProduct.preu" type="number" placeholder="Preu (€)" /></td>
-        </tr>
-        <tr>
-            <td><strong>Stock:</strong></td>
-            <td><input v-model="newProduct.stock" type="number" placeholder="Quantitat" /></td>
-        </tr>
-        <tr>
-            <td><strong>Botiga:</strong></td>
-            <td>
-              <select v-model="newProduct.botiga_id">
-                <option v-for="botiga in botigues" :key="botiga.id" :value="botiga.id">
-                  {{ botiga.nom }}
-                </option>
-              </select>
-            </td>
-        </tr>
+          <tbody>
+            <tr>
+                <td><strong>Nom:</strong></td>
+                <td><input v-model="newProduct.nom" placeholder="Nom del producte" /></td>
+            </tr>
+            <tr>
+                <td><strong>Descripció:</strong></td>
+                <td><textarea v-model="newProduct.descripcio" placeholder="Descripció"></textarea></td>
+            </tr>
+            <tr>
+                <td><strong>Preu:</strong></td>
+                <td><input v-model="newProduct.preu" type="number" placeholder="Preu (€)" /></td>
+            </tr>
+            <tr>
+                <td><strong>Stock:</strong></td>
+                <td><input v-model="newProduct.stock" type="number" placeholder="Quantitat" /></td>
+            </tr>
+            <tr>
+                <td><strong>Botiga:</strong></td>
+                <td>
+                  <select v-model="newProduct.botiga_id">
+                    <option v-for="botiga in botigues" :key="botiga.id" :value="botiga.id">
+                      {{ botiga.nom }}
+                    </option>
+                  </select>
+                </td>
+            </tr>
+          </tbody>
         </table>
+
 
         <div class="modal-actions">
         <button @click="addProducte" class="confirm-btn">💾 Desa</button>

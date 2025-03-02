@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 
 const API_URL = "http://127.0.0.1:8000/api";
 const botigues = ref<{ id: number; nom: string; descripcio: string }[]>([]);
+const searchQuery = ref("");
 const newBotiga = ref({ nom: "", descripcio: "" });
 const editBotiga = ref<{ id: number; nom: string; descripcio: string } | null>(null);
 const deleteBotigaId = ref<number | null>(null);
 const showDeleteModal = ref(false);
 const showEditModal = ref(false);
+const showAddModal = ref(false);
 const errorMessage = ref("");
 
 const fetchBotigues = async () => {
@@ -18,53 +20,32 @@ const fetchBotigues = async () => {
       console.error("No hi ha cap token d'autenticació.");
       return;
     }
-
     const response = await axios.get(`${API_URL}/botigues`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
-
     botigues.value = response.data;
   } catch (error) {
     console.error("Error carregant botigues:", error);
   }
 };
 
+const filteredBotigues = computed(() => {
+  return botigues.value.filter(botiga =>
+    botiga.nom.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
 const addBotiga = async () => {
   try {
     const token = localStorage.getItem("userToken");
     await axios.post(`${API_URL}/botigues`, newBotiga.value, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
     newBotiga.value = { nom: "", descripcio: "" };
+    showAddModal.value = false;
     fetchBotigues();
   } catch (error) {
     errorMessage.value = "Error afegint botiga.";
-  }
-};
-
-const confirmDeleteBotiga = (id: number) => {
-  deleteBotigaId.value = id;
-  showDeleteModal.value = true;
-};
-
-const deleteBotiga = async () => {
-  if (deleteBotigaId.value !== null) {
-    try {
-      const token = localStorage.getItem("userToken");
-      await axios.delete(`${API_URL}/botigues/${deleteBotigaId.value}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      showDeleteModal.value = false;
-      fetchBotigues();
-    } catch (error) {
-      errorMessage.value = "Error eliminant botiga.";
-    }
   }
 };
 
@@ -92,6 +73,32 @@ const updateBotiga = async () => {
   }
 };
 
+const confirmDeleteBotiga = (id: number) => {
+  deleteBotigaId.value = id;
+  showDeleteModal.value = true;
+};
+
+const deleteBotiga = async () => {
+  if (deleteBotigaId.value !== null) {
+    try {
+      const token = localStorage.getItem("userToken");
+      await axios.delete(`${API_URL}/botigues/${deleteBotigaId.value}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      showDeleteModal.value = false;
+      fetchBotigues();
+    } catch (error) {
+      errorMessage.value = "Error eliminant botiga.";
+    }
+  }
+};
+
+const goToProductes = () => {
+  window.location.href = "/area-personal-productes";
+};
+
 onMounted(fetchBotigues);
 </script>
 
@@ -99,14 +106,17 @@ onMounted(fetchBotigues);
   <div class="container">
     <h1>Gestió de Botigues</h1>
     
-    <div class="add-botiga">
-      <input v-model="newBotiga.nom" placeholder="Nom de la botiga" />
-      <input v-model="newBotiga.descripcio" placeholder="Descripció" />
-      <button @click="addBotiga">Afegir Botiga</button>
-    </div>
+    <div class="search-container">
+      <input v-model="searchQuery" placeholder="Cerca botiga..." />
 
+      <button class="add-btn" @click="showAddModal = true">➕ Afegir Botiga</button>
+
+      <button class="add-btn" @click="goToProductes">Productes</button>
+
+    </div>
+    
     <ul class="botiga-list">
-      <li v-for="botiga in botigues" :key="botiga.id">
+      <li v-for="botiga in filteredBotigues" :key="botiga.id">
         <div>
           <strong>{{ botiga.nom }}</strong> - {{ botiga.descripcio }}
         </div>
@@ -132,14 +142,16 @@ onMounted(fetchBotigues);
         <h3>Editar Botiga</h3>
         
         <table class="modal-table">
-        <tr>
-            <td><strong>Nom:</strong></td>
-            <td><input v-model="editBotiga.nom" placeholder="Nom de la botiga" /></td>
-        </tr>
-        <tr>
-            <td><strong>Descripció:</strong></td>
-            <td><textarea v-model="editBotiga.descripcio" placeholder="Descripció"></textarea></td>
-        </tr>
+          <tbody>
+            <tr>
+                <td><strong>Nom:</strong></td>
+                <td><input v-model="editBotiga.nom" placeholder="Nom de la botiga" /></td>
+            </tr>
+            <tr>
+                <td><strong>Descripció:</strong></td>
+                <td><textarea v-model="editBotiga.descripcio" placeholder="Descripció"></textarea></td>
+            </tr>
+          </tbody>
         </table>
 
         <div class="modal-actions">
@@ -148,9 +160,29 @@ onMounted(fetchBotigues);
         </div>
     </div>
     </div>
-
-
-    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+        
+    <!-- Finestra modal per afegir botiga -->
+    <div v-if="showAddModal" class="modal">
+      <div class="modal-content">
+        <h3>Afegir Botiga</h3>
+        <table class="modal-table">
+          <tbody>
+            <tr>
+                <td><strong>Nom:</strong></td>
+                <td><input v-model="newBotiga.nom" placeholder="Nom de la botiga" /></td>
+            </tr>
+            <tr>
+                <td><strong>Descripció:</strong></td>
+                <td><textarea v-model="newBotiga.descripcio" placeholder="Descripció"></textarea></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="modal-actions">
+          <button @click="addBotiga" class="confirm-btn">💾 Desa</button>
+          <button @click="showAddModal = false" class="cancel-btn">❌ Cancel·lar</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -215,6 +247,23 @@ button:hover {
 
 .delete-btn:hover {
   background: #c9302c;
+}
+
+.search-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.search-container input {
+  padding: 8px;
+  width: 40%;
+  border: 1px solid #42b983;
+  border-radius: 5px;
+  outline: none;
+  font-size: 16px;
+  transition: border 0.3s ease-in-out;
 }
 
 /* Finestra modal */
