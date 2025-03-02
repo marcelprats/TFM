@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 
 const API_URL = "http://127.0.0.1:8000/api";
-const productes = ref<{ id: number; nom: string; preu: number; botigues: any[] }[]>([]);
+const productes = ref<{ id: number; nom: string; descripcio: string; preu: number; stock: number; botiga_id: number; botiga?: { nom: string } }[]>([]);
 const botigues = ref<{ id: number; nom: string }[]>([]);
 const newProduct = ref({ nom: "", descripcio: "", preu: 0, stock: 0, botiga_id: null });
+const editProduct = ref<{ id: number; nom: string; descripcio: string; preu: number; stock: number; botiga_id: number } | null>(null);
 const showAddModal = ref(false);
+const showEditModal = ref(false);
 const errorMessage = ref("");
+const searchQuery = ref("");
 
 const fetchProductes = async () => {
   try {
@@ -55,6 +58,27 @@ const addProducte = async () => {
   }
 };
 
+const openEditProduct = (producte: { id: number; nom: string; descripcio: string; preu: number; stock: number; botiga_id: number }) => {
+  editProduct.value = { ...producte };
+  showEditModal.value = true;
+};
+
+const updateProducte = async () => {
+  if (editProduct.value) {
+    try {
+      const token = localStorage.getItem("userToken");
+      await axios.put(`${API_URL}/productes/${editProduct.value.id}`, editProduct.value, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      showEditModal.value = false;
+      fetchProductes();
+    } catch (error) {
+      errorMessage.value = "Error actualitzant producte.";
+    }
+  }
+};
+
 const deleteProducte = async (id: number) => {
   try {
     const token = localStorage.getItem("userToken");
@@ -68,6 +92,18 @@ const deleteProducte = async (id: number) => {
   }
 };
 
+const goToBotigues = () => {
+  window.location.href = "/area-personal-botigues";
+};
+
+
+const filteredProductes = computed(() => {
+  return productes.value.filter(producte =>
+    producte.nom.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    producte.descripcio.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
 onMounted(() => {
   fetchProductes();
   fetchBotigues();
@@ -77,18 +113,36 @@ onMounted(() => {
 <template>
   <div class="container">
     <h1>Gestió de Productes</h1>
-    
-    <button class="add-btn" @click="showAddModal = true">➕ Afegir Producte</button>
 
-    <ul class="producte-list">
-      <li v-for="producte in productes" :key="producte.id">
-        <div>
-          <strong>{{ producte.nom }}</strong> - {{ producte.preu }}€ ({{ producte.stock }} unitats)
-          <p><small>Botigues: {{ producte.botigues ? producte.botigues.map(b => b.nom).join(", ") : "Cap" }}</small></p>
-        </div>
-        <button class="delete-btn" @click="deleteProducte(producte.id)">🗑️ Eliminar</button>
-      </li>
-    </ul>
+    <div class="search-container">
+      <input v-model="searchQuery" placeholder="Cerca producte..." />
+      <button class="add-btn" @click="showAddModal = true">➕ Afegir Producte</button>
+      <button class="add-btn" @click="goToBotigues">Botigues</button>
+    </div>
+
+    <table class="producte-table">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Descripció</th>
+          <th>Preu (€)</th>
+          <th>Stock</th>
+          <th>Accions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="producte in filteredProductes" :key="producte.id">
+          <td>{{ producte.nom }}</td>
+          <td>{{ producte.descripcio }}</td>
+          <td>{{ producte.preu }}</td>
+          <td>{{ producte.stock }}</td>
+          <td class="actions">
+            <button class="edit-btn" @click="openEditProduct(producte)">✏️ Editar</button>
+            <button class="delete-btn" @click="deleteProducte(producte.id)">🗑️ Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
     <!-- Finestra modal per afegir producte -->
     <div v-if="showAddModal" class="modal">
@@ -96,40 +150,63 @@ onMounted(() => {
         <h3>Afegir Producte</h3>
         
         <table class="modal-table">
-          <tbody>
-            <tr>
+            <tbody>
+              <tr>
                 <td><strong>Nom:</strong></td>
                 <td><input v-model="newProduct.nom" placeholder="Nom del producte" /></td>
-            </tr>
-            <tr>
+              </tr>
+              <tr>
                 <td><strong>Descripció:</strong></td>
                 <td><textarea v-model="newProduct.descripcio" placeholder="Descripció"></textarea></td>
-            </tr>
-            <tr>
+              </tr>
+              <tr>
                 <td><strong>Preu:</strong></td>
                 <td><input v-model="newProduct.preu" type="number" placeholder="Preu (€)" /></td>
-            </tr>
-            <tr>
+              </tr>
+              <tr>
                 <td><strong>Stock:</strong></td>
                 <td><input v-model="newProduct.stock" type="number" placeholder="Quantitat" /></td>
-            </tr>
-            <tr>
-                <td><strong>Botiga:</strong></td>
-                <td>
-                  <select v-model="newProduct.botiga_id">
-                    <option v-for="botiga in botigues" :key="botiga.id" :value="botiga.id">
-                      {{ botiga.nom }}
-                    </option>
-                  </select>
-                </td>
-            </tr>
-          </tbody>
-        </table>
-
+              </tr>
+            </tbody>
+          </table>
 
         <div class="modal-actions">
-        <button @click="addProducte" class="confirm-btn">💾 Desa</button>
-        <button @click="showAddModal = false" class="cancel-btn">❌ Cancel·lar</button>
+          <button @click="addProducte" class="confirm-btn">💾 Desa</button>
+          <button @click="showAddModal = false" class="cancel-btn">❌ Cancel·lar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Finestra modal per editar producte -->
+        <!-- Finestra modal per afegir producte -->
+    <div v-if="showEditModal && editProduct" class="modal">
+      <div class="modal-content">
+        <h3>Editar Producte</h3>
+        
+        <table class="modal-table">
+            <tbody>
+              <tr>
+                <td><strong>Nom:</strong></td>
+                <td><input v-model="editProduct.nom" placeholder="Nom del producte" /></td>
+              </tr>
+              <tr>
+                <td><strong>Descripció:</strong></td>
+                <td><textarea v-model="editProduct.descripcio" placeholder="Descripció"></textarea></td>
+              </tr>
+              <tr>
+                <td><strong>Preu:</strong></td>
+                <td><input v-model="editProduct.preu" type="number" placeholder="Preu (€)" /></td>
+              </tr>
+              <tr>
+                <td><strong>Stock:</strong></td>
+                <td><input v-model="editProduct.stock" type="number" placeholder="Quantitat" /></td>
+              </tr>
+            </tbody>
+          </table>
+
+        <div class="modal-actions">
+          <button @click="updateProducte" class="confirm-btn">💾 Desa</button>
+          <button @click="showEditModal = false" class="cancel-btn">❌ Cancel·lar</button>
         </div>
       </div>
     </div>
@@ -141,68 +218,93 @@ onMounted(() => {
 
 <style scoped>
 .container {
-  max-width: 600px;
+  max-width: 800px;
   margin: auto;
   padding: 20px;
   text-align: center;
 }
 
-.add-product input {
-  margin: 5px;
-  padding: 8px;
-  width: 200px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-button {
+.add-btn {
   background: #42b983;
   color: white;
   border: none;
   padding: 8px 12px;
   border-radius: 5px;
   cursor: pointer;
-  margin: 5px;
+  margin: 10px 0;
 }
 
-button:hover {
+.add-btn:hover {
   background: #368c6e;
 }
 
-.product-list {
-  list-style: none;
-  padding: 0;
+.producte-table {
+  width: 100%;
+  border-collapse: collapse;
   margin-top: 20px;
+  text-align: left;
 }
 
-.product-list li {
-  display: flex;
-  justify-content: space-between;
-  background: #f9f9f9;
+.producte-table th, .producte-table td {
   padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 10px;
-  align-items: center;
+  border: 1px solid #ddd;
 }
 
-.product-actions {
-  display: flex;
-  gap: 10px;
+.producte-table th {
+  background: #42b983;
+  color: white;
 }
 
-.edit-btn {
-  background: #f0ad4e;
+.producte-table tr:nth-child(even) {
+  background: #f9f9f9;
 }
 
-.delete-btn {
+.producte-table tr:hover {
+  background: #e3f2fd;
+}
+
+.actions {
+  text-align: center;
+}
+
+.actions button {
   background: #d9534f;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-left: 5px;
 }
 
-.delete-btn:hover {
+.actions button:hover {
   background: #c9302c;
 }
 
-/* Estils per a la finestra modal */
+
+.search-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.search-container input {
+  padding: 8px;
+  width: 40%;
+  border: 1px solid #42b983;
+  border-radius: 5px;
+  outline: none;
+  font-size: 16px;
+  transition: border 0.3s ease-in-out;
+}
+
+.search-container input:focus {
+  border-color: #368c6e;
+}
+
+
+/* Finestra modal */
 .modal {
   position: fixed;
   top: 0;
@@ -227,6 +329,25 @@ button:hover {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 15px;
+}
+
+.modal-table td {
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.modal-table input,
+.modal-table textarea {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.modal-table textarea {
+  height: 80px;
+  resize: none;
 }
 
 .modal-actions {
