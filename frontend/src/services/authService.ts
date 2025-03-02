@@ -99,3 +99,31 @@ export async function updateUser(userData: { name: string; email: string }) {
     return { success: false };
   }
 }
+
+export const fetchProducts = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/productes-tots`);
+
+    if (!Array.isArray(response.data)) {
+      console.error("Error: L'API no retorna una llista de productes", response.data);
+      return [];
+    }
+
+    console.log("Productes rebuts:", response.data); // Debugging
+
+    return response.data.map(product => ({
+      id: product.id,
+      name: product.nom,
+      description: product.descripcio,
+      price: product.preu || 0,
+      store: product.botigues.length > 0 
+      ? product.botigues.map((b: any) => b.nom).join(', ')  
+      : "No assignada",  
+      seller: product.vendor ? product.vendor.name : "Desconegut"
+    }));
+
+  } catch (error) {
+    console.error("Error obtenint productes:", error);
+    return [];
+  }
+};

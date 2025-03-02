@@ -6,6 +6,7 @@ import RegisterVendor from "../views/RegisterVendor.vue";
 import UserProfile from "../views/UserProfile.vue";
 import AreaPersonalBotigues from "../views/AreaPersonalBotigues.vue";
 import AreaPersonalProductes from "../views/AreaPersonalProductes.vue";
+import Botiga from "../views/Botiga.vue";
 import { isLoggedIn, getUserType } from "../services/authService";
 
 const routes = [
@@ -16,6 +17,7 @@ const routes = [
   { path: "/perfil", name: "UserProfile", component: UserProfile, meta: { requiresAuth: true } },
   { path: "/area-personal-botigues", name: "AreaPersonalBotigues", component: AreaPersonalBotigues, meta: { requiresAuth: true, requiresVendor: true } },
   { path: "/area-personal-productes", name: "AreaPersonalProductes", component: AreaPersonalProductes, meta: { requiresAuth: true, requiresVendor: true } },
+  { path: "/botiga", component: Botiga },
 ];
 
 const router = createRouter({

@@ -44,3 +44,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/productes/{id}', [ProducteController::class, 'destroy']);
 });
 
+Route::get('/productes-tots', [ProducteController::class, 'getAllProducts']);
+

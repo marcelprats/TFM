@@ -119,4 +119,16 @@ class ProducteController extends Controller
 
         return response()->json(['message' => 'Producte eliminat correctament']);
     }
+    /**
+     * Retorna tots els productes disponibles amb la informació de les botigues i venedors.
+     */
+    public function getAllProducts()
+    {
+        $productes = Producte::with(['botigues:id,nom', 'vendor:id,name'])->get();
+
+        return response()->json($productes);
+    }
 }
+
+
+
