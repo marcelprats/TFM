@@ -19,7 +19,13 @@ class ProducteController extends Controller
             return response()->json(['message' => 'No autoritzat'], 403);
         }
 
-        $productes = Producte::where('vendor_id', $user->id)->with('botigues')->get();
+        $productes = Producte::where('vendor_id', $user->id)
+        ->with(['botigues' => function ($query) {
+            $query->select('botigues.id', 'botigues.nom');
+        }])
+        ->get();
+    
+
         return response()->json($productes);
     }
 
@@ -39,7 +45,7 @@ class ProducteController extends Controller
             'descripcio' => 'nullable|string',
             'preu' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'botiga_id' => 'required|exists:botigues,id', // 🔹 Comprova que la botiga existeix
+            'botiga_id' => 'required|exists:botigues,id', 
         ]);
     
         $producte = Producte::create([
@@ -50,10 +56,12 @@ class ProducteController extends Controller
             'vendor_id' => $user->id,
         ]);
     
-        // 🔹 Assigna el producte a la botiga
-        $producte->botigues()->attach($request->botiga_id);
+        if ($request->botiga_id) {
+            $producte->botigues()->sync([$request->botiga_id]);
+        }
     
-        return response()->json($producte, 201);
+        // 🔹 Carregar les botigues correctament en la resposta
+        return response()->json($producte->load('botigues:id,nom'), 201);
     }
     
 
@@ -63,28 +71,31 @@ class ProducteController extends Controller
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-
+    
         if (!$user || $user->getTable() !== 'vendors') {
             return response()->json(['message' => 'No autoritzat'], 403);
         }
-
+    
         $producte = Producte::where('vendor_id', $user->id)->where('id', $id)->first();
-
+    
         if (!$producte) {
             return response()->json(['message' => 'Producte no trobat'], 404);
         }
-
+    
         $request->validate([
             'nom' => 'required|string|max:255',
             'descripcio' => 'nullable|string',
             'preu' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'imatge' => 'nullable|string',
         ]);
-
-        $producte->update($request->only(['nom', 'descripcio', 'preu', 'stock', 'imatge']));
-
-        return response()->json(['message' => 'Producte actualitzat amb èxit', 'producte' => $producte], 200);
+    
+        $producte->update($request->only(['nom', 'descripcio', 'preu', 'stock']));
+    
+        if ($request->botiga_id) {
+            $producte->botigues()->sync([$request->botiga_id]);
+        }
+    
+        return response()->json($producte->load('botigues:id,nom'));
     }
 
     /**

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 class Producte extends Model
 {
@@ -24,6 +26,8 @@ class Producte extends Model
     /**
      * Relació Many-to-Many amb botigues (un producte pot estar en diverses botigues).
      */
+
+
     public function botigues()
     {
         return $this->belongsToMany(Botiga::class, 'botiga_productes', 'product_id', 'botiga_id');
