@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import axios from "axios";
+import { useRouter } from "vue-router";
 
 const API_URL = "http://127.0.0.1:8000/api";
 const botigues = ref<{ id: number; nom: string; descripcio: string }[]>([]);
@@ -28,6 +29,8 @@ const fetchBotigues = async () => {
     console.error("Error carregant botigues:", error);
   }
 };
+
+const router = useRouter();
 
 const filteredBotigues = computed(() => {
   return botigues.value.filter(botiga =>
@@ -96,7 +99,7 @@ const deleteBotiga = async () => {
 };
 
 const goToProductes = () => {
-  window.location.href = "/area-personal-productes";
+  router.push("/area-personal-productes");
 };
 
 onMounted(fetchBotigues);
@@ -132,7 +135,7 @@ onMounted(fetchBotigues);
       <div class="modal-content">
         <p>Segur que vols eliminar aquesta botiga?</p>
         <button @click="deleteBotiga" class="confirm-btn">Sí, eliminar</button>
-        <button @click="showDeleteModal = false" class="cancel-btn">Cancel·lar</button>
+        <button @click="showDeleteModal = false" class="delete-btn">Cancel·lar</button>
       </div>
     </div>
 
@@ -156,7 +159,7 @@ onMounted(fetchBotigues);
 
         <div class="modal-actions">
         <button @click="updateBotiga" class="confirm-btn">💾 Desa canvis</button>
-        <button @click="showEditModal = false" class="cancel-btn">❌ Cancel·lar</button>
+        <button @click="showEditModal = false" class="delete-btn">❌ Cancel·lar</button>
         </div>
     </div>
     </div>
@@ -179,7 +182,7 @@ onMounted(fetchBotigues);
         </table>
         <div class="modal-actions">
           <button @click="addBotiga" class="confirm-btn">💾 Desa</button>
-          <button @click="showAddModal = false" class="cancel-btn">❌ Cancel·lar</button>
+          <button @click="showAddModal = false" class="delete-btn">❌ Cancel·lar</button>
         </div>
       </div>
     </div>
@@ -204,16 +207,18 @@ onMounted(fetchBotigues);
 
 button {
   background: #42b983;
-  color: white;
+  color: #f9f9f9;
   border: none;
   padding: 8px 12px;
   border-radius: 5px;
   cursor: pointer;
-  margin: 5px;
+  margin: 10px 0;
 }
 
 button:hover {
-  background: #368c6e;
+  background: #f9f9f9;
+  color: #368c6e;
+  outline: 2px solid #368c6e;
 }
 
 .botiga-list {
@@ -239,14 +244,38 @@ button:hover {
 
 .edit-btn {
   background: #f0ad4e;
+  color: #f9f9f9;
+  margin-right: 20px;
+}
+
+.edit-btn:hover {
+  background: #f9f9f9;
+  color: #f0ad4e;
+  outline: 2px solid #f0ad4e;
 }
 
 .delete-btn {
   background: #d9534f;
+  color: #f9f9f9;
 }
 
 .delete-btn:hover {
-  background: #c9302c;
+  background: #f9f9f9;
+  color: #d9534f;
+  outline: 2px solid #d9534f;
+}
+
+.confirm-btn {
+  background: #42b983;
+  color: white;
+  margin-left:20px;
+  border: none;
+}
+
+.confirm-btn:hover {
+  background: #f9f9f9;
+  color: #42b983;
+  outline: 2px solid #42b983;
 }
 
 .search-container {

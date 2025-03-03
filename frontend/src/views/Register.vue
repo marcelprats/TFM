@@ -65,7 +65,9 @@ input {
 }
 
 .auth-button:hover {
-  background: #368a6d;
+  background: #f9f9f9;
+  color: #42b983;
+  outline: 2px solid #42b983;
 }
 
 .switch-link {

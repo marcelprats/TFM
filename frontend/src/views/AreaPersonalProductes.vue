@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import axios from "axios";
+import { useRouter } from "vue-router";
 
 const API_URL = "http://127.0.0.1:8000/api";
 const productes = ref<{ id: number; nom: string; descripcio: string; preu: number; stock: number; botiga_id: number; botiga?: { nom: string } }[]>([]);
@@ -36,6 +37,8 @@ const fetchProductes = async () => {
     console.error("Error carregant productes:", error);
   }
 };
+
+const router = useRouter();
 
 const fetchBotigues = async () => {
   try {
@@ -107,7 +110,7 @@ const deleteProducte = async (id: number) => {
 };
 
 const goToBotigues = () => {
-  window.location.href = "/area-personal-botigues";
+  router.push("/area-personal-botigues");
 };
 
 const filteredProductes = computed(() => {
@@ -167,7 +170,11 @@ onMounted(() => {
       </thead>
       <tbody>
         <tr v-for="producte in filteredProductes" :key="producte.id">
-          <td>{{ producte.nom }}</td>
+          <td>
+            <router-link :to="{ name: 'Producte', params: { id: producte.id } }">
+              {{ producte.nom }}
+            </router-link>
+          </td>
           <td>{{ producte.descripcio }}</td>
           <td>{{ producte.preu }}</td>
           <td>{{ producte.stock }}</td>
@@ -218,7 +225,7 @@ onMounted(() => {
 
     <div class="modal-actions">
       <button @click="addProducte" class="confirm-btn">💾 Desa</button>
-      <button @click="showAddModal = false" class="cancel-btn">❌ Cancel·lar</button>
+      <button @click="showAddModal = false" class="delete-btn">❌ Cancel·lar</button>
     </div>
   </div>
 </div>
@@ -261,7 +268,7 @@ onMounted(() => {
 
     <div class="modal-actions">
       <button @click="updateProducte" class="confirm-btn">💾 Desa</button>
-      <button @click="showEditModal = false" class="cancel-btn">❌ Cancel·lar</button>
+      <button @click="showEditModal = false" class="delete-btn">❌ Cancel·lar</button>
     </div>
   </div>
 </div>
@@ -270,8 +277,8 @@ onMounted(() => {
 <div v-if="showDeleteModal" class="modal">
   <div class="modal-content">
     <p>Segur que vols eliminar aquest producte?</p>
-    <button @click="deleteConfirmedProduct" class="confirm-btn">Sí, eliminar</button>
-    <button @click="showDeleteModal = false" class="cancel-btn">Cancel·lar</button>
+    <button @click="deleteConfirmedProduct" class="delete-btn" >Sí, eliminar</button>
+    <button @click="showDeleteModal = false" class="confirm-btn">Cancel·lar</button>
   </div>
 </div>
 
@@ -290,7 +297,7 @@ onMounted(() => {
 
 .add-btn {
   background: #42b983;
-  color: white;
+  color: #f9f9f9;
   border: none;
   padding: 8px 12px;
   border-radius: 5px;
@@ -299,10 +306,13 @@ onMounted(() => {
 }
 
 .add-btn:hover {
-  background: #368c6e;
+  background: #f9f9f9;
+  color: #368c6e;
+  outline: 2px solid #368c6e;
 }
 
 .producte-table {
+
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
@@ -315,8 +325,9 @@ onMounted(() => {
 }
 
 .producte-table th {
+  color: #f9f9f9;
   background: #42b983;
-  color: white;
+  
 }
 
 .producte-table tr:nth-child(even) {
@@ -329,20 +340,59 @@ onMounted(() => {
 
 .actions {
   text-align: center;
+  gap: 10px;
+  
 }
 
-.actions button {
-  background: #d9534f;
-  color: white;
+.edit-btn {
+  background: #f0ad4e;
+  color: #f9f9f9;
+  margin-right: 20px;
   border: none;
-  padding: 6px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-left: 5px;
 }
 
-.actions button:hover {
-  background: #c9302c;
+.edit-btn:hover {
+  background: #f9f9f9;
+  color: #f0ad4e;
+  outline: 2px solid #f0ad4e;
+}
+
+.delete-btn {
+  background: #d9534f;
+  color: #f9f9f9;
+  border: none;
+}
+
+.delete-btn:hover {
+  background: #f9f9f9;
+  color: #d9534f;
+  outline: 2px solid #d9534f;
+}
+
+.confirm-btn {
+  background: #42b983;
+  color: white;
+  margin-left:20px;
+  border: none;
+}
+
+.confirm-btn:hover {
+  background: #f9f9f9;
+  color: #42b983;
+  outline: 2px solid #42b983;
+}
+
+.cancel-btn {
+  background: #5bc0de;
+  color: white;
+  margin-left:20px;
+  border: none;
+}
+
+.cancel-btn:hover {
+  background: #f9f9f9;
+  color: #31b0d5;
+  outline: 2px solid #31b0d5;
 }
 
 
@@ -420,31 +470,6 @@ onMounted(() => {
   margin-top: 15px;
 }
 
-.confirm-btn {
-  background: #d9534f;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-right: 10px;
-}
 
-.confirm-btn:hover {
-  background: #c9302c;
-}
-
-.cancel-btn {
-  background: #5bc0de;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.cancel-btn:hover {
-  background: #31b0d5;
-}
 
 </style>

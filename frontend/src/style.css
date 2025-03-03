@@ -22,12 +22,34 @@ a:hover {
   color: #535bf2;
 }
 
+/* Estil global per a totes les pàgines */
+.page-container {
+  max-width: 1200px; /* Ajusta l'ample segons el header */
+  width: 100%;
+  margin: 100px auto 0; /* Espai de 100px respecte al header */
+  padding: 20px;
+  text-align: left; /* Assegura que el contingut no està centrat per defecte */
+}
+
+/* Estil per als títols principals de les pàgines */
+.page-title {
+  text-align: center;
+  font-size: 2.5rem; /* Augmenta la mida del títol */
+  font-weight: bold;
+  margin-bottom: 30px; /* Espai entre el títol i el contingut */
+}
+
+/* Ajustar el cos de la pàgina perquè tingui una estructura coherent */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  padding: 0;
   min-width: 320px;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #ffffff; /* Fons blanc per totes les pàgines */
+  color: #213547; /* Color de text neutre */
 }
 
 h1 {
@@ -59,10 +81,9 @@ button:focus-visible {
 }
 
 #app {
+  width: 100%;
   max-width: 1280px;
-  margin: 0 auto;
   padding: 2rem;
-  text-align: center;
 }
 
 @media (prefers-color-scheme: light) {

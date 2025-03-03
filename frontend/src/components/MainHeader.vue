@@ -109,41 +109,47 @@ const handleLogout = () => {
 .user-name {
   font-weight: bold;
   text-decoration: none;
-  color: white;
   padding: 8px 12px;
   border-radius: 5px;
-  background: #1e2d40;
+  background: #000000;
+  color:#f9f9f9;
+  outline: 2px solid #f9f9f9;
 }
 
 .user-name:hover {
-  background: #2c3e50;
+  background:#f9f9f9;
+  color: #000000;
 }
 
+
 .logout-btn {
-  background: red;
+  background: red;  
   border: none;
   font-weight: bold;
-  color: white;
+  color: #f9f9f9;
   padding: 10.5px 12px;
-  cursor: pointer;
   border-radius: 5px;
 }
 
 .logout-btn:hover {
-  background: darkred;
+  background: #f9f9f9;
+  color: red;
+  outline: 2px solid red;
 }
 
 .auth a {
-  color: white;
-  text-decoration: none;
   font-weight: bold;
   padding: 8px 12px;
   border-radius: 5px;
-  background: #2c3e50;
+  background: #42b983;
+  color: #f9f9f9;
+  outline: 2px solid #f9f9f9;
 }
 
 .auth a:hover {
-  background: #1e2d40;
+  background: #f9f9f9;
+  color: #000000;
+  outline: 2px solid #000000;
 }
 
 /* Estil del desplegable */
@@ -170,6 +176,7 @@ const handleLogout = () => {
 }
 
 .dropdown-content {
+  text-align: center;
   display: none;
   position: absolute;
   background-color: white;

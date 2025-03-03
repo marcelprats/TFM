@@ -74,6 +74,13 @@ input {
   margin-top: 10px;
 }
 
+.auth-button:hover {
+  background: #f9f9f9;
+  color: #42b983;
+  outline: 2px solid #42b983;
+}
+
+
 .switch-container {
   display: flex;
   justify-content: center;
