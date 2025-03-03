@@ -127,3 +127,14 @@ export const fetchProducts = async () => {
     return [];
   }
 };
+
+export const fetchProductById = async (id: string) => {
+  try {
+    const response = await axios.get(`${API_URL}/productes/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error obtenint el producte:", error);
+    return null;
+  }
+};
+

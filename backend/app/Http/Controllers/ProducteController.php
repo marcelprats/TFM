@@ -119,6 +119,7 @@ class ProducteController extends Controller
 
         return response()->json(['message' => 'Producte eliminat correctament']);
     }
+
     /**
      * Retorna tots els productes disponibles amb la informació de les botigues i venedors.
      */
@@ -128,6 +129,19 @@ class ProducteController extends Controller
 
         return response()->json($productes);
     }
+
+    public function show($id)
+    {
+        $producte = Producte::with(['botigues', 'vendor'])->find($id);
+
+        if (!$producte) {
+            return response()->json(['message' => 'Producte no trobat'], 404);
+        }
+
+        return response()->json($producte);
+    }
+
+
 }
 
 

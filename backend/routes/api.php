@@ -45,4 +45,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 Route::get('/productes-tots', [ProducteController::class, 'getAllProducts']);
-
+Route::get('/productes/{id}', [ProducteController::class, 'show']);

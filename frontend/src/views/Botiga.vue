@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { fetchProducts } from "../services/authService";
 
 const products = ref([]);
@@ -15,17 +15,53 @@ const showSellerDropdown = ref(false);
 
 onMounted(async () => {
   products.value = await fetchProducts();
-  stores.value = [...new Set(products.value.map(p => p.store))];
   sellers.value = [...new Set(products.value.map(p => p.seller))];
+  updateFilteredStores(); // Inicialitzar botigues correctament
 });
 
-const toggleSelection = (list: string[], value: string) => {
-  if (list.includes(value)) {
-    list.splice(list.indexOf(value), 1);
+const toggleSelection = (list: Ref<string[]>, value: string) => {
+  if (!list.value.includes(value)) {
+    list.value.push(value);
   } else {
-    list.push(value);
+    list.value = list.value.filter(item => item !== value);
   }
+  console.log("Selecció actual:", list.value); // 🔍 Depuració
 };
+
+
+
+
+// Filtra les botigues segons els venedors seleccionats
+const updateFilteredStores = () => {
+  if (selectedSellers.value.length === 0) {
+    stores.value = [...new Set(products.value.map(p => p.store))];
+  } else {
+    stores.value = [...new Set(
+      products.value
+        .filter(p => selectedSellers.value.includes(p.seller))
+        .map(p => p.store)
+    )];
+  }
+  console.log("Botigues disponibles després de filtrar:", stores.value); // 🔍 Depuració
+};
+
+
+
+// Quan seleccionem un venedor, filtrem les botigues
+const handleStoreSelection = (store: string) => {
+  toggleSelection(selectedStores, store);
+  console.log("Botigues seleccionades:", selectedStores.value); // 🔍 Depuració
+};
+
+
+const handleSellerSelection = (seller: string) => {
+  toggleSelection(selectedSellers, seller);
+  selectedStores.value = []; // ✅ Reinicia la selecció de botigues
+  updateFilteredStores();
+};
+
+
+
 
 const filteredProducts = computed(() => {
   return products.value.filter((product) => {
@@ -38,6 +74,22 @@ const filteredProducts = computed(() => {
     );
   });
 });
+
+const closeDropdowns = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  if (!target.closest(".dropdown")) {
+    showStoreDropdown.value = false;
+    showSellerDropdown.value = false;
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("click", closeDropdowns);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("click", closeDropdowns);
+});
 </script>
 
 <template>
@@ -48,22 +100,26 @@ const filteredProducts = computed(() => {
       <input id="search" v-model="searchQuery" type="text" placeholder="Cercar producte..." />
     </div>
     <div class="filters">
-      <div class="dropdown">
-        <button @click="showStoreDropdown = !showStoreDropdown">Filtrar per botiga ▼</button>
-        <div v-if="showStoreDropdown" class="dropdown-content">
-          <div v-for="store in stores" :key="store" @click="toggleSelection(selectedStores, store)" :class="{ 'selected': selectedStores.includes(store) }">
-            {{ store }}
-          </div>
+        <div class="dropdown">
+            <button @click="showSellerDropdown = !showSellerDropdown">Filtrar per venedor ▼</button>
+            <div v-if="showSellerDropdown" class="dropdown-content" @click.stop>
+                <div v-for="seller in sellers" :key="seller" @click="handleSellerSelection(seller)" :class="{ 'selected': selectedSellers.includes(seller) }">
+                {{ seller }}
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="dropdown">
-        <button @click="showSellerDropdown = !showSellerDropdown">Filtrar per venedor ▼</button>
-        <div v-if="showSellerDropdown" class="dropdown-content">
-          <div v-for="seller in sellers" :key="seller" @click="toggleSelection(selectedSellers, seller)" :class="{ 'selected': selectedSellers.includes(seller) }">
-            {{ seller }}
-          </div>
+        <div class="dropdown">
+            <button @click="showStoreDropdown = !showStoreDropdown">Filtrar per botiga ▼</button>
+            <div v-if="showStoreDropdown" class="dropdown-content" @click.stop>
+                <div v-for="store in stores" :key="store" 
+                    @click="handleStoreSelection(store)" 
+                    :class="{ 'selected': selectedStores.includes(store) }">
+                {{ store }}
+                </div>
+            </div>
         </div>
-      </div>
+
+
       <div>
         <label for="min-price">Preu mínim:</label>
         <input id="min-price" v-model.number="selectedMinPrice" type="number" placeholder="Mínim" />
@@ -74,18 +130,20 @@ const filteredProducts = computed(() => {
       </div>
     </div>
     <div class="product-grid">
-      <div v-for="product in filteredProducts" :key="product.id" class="product-card">
+      <router-link v-for="product in filteredProducts" :key="product.id" 
+        :to="{ name: 'Producte', params: { id: product.id } }" class="product-card">
         <h2>{{ product.name }}</h2>
         <p class="price">{{ product.price }} €</p>
         <p class="store">Botiga: {{ product.store }}</p>
         <p class="seller">Venedor: {{ product.seller }}</p>
-      </div>
+      </router-link>
     </div>
   </div>
 </template>
 
 <style scoped>
 .store-page {
+  min-height: 80vh; /* Ajusta segons sigui necessari */
   width: 100%;
   margin: 0 auto;
   padding: 20px;
@@ -174,6 +232,8 @@ const filteredProducts = computed(() => {
   text-align: center;
   border: 1px solid #ddd;
   transition: 0.3s;
+  text-decoration: none;
+  color: inherit;
 }
 
 .product-card:hover {

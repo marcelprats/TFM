@@ -20,8 +20,9 @@ class Producte extends Model
      */
     public function vendor()
     {
-        return $this->belongsTo(Vendor::class);
+        return $this->belongsTo(Vendor::class, 'vendor_id');
     }
+    
 
     /**
      * Relació Many-to-Many amb botigues (un producte pot estar en diverses botigues).
