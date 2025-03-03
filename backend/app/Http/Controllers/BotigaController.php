@@ -99,4 +99,18 @@ class BotigaController extends Controller
 
         return response()->json(['message' => 'Botiga eliminada correctament']);
     }
+
+    /**
+     * Retorna una botiga per ID amb els seus productes associats
+     */ 
+    public function show($id)
+    {
+        $botiga = Botiga::with('productes')->find($id);
+
+        if (!$botiga) {
+            return response()->json(['error' => 'Botiga no trobada'], 404);
+        }
+
+        return response()->json($botiga);
+    }
 }

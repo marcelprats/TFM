@@ -1,0 +1,29 @@
+[90m= [39m[34;4mApp\Models\Producte[39;24m {#5230
+    [34mid[39m: [35m2[39m,
+    [34mnom[39m: "[32mPatates[39m",
+    [34mdescripcio[39m: "[32mTest[39m",
+    [34mpreu[39m: "[32m5.00[39m",
+    [34mstock[39m: [35m3[39m,
+    [34mimatge[39m: [36mnull[39m,
+    [34mvendor_id[39m: [35m1[39m,
+    [34mcreated_at[39m: "[32m2025-03-01 19:33:20[39m",
+    [34mupdated_at[39m: "[32m2025-03-02 01:54:50[39m",
+    [34mbotiga_id[39m: [36mnull[39m,
+    [34mbotigues[39m: [34;4mIlluminate\Database\Eloquent\Collection[39;24m {#5261
+      [34mall[39m: [
+        [34;4mApp\Models\Botiga[39;24m {#5264
+          [34mid[39m: [35m1[39m,
+          [34mnom[39m: "[32mTest[39m",
+          [34mdescripcio[39m: "[32mProva test 1.0[39m",
+          [34mvendor_id[39m: [35m1[39m,
+          [34mcreated_at[39m: "[32m2025-03-01 18:45:28[39m",
+          [34mupdated_at[39m: "[32m2025-03-01 18:45:36[39m",
+          [34mpivot[39m: [34;4mIlluminate\Database\Eloquent\Relations\Pivot[39;24m {#5262
+            [34mproduct_id[39m: [35m2[39m,
+            [34mbotiga_id[39m: [35m1[39m,
+          },
+        },
+      ],
+    },
+  }
+

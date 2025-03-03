@@ -27,10 +27,9 @@ class Producte extends Model
     /**
      * Relació Many-to-Many amb botigues (un producte pot estar en diverses botigues).
      */
-
-
-    public function botigues()
+    public function botigues(): BelongsToMany
     {
         return $this->belongsToMany(Botiga::class, 'botiga_productes', 'product_id', 'botiga_id');
     }
+     
 }
