@@ -106,37 +106,6 @@ const handleLogout = () => {
   gap: 15px;
 }
 
-.user-name {
-  font-weight: bold;
-  text-decoration: none;
-  padding: 8px 12px;
-  border-radius: 5px;
-  background: #000000;
-  color:#f9f9f9;
-  outline: 2px solid #f9f9f9;
-}
-
-.user-name:hover {
-  background:#f9f9f9;
-  color: #000000;
-}
-
-
-.logout-btn {
-  background: red;  
-  border: none;
-  font-weight: bold;
-  color: #f9f9f9;
-  padding: 10.5px 12px;
-  border-radius: 5px;
-}
-
-.logout-btn:hover {
-  background: #f9f9f9;
-  color: red;
-  outline: 2px solid red;
-}
-
 .auth a {
   font-weight: bold;
   padding: 8px 12px;
@@ -148,9 +117,43 @@ const handleLogout = () => {
 
 .auth a:hover {
   background: #f9f9f9;
-  color: #000000;
-  outline: 2px solid #000000;
+  color: #42b983;
+  outline: none;
 }
+
+.user-name {
+  font-weight: bold;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  background: #f9f9f9;
+  color: #42b983;
+  outline: none;
+}
+
+.user-name:hover {
+  background: #000000;
+  color: #f9f9f9;
+}
+
+
+.logout-btn {
+  background: red;  
+  border: none;
+  font-weight: bold;
+  color: #f9f9f9;
+  padding: 10.5px 12px;
+  border-radius: 5px;
+  outline: 2px solid red;
+}
+
+.logout-btn:hover {
+  background: #f9f9f9;
+  color: red;
+  outline: none;
+}
+
+
 
 /* Estil del desplegable */
 .dropdown {
