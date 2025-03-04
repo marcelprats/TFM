@@ -54,3 +54,6 @@ Route::get('/vendors/{id}', function ($id) {
         Vendor::with('botigues.productes')->findOrFail($id)
     );
 });
+
+
+Route::middleware(['auth:sanctum'])->get('/botigues-mes', [BotigaController::class, 'getBotiguesByAuthVendor']);

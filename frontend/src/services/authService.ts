@@ -109,33 +109,23 @@ export const fetchProducts = async () => {
       return [];
     }
 
-    console.log("Productes rebuts:", response.data); // 🔍 Debug general
+    console.log("Productes rebuts:", response.data); // Depuració
 
-    interface Botiga {
-      id: number;
-      nom: string;
-    }
-    
-    return response.data.map(product => {
-      return {
-        id: product.id,
-        name: product.nom,
-        description: product.descripcio,
-        price: product.preu || 0,
-        stores: product.botigues && product.botigues.length > 0 
-          ? product.botigues.map((b: Botiga) => ({ id: b.id, name: b.nom })) // 🔹 Utilitzem la interfície
-          : [],
-        seller: product.vendor ? product.vendor.name : "Desconegut"
-      };
-    });
-    
-    
+    return response.data.map(product => ({
+      id: product.id,
+      name: product.nom,
+      description: product.descripcio,
+      price: product.preu || 0,
+      stores: product.botigues ? product.botigues.map((b: any) => ({ id: b.id, name: b.nom })) : [],
+      vendor: product.vendor ? { id: product.vendor.id, name: product.vendor.name } : null // ✅ Assignació correcta del venedor
+    }));
 
   } catch (error) {
     console.error("Error obtenint productes:", error);
     return [];
   }
 };
+
 
 
 export const fetchProductById = async (id: string) => {

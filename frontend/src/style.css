@@ -28,7 +28,7 @@ a:hover {
   width: 100%;
   margin: 100px auto 0; /* Espai de 100px respecte al header */
   padding: 20px;
-  text-align: left; /* Assegura que el contingut no està centrat per defecte */
+  text-align: center; /* Assegura que el contingut no està centrat per defecte */
 }
 
 /* Estil per als títols principals de les pàgines */

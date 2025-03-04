@@ -38,7 +38,7 @@ onMounted(async () => {
 <style scoped>
 .product-page {
   width: 100%;
-  min-height: 85vh;
+  min-height: 80vh; /* Ajusta segons sigui necessari */
   display: flex;
   justify-content: center;
   align-items: flex-start;

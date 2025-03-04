@@ -21,7 +21,7 @@ const fetchBotigues = async () => {
       console.error("No hi ha cap token d'autenticació.");
       return;
     }
-    const response = await axios.get(`${API_URL}/botigues`, {
+    const response = await axios.get(`${API_URL}/botigues-mes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     botigues.value = response.data;

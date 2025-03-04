@@ -43,7 +43,7 @@ const router = useRouter();
 const fetchBotigues = async () => {
   try {
     const token = localStorage.getItem("userToken");
-    const response = await axios.get(`${API_URL}/botigues`, {
+    const response = await axios.get(`${API_URL}/botigues-mes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -455,7 +455,4 @@ onMounted(() => {
   justify-content: space-between;
   margin-top: 15px;
 }
-
-
-
 </style>

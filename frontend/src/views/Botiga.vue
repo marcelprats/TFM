@@ -5,19 +5,40 @@ import { fetchProducts } from "../services/authService";
 const products = ref([]);
 const searchQuery = ref("");
 const selectedStores = ref<string[]>([]);
-const selectedSellers = ref<string[]>([]);
-const selectedMinPrice = ref<number | null>(null);
-const selectedMaxPrice = ref<number | null>(null);
 const stores = ref<string[]>([]);
-const sellers = ref<string[]>([]);
 const showStoreDropdown = ref(false);
-const showSellerDropdown = ref(false);
+
+// Variables per al filtre de preus
+const minPrice = ref(0);
+const maxPrice = ref(500);
+const selectedMinPrice = ref(0);
+const selectedMaxPrice = ref(500);
 
 onMounted(async () => {
   products.value = await fetchProducts();
-  sellers.value = [...new Set(products.value.map(p => p.seller))];
-  updateFilteredStores(); // Inicialitzar botigues correctament
+
+  // Determina el preu més baix i més alt entre tots els productes
+  if (products.value.length > 0) {
+    minPrice.value = Math.min(...products.value.map(p => p.price));
+    maxPrice.value = Math.max(...products.value.map(p => p.price));
+
+    // Inicialitzar els filtres amb aquests valors
+    selectedMinPrice.value = minPrice.value;
+    selectedMaxPrice.value = maxPrice.value;
+  }
+
+  updateFilteredStores();
 });
+
+const updateFilteredStores = () => {
+  const uniqueStores = new Set();
+  products.value.forEach(product => {
+    if (product.stores && product.stores.length > 0) {
+      product.stores.forEach(store => uniqueStores.add(store.name));
+    }
+  });
+  stores.value = [...uniqueStores];
+};
 
 const toggleSelection = (list: Ref<string[]>, value: string) => {
   if (!list.value.includes(value)) {
@@ -25,52 +46,19 @@ const toggleSelection = (list: Ref<string[]>, value: string) => {
   } else {
     list.value = list.value.filter(item => item !== value);
   }
-  console.log("Selecció actual:", list.value); // 🔍 Depuració
 };
 
-
-
-
-// Filtra les botigues segons els venedors seleccionats
-const updateFilteredStores = () => {
-  if (selectedSellers.value.length === 0) {
-    stores.value = [...new Set(products.value.map(p => p.store))];
-  } else {
-    stores.value = [...new Set(
-      products.value
-        .filter(p => selectedSellers.value.includes(p.seller))
-        .map(p => p.store)
-    )];
-  }
-  console.log("Botigues disponibles després de filtrar:", stores.value); // 🔍 Depuració
-};
-
-
-
-// Quan seleccionem un venedor, filtrem les botigues
 const handleStoreSelection = (store: string) => {
   toggleSelection(selectedStores, store);
-  console.log("Botigues seleccionades:", selectedStores.value); // 🔍 Depuració
 };
-
-
-const handleSellerSelection = (seller: string) => {
-  toggleSelection(selectedSellers, seller);
-  selectedStores.value = []; // ✅ Reinicia la selecció de botigues
-  updateFilteredStores();
-};
-
-
-
 
 const filteredProducts = computed(() => {
   return products.value.filter((product) => {
     return (
       product.name.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
-      (selectedStores.value.length === 0 || selectedStores.value.includes(product.store)) &&
-      (selectedSellers.value.length === 0 || selectedSellers.value.includes(product.seller)) &&
-      (selectedMinPrice.value === null || product.price >= selectedMinPrice.value) &&
-      (selectedMaxPrice.value === null || product.price <= selectedMaxPrice.value)
+      (selectedStores.value.length === 0 || product.stores?.some(store => selectedStores.value.includes(store.name))) &&
+      product.price >= selectedMinPrice.value &&
+      product.price <= selectedMaxPrice.value
     );
   });
 });
@@ -79,13 +67,8 @@ const closeDropdowns = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
   if (!target.closest(".dropdown")) {
     showStoreDropdown.value = false;
-    showSellerDropdown.value = false;
   }
 };
-
-onMounted(() => {
-  window.addEventListener("click", closeDropdowns);
-});
 
 onUnmounted(() => {
   window.removeEventListener("click", closeDropdowns);
@@ -95,63 +78,43 @@ onUnmounted(() => {
 <template>
   <div class="store-page">
     <h1>Botiga</h1>
+
     <div class="search-bar">
       <label for="search">Cercar producte:</label>
       <input id="search" v-model="searchQuery" type="text" placeholder="Cercar producte..." />
     </div>
+
     <div class="filters">
-        <div class="dropdown">
-            <button @click="showSellerDropdown = !showSellerDropdown">Filtrar per venedor ▼</button>
-            <div v-if="showSellerDropdown" class="dropdown-content" @click.stop>
-                <div v-for="seller in sellers" :key="seller" @click="handleSellerSelection(seller)" :class="{ 'selected': selectedSellers.includes(seller) }">
-                {{ seller }}
-                </div>
-            </div>
+      <div class="dropdown" @mouseenter="showStoreDropdown = true" @mouseleave="showStoreDropdown = false">
+        <button>Filtrar per botiga ▼</button>
+        <div v-if="showStoreDropdown" class="dropdown-content">
+          <div v-for="store in stores" :key="store" @click="handleStoreSelection(store)" :class="{ 'selected': selectedStores.includes(store) }">
+            {{ store }}
+          </div>
         </div>
-        <div class="dropdown">
-            <button @click="showStoreDropdown = !showStoreDropdown">Filtrar per botiga ▼</button>
-            <div v-if="showStoreDropdown" class="dropdown-content" @click.stop>
-                <div v-for="store in stores" :key="store" 
-                    @click="handleStoreSelection(store)" 
-                    :class="{ 'selected': selectedStores.includes(store) }">
-                {{ store }}
-                </div>
-            </div>
-        </div>
-
-
-      <div>
-        <label for="min-price">Preu mínim:</label>
-        <input id="min-price" v-model.number="selectedMinPrice" type="number" placeholder="Mínim" />
       </div>
-      <div>
-        <label for="max-price">Preu màxim:</label>
-        <input id="max-price" v-model.number="selectedMaxPrice" type="number" placeholder="Màxim" />
+
+      <div class="price-filter">
+        <label>Preu mínim: {{ selectedMinPrice }} €</label>
+        <input type="range" v-model.number="selectedMinPrice" :min="minPrice" :max="maxPrice" step="1">
+
+        <label>Preu màxim: {{ selectedMaxPrice }} €</label>
+        <input type="range" v-model.number="selectedMaxPrice" :min="minPrice" :max="maxPrice" step="1">
       </div>
     </div>
+
     <div class="product-grid">
-      <router-link v-for="product in filteredProducts" :key="product.id" 
-        :to="{ name: 'Producte', params: { id: product.id } }" class="product-card">
+      <router-link v-for="product in filteredProducts" :key="product.id" :to="{ name: 'Producte', params: { id: product.id } }" class="product-card">
         <h2>{{ product.name }}</h2>
         <p class="price">{{ product.price }} €</p>
         <p class="store">
-        Botiga:
-        <template v-if="product.stores.length > 0">
-            <router-link 
-            v-for="store in product.stores" 
-            :key="store.id" 
-            :to="'/info-botiga/' + store.id">
-            {{ store.name }}
+          Botiga:
+          <template v-if="product.stores.length > 0">
+            <router-link v-for="store in product.stores" :key="store.id" :to="'/info-botiga/' + store.id">
+              {{ store.name }}
             </router-link>
-        </template>
-        <span v-else>No assignada</span>
-        </p>
-        <p class="seller">
-        Venedor:
-        <router-link v-if="product.vendor" :to="'/info-venedor/' + product.vendor.id">
-            {{ product.vendor.name }}
-        </router-link>
-        <span v-else>Desconegut</span>
+          </template>
+          <span v-else>No assignada</span>
         </p>
       </router-link>
     </div>
@@ -160,7 +123,7 @@ onUnmounted(() => {
 
 <style scoped>
 .store-page {
-  min-height: 80vh; /* Ajusta segons sigui necessari */
+  min-height: 80vh;
   width: 100%;
   margin: 0 auto;
   padding: 20px;
@@ -234,6 +197,16 @@ onUnmounted(() => {
   color: white;
 }
 
+.price-filter {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.price-filter input[type="range"] {
+  width: 150px;
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -255,21 +228,5 @@ onUnmounted(() => {
 
 .product-card:hover {
   transform: scale(1.05);
-}
-
-.product-card h2 {
-  font-size: 18px;
-  margin-bottom: 10px;
-}
-
-.product-card .price {
-  font-size: 16px;
-  font-weight: bold;
-  color: #42b983;
-}
-
-.product-card .store, .product-card .seller {
-  font-size: 14px;
-  color: #666;
 }
 </style>

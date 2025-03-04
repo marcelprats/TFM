@@ -19,17 +19,18 @@ class BotigaController extends Controller
     /**
      * Retorna totes les botigues del venedor autenticat.
      */
-    public function index()
+    public function getBotiguesByAuthVendor()
     {
         $user = Auth::user();
-
+    
         if (!$user || $user->getTable() !== 'vendors') {
             return response()->json(['message' => 'No autoritzat'], 403);
         }
-
+    
         $botigues = Botiga::where('vendor_id', $user->id)->get();
         return response()->json($botigues);
     }
+    
 
     /**
      * Guarda una nova botiga associada al venedor autenticat.
