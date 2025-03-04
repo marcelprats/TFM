@@ -7,6 +7,8 @@ const router = useRouter();
 const loggedIn = ref(isLoggedIn());
 const user = ref(getUser());
 
+const showInfoDropdown = ref(false); // Estat per mostrar el desplegable "Informació"
+
 onMounted(async () => {
   if (loggedIn.value && !user.value) {
     user.value = await fetchUser();
@@ -27,14 +29,27 @@ const handleLogout = () => {
       <h1 class="logo">TOTAKI</h1>
       <nav class="navigation">
         <router-link to="/botiga">Botiga</router-link>
+
+        <!-- 🔹 Desplegable "Informació" -->
+        <div class="dropdown"
+          @mouseenter="showInfoDropdown = true"
+          @mouseleave="showInfoDropdown = false">
+          <button class="dropbtn">Informació ▼</button>
+          <div v-if="showInfoDropdown" class="dropdown-content">
+            <router-link to="/info-botiga/1">Info Botiga</router-link>
+            <router-link to="/info-venedor/1">Info Venedor</router-link>
+          </div>
+        </div>
+
         <div class="dropdown">
-          <button class="dropbtn">Àrea Personal</button>
+          <button class="dropbtn">Àrea Personal ▼</button>
           <div class="dropdown-content">
             <router-link to="/area-personal-botigues">Botigues</router-link>
             <router-link to="/area-personal-productes">Productes</router-link>
           </div>
         </div>
       </nav>
+
       <div class="auth">
         <template v-if="loggedIn">
           <router-link to="/perfil" class="user-name">Hola, {{ user?.name }}</router-link>
@@ -55,7 +70,7 @@ const handleLogout = () => {
   top: 0;
   left: 0;
   width: 100%;
-  background:#000000;
+  background: #000000;
   color: white;
   z-index: 1000;
   height: 80px;
@@ -105,7 +120,7 @@ const handleLogout = () => {
 }
 
 .logout-btn {
-  background: red;  
+  background: red;
   border: none;
   font-weight: bold;
   color: #f9f9f9;
@@ -116,7 +131,7 @@ const handleLogout = () => {
 
 .logout-btn:hover {
   background: #f9f9f9;
-  color:red;
+  color: red;
 }
 
 .auth a {
@@ -143,17 +158,17 @@ const handleLogout = () => {
 
 .user-name:hover {
   background: #f9f9f9;
-  color:rgb(0, 0, 0);
+  color: rgb(0, 0, 0);
   outline: 2px solid rgb(0, 0, 0);
 }
 
-/* Estil del desplegable */
+/* 🔹 Estil dels desplegables */
 .dropdown {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-width: 160px; /* Ajusta perquè tingui la mateixa amplada que el desplegable */
+  min-width: 160px;
 }
 
 .dropbtn {
@@ -164,10 +179,10 @@ const handleLogout = () => {
   font-size: 16px;
   cursor: pointer;
   padding: 8px 12px;
-  width: 100%; /* Assegura que ocupa tot l'espai disponible */
+  width: 100%;
   text-align: center;
   display: block;
-  min-width: 160px; /* Mateixa amplada que el desplegable */
+  min-width: 160px;
 }
 
 .dropdown-content {
@@ -175,15 +190,19 @@ const handleLogout = () => {
   display: none;
   position: absolute;
   background-color: white;
-  min-width: 160px; /* Mateixa amplada que el botó */
+  min-width: 160px;
   box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
   z-index: 1;
   border-radius: 5px;
-  top: 100%; /* Col·loca el desplegable just sota el botó */
-  left: 0; /* Assegura que està alineat correctament amb el botó */
+  top: 100%;
+  left: 0;
 }
 
-
+/* 🔹 Mostrem el desplegable en hover */
+.dropdown:hover .dropdown-content,
+.dropdown-content:hover {
+  display: block;
+}
 
 .dropdown-content a {
   color: black;
@@ -194,9 +213,5 @@ const handleLogout = () => {
 
 .dropdown-content a:hover {
   background-color: #f1f1f1;
-}
-
-.dropdown:hover .dropdown-content {
-  display: block;
 }
 </style>

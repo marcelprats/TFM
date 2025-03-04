@@ -146,7 +146,13 @@ onUnmounted(() => {
         </template>
         <span v-else>No assignada</span>
         </p>
-        <p class="seller">Venedor: {{ product.seller }}</p>
+        <p class="seller">
+        Venedor:
+        <router-link v-if="product.vendor" :to="'/info-venedor/' + product.vendor.id">
+            {{ product.vendor.name }}
+        </router-link>
+        <span v-else>Desconegut</span>
+        </p>
       </router-link>
     </div>
   </div>

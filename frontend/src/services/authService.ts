@@ -148,3 +148,12 @@ export const fetchProductById = async (id: string) => {
   }
 };
 
+export const fetchVendorById = async (id: string) => {
+  try {
+    const response = await axios.get(`${API_URL}/vendors/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error obtenint el venedor:", error);
+    return null;
+  }
+};

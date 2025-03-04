@@ -47,3 +47,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::get('/productes-tots', [ProducteController::class, 'getAllProducts']);
 Route::get('/productes/{id}', [ProducteController::class, 'show']);
 Route::get('/botigues/{id}', [BotigaController::class, 'show']);
+
+Route::get('/vendors/{id}', function ($id) {
+    return response()->json(
+        Vendor::with('botigues.productes')->findOrFail($id)
+    );
+});
