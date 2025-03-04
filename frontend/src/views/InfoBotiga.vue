@@ -42,7 +42,7 @@ onMounted(async () => {
 
 <style scoped>
 .infobotiga-page {
-  max-width: 1200px; /* Ajustat per adaptar-se a més productes */
+  min-height: 80vh; /* Ajusta segons sigui necessari */
   margin: 50px auto;
   padding: 20px;
   text-align: center;

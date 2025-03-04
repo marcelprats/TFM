@@ -289,7 +289,7 @@ onMounted(() => {
 
 <style scoped>
 .container {
-  max-width: 800px;
+  min-height: 80vh; /* Ajusta segons sigui necessari */
   margin: auto;
   padding: 20px;
   text-align: center;
@@ -381,20 +381,6 @@ onMounted(() => {
   color: #42b983;
   outline: 2px solid #42b983;
 }
-
-.cancel-btn {
-  background: #5bc0de;
-  color: white;
-  margin-left:20px;
-  border: none;
-}
-
-.cancel-btn:hover {
-  background: #f9f9f9;
-  color: #31b0d5;
-  outline: 2px solid #31b0d5;
-}
-
 
 .search-container {
   display: flex;

@@ -10,6 +10,8 @@ import Botiga from "../views/Botiga.vue";
 import Producte from "../views/Producte.vue";
 import InfoBotiga from "../views/InfoBotiga.vue";
 import InfoVenedor from "../views/InfoVenedor.vue";
+import InfoVenedors from "../views/InfoVenedors.vue";
+import InfoBotigues from "../views/InfoBotigues.vue";
 import { isLoggedIn, getUserType } from "../services/authService";
 
 const routes = [
@@ -22,8 +24,10 @@ const routes = [
   { path: "/area-personal-productes", name: "AreaPersonalProductes", component: AreaPersonalProductes, meta: { requiresAuth: true, requiresVendor: true } },
   { path: "/botiga", component: Botiga },
   { path: "/producte/:id", component: Producte, name: "Producte" },
-  { path: "/info-botiga/:id", component: InfoBotiga, name: "InfoBotiga" },
-  { path: "/info-venedor/:id", component: InfoVenedor, name: "InfoVenedor" }
+  { path: "/info-venedor", name: "InfoVenedors", component: InfoVenedors },
+  { path: "/info-venedor/:id", name: "InfoVenedor", component: InfoVenedor },
+  { path: "/info-botiga", name: "InfoBotigues", component: InfoBotigues },
+  { path: "/info-botiga/:id", name: "InfoBotiga", component: InfoBotiga },
 ];
 
 const router = createRouter({

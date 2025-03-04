@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\Auth;
 class BotigaController extends Controller
 {
     /**
+     * Retorna totes les botigues.
+     */
+    public function indexPublic()
+    {
+        return response()->json(Botiga::all());
+    }
+
+    /**
      * Retorna totes les botigues del venedor autenticat.
      */
     public function index()
@@ -106,11 +114,11 @@ class BotigaController extends Controller
     public function show($id)
     {
         $botiga = Botiga::with('productes')->find($id);
-
+    
         if (!$botiga) {
             return response()->json(['error' => 'Botiga no trobada'], 404);
         }
-
+    
         return response()->json($botiga);
     }
 }

@@ -52,7 +52,7 @@ onMounted(async () => {
 
 <style scoped>
 .info-venedor-page {
-  max-width: 900px;
+  min-height: 80vh; /* Ajusta segons sigui necessari */
   margin: 80px auto;
   padding: 20px;
   text-align: center;

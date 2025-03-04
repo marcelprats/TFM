@@ -30,7 +30,6 @@ Route::get('/vendors', function () {
 
 // Rutes de botigues (només per a venedors)
 Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('/botigues', [BotigaController::class, 'index']);
     Route::post('/botigues', [BotigaController::class, 'store']);
     Route::put('/botigues/{id}', [BotigaController::class, 'update']);
     Route::delete('/botigues/{id}', [BotigaController::class, 'destroy']);
@@ -47,6 +46,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::get('/productes-tots', [ProducteController::class, 'getAllProducts']);
 Route::get('/productes/{id}', [ProducteController::class, 'show']);
 Route::get('/botigues/{id}', [BotigaController::class, 'show']);
+Route::get('/botigues', [BotigaController::class, 'indexPublic']);
+
 
 Route::get('/vendors/{id}', function ($id) {
     return response()->json(

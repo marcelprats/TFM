@@ -38,8 +38,8 @@ const handleLogout = () => {
           @mouseleave="showInfoDropdown = false">
           <button class="dropbtn">Informació ▼</button>
           <div v-if="showInfoDropdown" class="dropdown-content">
-            <router-link to="/info-botiga/1">Info Botiga</router-link>
-            <router-link to="/info-venedor/1">Info Venedor</router-link>
+            <router-link to="/info-botiga">Llistat Botigues</router-link>
+            <router-link to="/info-venedor">Llistat Venedors</router-link>
           </div>
         </div>
 

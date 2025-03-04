@@ -191,7 +191,7 @@ onMounted(fetchBotigues);
 
 <style scoped>
 .container {
-  max-width: 600px;
+  min-height: 80vh; /* Ajusta segons sigui necessari */
   margin: auto;
   padding: 20px;
   text-align: center;
