@@ -134,7 +134,18 @@ onUnmounted(() => {
         :to="{ name: 'Producte', params: { id: product.id } }" class="product-card">
         <h2>{{ product.name }}</h2>
         <p class="price">{{ product.price }} €</p>
-        <p class="store">Botiga: {{ product.store }}</p>
+        <p class="store">
+        Botiga:
+        <template v-if="product.stores.length > 0">
+            <router-link 
+            v-for="store in product.stores" 
+            :key="store.id" 
+            :to="'/info-botiga/' + store.id">
+            {{ store.name }}
+            </router-link>
+        </template>
+        <span v-else>No assignada</span>
+        </p>
         <p class="seller">Venedor: {{ product.seller }}</p>
       </router-link>
     </div>

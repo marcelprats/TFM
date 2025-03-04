@@ -27,20 +27,59 @@ onMounted(async () => {
     <p><strong>Descripció:</strong> {{ botiga.descripcio }}</p>
 
     <h2>Productes disponibles</h2>
-    <ul>
-      <li v-for="producte in productes" :key="producte.id">
-        <router-link :to="'/producte/' + producte.id">{{ producte.nom }}</router-link> - {{ producte.preu }} €
-      </li>
-    </ul>
+
+    <div class="product-grid">
+      <div v-for="producte in productes" :key="producte.id" class="product-card">
+        <router-link :to="'/producte/' + producte.id">
+          <h3>{{ producte.nom }}</h3>
+          <p class="price">{{ producte.preu }} €</p>
+        </router-link>
+      </div>
+    </div>
   </div>
   <p v-else>Carregant botiga...</p>
 </template>
 
 <style scoped>
 .infobotiga-page {
-  max-width: 800px;
-  margin: 100px auto;
+  max-width: 1200px; /* Ajustat per adaptar-se a més productes */
+  margin: 50px auto;
   padding: 20px;
   text-align: center;
+}
+
+/* Disseny de graella amb 5 columnes */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 5 columnes */
+  gap: 20px;
+  margin-top: 20px;
+  padding: 10px;
+}
+
+/* Estil per a cada targeta de producte */
+.product-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  text-align: center;
+  border: 1px solid #ddd;
+  transition: 0.3s;
+}
+
+.product-card:hover {
+  transform: scale(1.05);
+}
+
+.product-card h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.product-card .price {
+  font-size: 16px;
+  font-weight: bold;
+  color: #42b983;
 }
 </style>
