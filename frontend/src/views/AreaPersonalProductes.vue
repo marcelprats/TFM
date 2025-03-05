@@ -15,14 +15,16 @@ const searchQuery = ref("");
 const showDeleteModal = ref(false);
 const deleteProductId = ref<number | null>(null);
 
+const sortColumn = ref(""); // Guarda la columna que s'està ordenant
+const sortDirection = ref("asc"); // Direcció inicial ascendent
+const columnFilters = ref<{ [key: string]: string[] }>({}); // Filtres per columna
+const showFilters = ref<{ [key: string]: boolean }>({}); // Controla visibilitat dels filtres
+
 
 const fetchProductes = async () => {
   try {
     const token = localStorage.getItem("userToken");
-    if (!token) {
-      console.error("No hi ha cap token d'autenticació.");
-      return;
-    }
+    if (!token) return;
 
     const response = await axios.get(`${API_URL}/productes`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -30,6 +32,7 @@ const fetchProductes = async () => {
 
     productes.value = response.data.map(producte => ({
       ...producte,
+      preu: Number(producte.preu), // 🔥 Convertim `preu` a número aquí
       botiga_nom: producte.botigues?.length ? producte.botigues.map(b => b.nom).join(", ") : "No assignat"
     }));
 
@@ -37,6 +40,7 @@ const fetchProductes = async () => {
     console.error("Error carregant productes:", error);
   }
 };
+
 
 const router = useRouter();
 
@@ -141,6 +145,68 @@ const deleteConfirmedProduct = async () => {
   }
 };
 
+const sortPreu = () => {
+  if (sortColumn.value !== "preu") {
+    sortColumn.value = "preu";
+    sortDirection.value = "asc";
+  } else {
+    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+  }
+
+  productes.value = [...productes.value].sort((a, b) => 
+    sortDirection.value === "asc" ? a.preu - b.preu : b.preu - a.preu
+  );
+};
+
+
+// Funció per ordenar les columnes
+const sortProducts = (column: string) => {
+  if (sortColumn.value === column) {
+    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+  } else {
+    sortColumn.value = column;
+    sortDirection.value = "asc";
+  }
+};
+
+// Computed per ordenar i filtrar productes
+const sortedProducts = computed(() => {
+  return [...productes.value]
+    .filter(producte => {
+      return Object.keys(columnFilters.value).every(key => {
+        return columnFilters.value[key].length === 0 || columnFilters.value[key].includes(producte[key]);
+      });
+    })
+    .sort((a, b) => {
+      if (!sortColumn.value) return 0;
+      const valueA = a[sortColumn.value];
+      const valueB = b[sortColumn.value];
+
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return sortDirection.value === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+      } else if (typeof valueA === "number" && typeof valueB === "number") {
+        return sortDirection.value === "asc" ? valueA - valueB : valueB - valueA;
+      }
+      return 0;
+    });
+});
+
+// Funció per mostrar / amagar filtres
+const toggleFilterDropdown = (column: string) => {
+  showFilters.value[column] = !showFilters.value[column];
+};
+
+// Funció per aplicar filtres a les columnes
+const toggleColumnFilter = (column: string, value: string) => {
+  if (!columnFilters.value[column]) columnFilters.value[column] = [];
+  if (columnFilters.value[column].includes(value)) {
+    columnFilters.value[column] = columnFilters.value[column].filter(v => v !== value);
+  } else {
+    columnFilters.value[column].push(value);
+  }
+};
+
+
 onMounted(() => {
   fetchProductes();
   fetchBotigues();
@@ -160,16 +226,34 @@ onMounted(() => {
     <table class="producte-table">
       <thead>
         <tr>
-          <th>Nom</th>
-          <th>Descripció</th>
-          <th>Preu (€)</th>
-          <th>Stock</th>
-          <th>Botiga</th>
+          <th @click="sortProducts('nom')">
+            Nom
+            <button @click.stop="toggleFilterDropdown('nom')">🔍</button>
+            <div v-if="showFilters['nom']" class="filter-dropdown">
+              <div v-for="name in [...new Set(productes.map(p => p.nom))]" :key="name">
+                <input type="checkbox" :checked="columnFilters['nom']?.includes(name)" @change="toggleColumnFilter('nom', name)" />
+                {{ name }}
+              </div>
+            </div>
+          </th>
+          <th @click="sortProducts('descripcio')">Descripció</th>
+          <th @click="sortPreu()">Preu (€)</th>
+          <th @click="sortProducts('stock')">Stock</th>
+          <th @click="sortProducts('botiga_nom')">
+            Botiga
+            <button @click.stop="toggleFilterDropdown('botiga_nom')">🔍</button>
+            <div v-if="showFilters['botiga_nom']" class="filter-dropdown">
+              <div v-for="botiga in [...new Set(productes.map(p => p.botiga_nom))]" :key="botiga">
+                <input type="checkbox" :checked="columnFilters['botiga_nom']?.includes(botiga)" @change="toggleColumnFilter('botiga_nom', botiga)" />
+                {{ botiga }}
+              </div>
+            </div>
+          </th>
           <th>Accions</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="producte in filteredProductes" :key="producte.id">
+        <tr v-for="producte in sortedProducts" :key="producte.id">
           <td>
             <router-link :to="{ name: 'Producte', params: { id: producte.id } }">
               {{ producte.nom }}
@@ -325,10 +409,42 @@ onMounted(() => {
 }
 
 .producte-table th {
-  color: #f9f9f9;
   background: #42b983;
-  
+  color: #f9f9f9;
+  cursor: pointer;
+  position: relative;
+  padding: 10px;
 }
+
+.producte-table th button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+  margin-left: 5px;
+}
+
+.filter-dropdown {
+  position: absolute;
+  background: #42b983;
+  border: 1px solid #ddd;
+  padding: 10px;
+  width: 150px;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+}
+
+.filter-dropdown div {
+  display: flex;
+  align-items: center;
+}
+
+.filter-dropdown input {
+  margin-right: 5px;
+}
+
+
 
 .producte-table tr:nth-child(even) {
   background: #f9f9f9;
