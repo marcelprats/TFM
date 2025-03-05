@@ -4,6 +4,7 @@ import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import RegisterVendor from "../views/RegisterVendor.vue";
 import UserProfile from "../views/UserProfile.vue";
+import AreaPersonal from "../views/AreaPersonal.vue";
 import AreaPersonalBotigues from "../views/AreaPersonalBotigues.vue";
 import AreaPersonalProductes from "../views/AreaPersonalProductes.vue";
 import Botiga from "../views/Botiga.vue";
@@ -20,6 +21,7 @@ const routes = [
   { path: "/register", name: "Register", component: Register },
   { path: "/register-vendor", name: "RegisterVendor", component: RegisterVendor },
   { path: "/perfil", name: "UserProfile", component: UserProfile, meta: { requiresAuth: true } },
+  { path: "/area-personal", component: AreaPersonal },
   { path: "/area-personal-botigues", name: "AreaPersonalBotigues", component: AreaPersonalBotigues, meta: { requiresAuth: true, requiresVendor: true } },
   { path: "/area-personal-productes", name: "AreaPersonalProductes", component: AreaPersonalProductes, meta: { requiresAuth: true, requiresVendor: true } },
   { path: "/botiga", component: Botiga },

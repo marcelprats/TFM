@@ -45,7 +45,7 @@ const handleLogout = () => {
 
         <!-- 🔹 Àrea Personal -->
         <div class="dropdown">
-          <button class="dropbtn">Àrea Personal ▼</button>
+          <router-link to="/area-personal">Àrea Personal ▼</router-link>
           <div class="dropdown-content">
             <router-link to="/area-personal-botigues">Botigues</router-link>
             <router-link to="/area-personal-productes">Productes</router-link>
