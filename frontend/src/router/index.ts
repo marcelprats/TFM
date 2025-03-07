@@ -7,6 +7,7 @@ import UserProfile from "../views/UserProfile.vue";
 import AreaPersonal from "../views/AreaPersonal.vue";
 import AreaPersonalBotigues from "../views/AreaPersonalBotigues.vue";
 import AreaPersonalProductes from "../views/AreaPersonalProductes.vue";
+import MapaBotigues from "../views/MapaBotigues.vue";
 import Botiga from "../views/Botiga.vue";
 import Producte from "../views/Producte.vue";
 import InfoBotiga from "../views/InfoBotiga.vue";
@@ -24,6 +25,7 @@ const routes = [
   { path: "/area-personal", component: AreaPersonal },
   { path: "/area-personal-botigues", name: "AreaPersonalBotigues", component: AreaPersonalBotigues, meta: { requiresAuth: true, requiresVendor: true } },
   { path: "/area-personal-productes", name: "AreaPersonalProductes", component: AreaPersonalProductes, meta: { requiresAuth: true, requiresVendor: true } },
+  { path: "/mapa-botigues", component: MapaBotigues },
   { path: "/botiga", component: Botiga },
   { path: "/producte/:id", component: Producte, name: "Producte" },
   { path: "/info-venedor", name: "InfoVenedors", component: InfoVenedors },

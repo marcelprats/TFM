@@ -37,6 +37,7 @@ const handleLogout = () => {
           <button class="dropbtn">Informació ▼</button>
           <div v-if="showInfoDropdown" class="dropdown-content">
             <router-link to="/info-botiga">Llistat Botigues</router-link>
+            <router-link to="/mapa-botigues">Mapa Botigues</router-link>
             <router-link to="/info-venedor">Llistat Venedors</router-link>
           </div>
         </div>

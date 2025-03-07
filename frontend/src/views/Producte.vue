@@ -154,7 +154,6 @@ watch(() => route.params.id, loadProduct);
   flex-direction: column;
   align-items: center;
   padding: 50px 20px;
-  background-color: #f8f8f8;
 }
 
 /* Contenidor del producte */
