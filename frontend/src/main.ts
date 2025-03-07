@@ -2,6 +2,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import axios from "axios";
+import "leaflet/dist/leaflet.css";
 import "./style.css";
 
 axios.defaults.baseURL = "http://127.0.0.1:8000/api"; // Base URL de l'API Laravel

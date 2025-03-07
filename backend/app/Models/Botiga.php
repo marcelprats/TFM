@@ -12,7 +12,7 @@ class Botiga extends Model
 
     protected $table = 'botigues';
 
-    protected $fillable = ['nom', 'descripcio', 'vendor_id'];
+    protected $fillable = ['nom', 'descripcio', 'vendor_id', 'latitude', 'longitude'];
 
     /**
      * Relació Many-to-Many amb productes (una botiga pot tenir molts productes).

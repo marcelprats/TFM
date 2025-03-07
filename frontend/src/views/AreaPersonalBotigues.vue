@@ -1,19 +1,36 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch, nextTick } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import L from "leaflet";
 
+// API Base
 const API_URL = "http://127.0.0.1:8000/api";
-const botigues = ref<{ id: number; nom: string; descripcio: string }[]>([]);
+
+// Referències reactives
+const botigues = ref([]);
 const searchQuery = ref("");
-const newBotiga = ref({ nom: "", descripcio: "" });
-const editBotiga = ref<{ id: number; nom: string; descripcio: string } | null>(null);
-const deleteBotigaId = ref<number | null>(null);
+const newBotiga = ref({ nom: "", descripcio: "", latitude: null, longitude: null });
+const editBotiga = ref(null);
+const deleteBotigaId = ref(null);
 const showDeleteModal = ref(false);
 const showEditModal = ref(false);
 const showAddModal = ref(false);
 const errorMessage = ref("");
+const router = useRouter();
 
+
+// Mapa i marcador
+const mapAdd = ref(null);
+const mapEdit = ref(null);
+const markerAdd = ref(null);
+const markerEdit = ref(null);
+
+// Coordenades per defecte (Barcelona)
+const defaultLat = 41.40945396689205;
+const defaultLng = 2.178125381469727;
+
+// 🔄 Recuperar botigues de la base de dades
 const fetchBotigues = async () => {
   try {
     const token = localStorage.getItem("userToken");
@@ -24,27 +41,33 @@ const fetchBotigues = async () => {
     const response = await axios.get(`${API_URL}/botigues-mes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+
+    console.log("📥 Dades rebudes de Laravel:", response.data);
     botigues.value = response.data;
   } catch (error) {
     console.error("Error carregant botigues:", error);
   }
 };
 
-const router = useRouter();
-
+// 🔍 Cerca botigues
 const filteredBotigues = computed(() => {
   return botigues.value.filter(botiga =>
     botiga.nom.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
 
+// ➕ Afegir botiga
 const addBotiga = async () => {
   try {
     const token = localStorage.getItem("userToken");
+    
+    console.log("📤 Enviant dades (NOVA BOTIGA):", newBotiga.value);
+    
     await axios.post(`${API_URL}/botigues`, newBotiga.value, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    newBotiga.value = { nom: "", descripcio: "" };
+
+    newBotiga.value = { nom: "", descripcio: "", latitude: null, longitude: null };
     showAddModal.value = false;
     fetchBotigues();
   } catch (error) {
@@ -52,31 +75,42 @@ const addBotiga = async () => {
   }
 };
 
-const openEditBotiga = (botiga: { id: number; nom: string; descripcio: string }) => {
-  editBotiga.value = { ...botiga };
+// 📝 Obrir modal d'edició
+const openEditBotiga = (botiga) => {
+  editBotiga.value = {
+    ...botiga,
+    latitude: botiga.latitude ? parseFloat(botiga.latitude) : null,
+    longitude: botiga.longitude ? parseFloat(botiga.longitude) : null,
+  };
+
+  console.log(`📥 Editant botiga ID ${botiga.id} | Lat: ${editBotiga.value.latitude} | Long: ${editBotiga.value.longitude}`);
+  
   showEditModal.value = true;
 };
 
+// 🔄 Actualitzar botiga
 const updateBotiga = async () => {
   if (editBotiga.value) {
+    console.log("📤 Abans d'enviar (EDIT):", editBotiga.value);
+
     try {
       const token = localStorage.getItem("userToken");
-      await axios.put(`${API_URL}/botigues/${editBotiga.value.id}`, {
-        nom: editBotiga.value.nom,
-        descripcio: editBotiga.value.descripcio
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
+      await axios.put(`${API_URL}/botigues/${editBotiga.value.id}`, editBotiga.value, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
+      console.log("✅ Resposta de Laravel: Botiga actualitzada!");
       showEditModal.value = false;
       fetchBotigues();
     } catch (error) {
+      console.error("❌ Error actualitzant botiga:", error);
       errorMessage.value = "Error actualitzant botiga.";
     }
   }
 };
 
-const confirmDeleteBotiga = (id: number) => {
+// ❌ Eliminar botiga
+const confirmDeleteBotiga = (id) => {
   deleteBotigaId.value = id;
   showDeleteModal.value = true;
 };
@@ -86,9 +120,7 @@ const deleteBotiga = async () => {
     try {
       const token = localStorage.getItem("userToken");
       await axios.delete(`${API_URL}/botigues/${deleteBotigaId.value}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       showDeleteModal.value = false;
       fetchBotigues();
@@ -98,12 +130,60 @@ const deleteBotiga = async () => {
   }
 };
 
+// 🌍 Inicialitzar mapa
+const initMap = (mapRef, lat, lng, markerRef, botiga) => {
+  if (!mapRef.value) return;
+
+  const map = L.map(mapRef.value, {
+    center: [lat ?? defaultLat, lng ?? defaultLng],
+    zoom: 14,
+  });
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(map);
+
+  const marker = L.marker([lat ?? defaultLat, lng ?? defaultLng], { draggable: true }).addTo(map);
+
+  marker.on("dragend", () => {
+    const { lat, lng } = marker.getLatLng();
+    botiga.latitude = parseFloat(lat.toFixed(8));
+    botiga.longitude = parseFloat(lng.toFixed(8));
+    console.log(`📍 Coordenades actualitzades: ${lat}, ${lng}`);
+  });
+
+  markerRef.value = marker;
+
+  setTimeout(() => {
+    map.invalidateSize();
+    map.setView([lat ?? defaultLat, lng ?? defaultLng], 14);
+  }, 400);
+};
+
 const goToProductes = () => {
   router.push("/area-personal-productes");
 };
 
+// 🎯 Sincronització entre mapa i inputs
+watch(showEditModal, async (newVal) => {
+  if (newVal && editBotiga.value) {
+    await nextTick();
+    const lat = editBotiga.value.latitude ?? defaultLat;
+    const lng = editBotiga.value.longitude ?? defaultLng;
+    initMap(mapEdit, lat, lng, markerEdit, editBotiga.value);
+  }
+});
+
+watch(showAddModal, async (newVal) => {
+  if (newVal) {
+    await nextTick();
+    initMap(mapAdd, defaultLat, defaultLng, markerAdd, newBotiga.value);
+  }
+});
+
 onMounted(fetchBotigues);
 </script>
+
 
 <template>
   <div class="container">
@@ -141,51 +221,80 @@ onMounted(fetchBotigues);
 
     <!-- Finestra modal per editar botiga -->
     <div v-if="showEditModal && editBotiga" class="modal">
-    <div class="modal-content">
+      <div class="modal-content">
         <h3>Editar Botiga</h3>
-        
+
         <table class="modal-table">
           <tbody>
             <tr>
-                <td><strong>Nom:</strong></td>
-                <td><input v-model="editBotiga.nom" placeholder="Nom de la botiga" /></td>
+              <td><strong>Nom:</strong></td>
+              <td><input v-model="editBotiga.nom" placeholder="Nom de la botiga" /></td>
             </tr>
             <tr>
-                <td><strong>Descripció:</strong></td>
-                <td><textarea v-model="editBotiga.descripcio" placeholder="Descripció"></textarea></td>
+              <td><strong>Descripció:</strong></td>
+              <td><textarea v-model="editBotiga.descripcio" placeholder="Descripció"></textarea></td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <div ref="mapEdit" style="height: 250px; width: 100%; border-radius: 10px; margin-top: 10px;"></div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Latitud:</strong></td>
+              <td><input v-model="editBotiga.latitude" readonly /></td>
+            </tr>
+            <tr>
+              <td><strong>Longitud:</strong></td>
+              <td><input v-model="editBotiga.longitude" readonly /></td>
             </tr>
           </tbody>
         </table>
 
         <div class="modal-actions">
-        <button @click="updateBotiga" class="confirm-btn">💾 Desa canvis</button>
-        <button @click="showEditModal = false" class="delete-btn">❌ Cancel·lar</button>
+          <button @click="updateBotiga" class="confirm-btn">💾 Desa canvis</button>
+          <button @click="showEditModal = false" class="delete-btn">❌ Cancel·lar</button>
         </div>
+      </div>
     </div>
-    </div>
-        
+
     <!-- Finestra modal per afegir botiga -->
     <div v-if="showAddModal" class="modal">
       <div class="modal-content">
         <h3>Afegir Botiga</h3>
+
         <table class="modal-table">
           <tbody>
             <tr>
-                <td><strong>Nom:</strong></td>
-                <td><input v-model="newBotiga.nom" placeholder="Nom de la botiga" /></td>
+              <td><strong>Nom:</strong></td>
+              <td><input v-model="newBotiga.nom" placeholder="Nom de la botiga" /></td>
             </tr>
             <tr>
-                <td><strong>Descripció:</strong></td>
-                <td><textarea v-model="newBotiga.descripcio" placeholder="Descripció"></textarea></td>
+              <td><strong>Descripció:</strong></td>
+              <td><textarea v-model="newBotiga.descripcio" placeholder="Descripció"></textarea></td>
+            </tr>
+            <tr>
+              <td colspan="2">
+                <div ref="mapAdd" style="height: 250px; width: 100%; border-radius: 10px; margin-top: 10px;"></div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Latitud:</strong></td>
+              <td><input v-model="newBotiga.latitude" readonly /></td>
+            </tr>
+            <tr>
+              <td><strong>Longitud:</strong></td>
+              <td><input v-model="newBotiga.longitude" readonly /></td>
             </tr>
           </tbody>
         </table>
+
         <div class="modal-actions">
           <button @click="addBotiga" class="confirm-btn">💾 Desa</button>
           <button @click="showAddModal = false" class="delete-btn">❌ Cancel·lar</button>
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -313,7 +422,17 @@ button:hover {
   padding: 20px;
   border-radius: 10px;
   text-align: center;
-  width: 450px;
+  width: 500px;
+  max-width: 90%;
+  position: relative;
+}
+
+#mapAdd,
+#mapEdit {
+  width: 100% !important;
+  height: 250px !important;
+  border-radius: 10px;
+  margin-top: 10px;
 }
 
 /* Taula dins la modal */
