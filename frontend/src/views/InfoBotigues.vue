@@ -27,7 +27,6 @@ onMounted(async () => {
     <div class="botiga-grid">
       <router-link v-for="botiga in botigues" :key="botiga.id" :to="'/info-botiga/' + botiga.id" class="botiga-card">
         <h2>{{ botiga.nom }}</h2>
-        <p>{{ botiga.descripcio }}</p>
       </router-link>
     </div>
   </div>
