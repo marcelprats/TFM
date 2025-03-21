@@ -106,7 +106,7 @@ onMounted(() => {
 
         <!-- 🕒 Horaris -->
         <div class="col-right">
-          <h2 class="section-title">Direcció de la botiga</h2>
+          <h2 class="section-title">📍 Direcció</h2>
                     <div class="map-container">
             <div v-if="botiga.latitude && botiga.longitude" ref="mapRef" class="mapa"></div>
             <div v-else class="no-mapa">⚠️ No hi ha coordenades disponibles.</div>
@@ -141,6 +141,7 @@ onMounted(() => {
                   <tr>
                     <th>Dia</th>
                     <th v-for="hora in hores" :key="hora" colspan="4">{{ hora }}h</th>
+                    <th>Horari</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -149,6 +150,7 @@ onMounted(() => {
                     <td v-for="hora in hores" :key="hora" colspan="4">
                       <div class="hour-segment" v-for="seg in 4" :key="seg" :class="{ open: getHourSegment(dia, hora, seg - 1) }"></div>
                     </td>
+                    <td class="horari">{{ horarisPerDia[dia] || "Tancat" }}</td>
                   </tr>
                 </tbody>
               </table>
