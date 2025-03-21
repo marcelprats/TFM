@@ -1,120 +1,177 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from "vue";
+import { ref, onMounted, computed, nextTick } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import L from "leaflet";
+import HorarisEditor from "../components/HorarisEditor.vue";
 
-// API Base
+// 📌 API
 const API_URL = "http://127.0.0.1:8000/api";
 
-// Referències reactives
+// 📌 Reactius
 const botigues = ref([]);
 const searchQuery = ref("");
-const newBotiga = ref({ nom: "", descripcio: "", latitude: null, longitude: null });
-const editBotiga = ref(null);
-const deleteBotigaId = ref(null);
-const showDeleteModal = ref(false);
-const showEditModal = ref(false);
-const showAddModal = ref(false);
-const errorMessage = ref("");
 const router = useRouter();
 
+// 📌 Horaris per defecte
+const getDefaultHoraris = () => [
+  { dia: "dilluns", tancat: true, franjes: [] },
+  { dia: "dimarts", tancat: true, franjes: [] },
+  { dia: "dimecres", tancat: true, franjes: [] },
+  { dia: "dijous", tancat: true, franjes: [] },
+  { dia: "divendres", tancat: true, franjes: [] },
+  { dia: "dissabte", tancat: true, franjes: [] },
+  { dia: "diumenge", tancat: true, franjes: [] },
+];
 
-// Mapa i marcador
-const mapAdd = ref(null);
-const mapEdit = ref(null);
-const markerAdd = ref(null);
-const markerEdit = ref(null);
+// 📌 Estat modal
+const showAddModal = ref(false);
+const showEditModal = ref(false);
+const errorMessage = ref("");
 
-// Coordenades per defecte (Barcelona)
-const defaultLat = 41.40945396689205;
-const defaultLng = 2.178125381469727;
-
-// 🔄 Recuperar botigues de la base de dades
-const fetchBotigues = async () => {
-  try {
-    const token = localStorage.getItem("userToken");
-    if (!token) {
-      console.error("No hi ha cap token d'autenticació.");
-      return;
-    }
-    const response = await axios.get(`${API_URL}/botigues-mes`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    console.log("📥 Dades rebudes de Laravel:", response.data);
-    botigues.value = response.data;
-  } catch (error) {
-    console.error("Error carregant botigues:", error);
-  }
-};
-
-// 🔍 Cerca botigues
-const filteredBotigues = computed(() => {
-  return botigues.value.filter(botiga =>
-    botiga.nom.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+// 📌 Botiga nova / editada
+const newBotiga = ref({
+  nom: "",
+  descripcio: "",
+  latitude: 41.40945396689205,
+  longitude: 2.178125381469727,
+  horaris: getDefaultHoraris(),
 });
 
-// ➕ Afegir botiga
-const addBotiga = async () => {
-  try {
-    const token = localStorage.getItem("userToken");
-    
-    console.log("📤 Enviant dades (NOVA BOTIGA):", newBotiga.value);
-    
-    await axios.post(`${API_URL}/botigues`, newBotiga.value, {
-      headers: { Authorization: `Bearer ${token}` },
+const editBotiga = ref(null);
+
+// 📌 Format horaris rebuts
+const formatHoraris = (horarisDB) => {
+  const horaris = getDefaultHoraris();
+  const formatHora = (hora) => hora.slice(0, 5);
+  horarisDB.forEach((h) => {
+    const dia = horaris.find((x) => x.dia === h.dia);
+    if (dia) {
+      dia.tancat = false;
+      dia.franjes.push({
+        obertura: formatHora(h.obertura),
+        tancament: formatHora(h.tancament),
+      });
+    }
+  });
+  return horaris;
+};
+
+// 📌 Carregar botigues
+const fetchBotigues = async () => {
+  const token = localStorage.getItem("userToken");
+  if (!token) return;
+
+  const res = await axios.get(`${API_URL}/botigues-mes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  botigues.value = res.data;
+};
+
+// 📌 Filtrar
+const filteredBotigues = computed(() =>
+  botigues.value.filter((b) =>
+    b.nom.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+);
+
+// 📌 Mapa (pro)
+const maps = new Map();
+
+const initMap = (mapId, botiga) => {
+  nextTick(() => {
+    const el = document.getElementById(mapId);
+    if (!el) return;
+
+    // 🔄 Si ja hi ha mapa, eliminar-lo
+    if (maps.has(mapId)) {
+      maps.get(mapId).remove();
+      maps.delete(mapId);
+      el.innerHTML = "";
+    }
+
+    const map = L.map(el).setView(
+      [botiga.latitude ?? 41.40945, botiga.longitude ?? 2.17812],
+      14
+    );
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+
+    const marker = L.marker(
+      [botiga.latitude ?? 41.40945, botiga.longitude ?? 2.17812],
+      { draggable: true }
+    ).addTo(map);
+
+    marker.on("dragend", () => {
+      const pos = marker.getLatLng();
+      botiga.latitude = parseFloat(pos.lat.toFixed(8));
+      botiga.longitude = parseFloat(pos.lng.toFixed(8));
     });
 
-    newBotiga.value = { nom: "", descripcio: "", latitude: null, longitude: null };
-    showAddModal.value = false;
-    fetchBotigues();
-  } catch (error) {
-    errorMessage.value = "Error afegint botiga.";
-  }
+    setTimeout(() => map.invalidateSize(), 200);
+    maps.set(mapId, map);
+  });
 };
 
-// 📝 Obrir modal d'edició
-const openEditBotiga = (botiga) => {
+// 📌 Obrir modal edició
+const openEditBotiga = async (botiga) => {
   editBotiga.value = {
     ...botiga,
-    latitude: botiga.latitude ? parseFloat(botiga.latitude) : null,
-    longitude: botiga.longitude ? parseFloat(botiga.longitude) : null,
+    latitude: parseFloat(botiga.latitude),
+    longitude: parseFloat(botiga.longitude),
+    horaris: botiga.horaris?.length ? formatHoraris(botiga.horaris) : getDefaultHoraris(),
   };
-
-  console.log(`📥 Editant botiga ID ${botiga.id} | Lat: ${editBotiga.value.latitude} | Long: ${editBotiga.value.longitude}`);
-  
   showEditModal.value = true;
+  await nextTick();
+  initMap("mapEdit", editBotiga.value);
 };
 
-// 🔄 Actualitzar botiga
+// 📌 Obrir modal nova
+const openAddBotiga = async () => {
+  newBotiga.value = {
+    nom: "",
+    descripcio: "",
+    latitude: 41.40945396689205,
+    longitude: 2.178125381469727,
+    horaris: getDefaultHoraris(),
+  };
+  showAddModal.value = true;
+  await nextTick();
+  initMap("mapAdd", newBotiga.value);
+};
+
+// 📌 Actualitzar
 const updateBotiga = async () => {
-  if (editBotiga.value) {
-    console.log("📤 Abans d'enviar (EDIT):", editBotiga.value);
-
-    try {
-      const token = localStorage.getItem("userToken");
-      await axios.put(`${API_URL}/botigues/${editBotiga.value.id}`, editBotiga.value, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      console.log("✅ Resposta de Laravel: Botiga actualitzada!");
-      showEditModal.value = false;
-      fetchBotigues();
-    } catch (error) {
-      console.error("❌ Error actualitzant botiga:", error);
-      errorMessage.value = "Error actualitzant botiga.";
-    }
-  }
+  const token = localStorage.getItem("userToken");
+  await axios.put(`${API_URL}/botigues/${editBotiga.value.id}`, editBotiga.value, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  showEditModal.value = false;
+  fetchBotigues();
 };
 
-// ❌ Eliminar botiga
+// 📌 Afegir
+const addBotiga = async () => {
+  const token = localStorage.getItem("userToken");
+  await axios.post(`${API_URL}/botigues`, newBotiga.value, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  showAddModal.value = false;
+  fetchBotigues();
+};
+
+const deleteBotigaId = ref(null);
+const showDeleteModal = ref(false);
+
+// ❌ Confirmar eliminació i obrir modal
 const confirmDeleteBotiga = (id) => {
   deleteBotigaId.value = id;
   showDeleteModal.value = true;
 };
 
+// ❌ Eliminar botiga
 const deleteBotiga = async () => {
   if (deleteBotigaId.value !== null) {
     try {
@@ -122,212 +179,197 @@ const deleteBotiga = async () => {
       await axios.delete(`${API_URL}/botigues/${deleteBotigaId.value}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       showDeleteModal.value = false;
-      fetchBotigues();
+      fetchBotigues(); // Actualitzar la llista
     } catch (error) {
       errorMessage.value = "Error eliminant botiga.";
     }
   }
 };
 
-// 🌍 Inicialitzar mapa
-const initMap = (mapRef, lat, lng, markerRef, botiga) => {
-  if (!mapRef.value) return;
-
-  const map = L.map(mapRef.value, {
-    center: [lat ?? defaultLat, lng ?? defaultLng],
-    zoom: 14,
-  });
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(map);
-
-  const marker = L.marker([lat ?? defaultLat, lng ?? defaultLng], { draggable: true }).addTo(map);
-
-  marker.on("dragend", () => {
-    const { lat, lng } = marker.getLatLng();
-    botiga.latitude = parseFloat(lat.toFixed(8));
-    botiga.longitude = parseFloat(lng.toFixed(8));
-    console.log(`📍 Coordenades actualitzades: ${lat}, ${lng}`);
-  });
-
-  markerRef.value = marker;
-
-  setTimeout(() => {
-    map.invalidateSize();
-    map.setView([lat ?? defaultLat, lng ?? defaultLng], 14);
-  }, 400);
-};
-
 const goToProductes = () => {
   router.push("/area-personal-productes");
 };
 
-// 🎯 Sincronització entre mapa i inputs
-watch(showEditModal, async (newVal) => {
-  if (newVal && editBotiga.value) {
-    await nextTick();
-    const lat = editBotiga.value.latitude ?? defaultLat;
-    const lng = editBotiga.value.longitude ?? defaultLng;
-    initMap(mapEdit, lat, lng, markerEdit, editBotiga.value);
-  }
-});
 
-watch(showAddModal, async (newVal) => {
-  if (newVal) {
-    await nextTick();
-    initMap(mapAdd, defaultLat, defaultLng, markerAdd, newBotiga.value);
-  }
-});
 
 onMounted(fetchBotigues);
 </script>
 
-
 <template>
   <div class="container">
     <h1>Gestió de Botigues</h1>
-    
-    <div class="search-container">
-      <input v-model="searchQuery" placeholder="Cerca botiga..." />
 
-      <button class="add-btn" @click="showAddModal = true">➕ Afegir Botiga</button>
-
-      <button class="add-btn" @click="goToProductes">Productes</button>
-
+  <!-- 🔍 Buscador i botons d'acció -->
+  <div class="search-container">
+    <input v-model="searchQuery" placeholder="Cerca botiga..." class="search-input"/>
+    <div class="action-buttons">
+      <button class="add-btn" @click="openAddBotiga">➕ Afegir Botiga</button>
+      <button class="add-btn secondary-btn" @click="goToProductes">📦 Productes</button>
     </div>
-    
+  </div>
+
+
+    <!-- 📋 Llistat -->
     <ul class="botiga-list">
       <li v-for="botiga in filteredBotigues" :key="botiga.id">
-        <div>
+        <div class="botiga-info">
           <strong>{{ botiga.nom }}</strong> - {{ botiga.descripcio }}
         </div>
         <div class="botiga-actions">
-          <button class="edit-btn" @click="openEditBotiga(botiga)">✏️ Editar</button>
-          <button class="delete-btn" @click="confirmDeleteBotiga(botiga.id)">🗑️ Eliminar</button>
+          <button @click="openEditBotiga(botiga)" class="btn edit-btn">✏ Editar</button>
+          <button @click="confirmDeleteBotiga(botiga.id)" class="btn delete-btn">🗑 Eliminar</button>
         </div>
       </li>
     </ul>
 
-    <!-- Finestra modal de confirmació d'eliminació -->
-    <div v-if="showDeleteModal" class="modal">
-      <div class="modal-content">
-        <p>Segur que vols eliminar aquesta botiga?</p>
-        <button @click="deleteBotiga" class="confirm-btn">Sí, eliminar</button>
-        <button @click="showDeleteModal = false" class="delete-btn">Cancel·lar</button>
-      </div>
-    </div>
 
-    <!-- Finestra modal per editar botiga -->
-    <div v-if="showEditModal && editBotiga" class="modal">
+    <!-- 🛠️ Modal Edició -->
+    <div v-if="showEditModal" class="modal" @click.self="showEditModal = false">
       <div class="modal-content">
         <h3>Editar Botiga</h3>
+        <label>Nom</label>
+        <input v-model="editBotiga.nom" />
+        <label>Descripció</label>
+        <textarea v-model="editBotiga.descripcio"></textarea>
 
-        <table class="modal-table">
-          <tbody>
-            <tr>
-              <td><strong>Nom:</strong></td>
-              <td><input v-model="editBotiga.nom" placeholder="Nom de la botiga" /></td>
-            </tr>
-            <tr>
-              <td><strong>Descripció:</strong></td>
-              <td><textarea v-model="editBotiga.descripcio" placeholder="Descripció"></textarea></td>
-            </tr>
-            <tr>
-              <td colspan="2">
-                <div ref="mapEdit" style="height: 250px; width: 100%; border-radius: 10px; margin-top: 10px;"></div>
-              </td>
-            </tr>
-            <tr>
-              <td><strong>Latitud:</strong></td>
-              <td><input v-model="editBotiga.latitude" readonly /></td>
-            </tr>
-            <tr>
-              <td><strong>Longitud:</strong></td>
-              <td><input v-model="editBotiga.longitude" readonly /></td>
-            </tr>
-          </tbody>
-        </table>
+        <div id="mapEdit" class="map-container"></div>
+
+        <label>Latitud</label>
+        <input v-model="editBotiga.latitude" readonly />
+        <label>Longitud</label>
+        <input v-model="editBotiga.longitude" readonly />
+
+        <HorarisEditor v-model:horaris="editBotiga.horaris" />
 
         <div class="modal-actions">
-          <button @click="updateBotiga" class="confirm-btn">💾 Desa canvis</button>
-          <button @click="showEditModal = false" class="delete-btn">❌ Cancel·lar</button>
+          <button class="confirm-btn" @click="updateBotiga">💾 Desa</button>
+          <button class="delete-btn" @click="showEditModal = false">❌ Cancel·lar</button>
         </div>
       </div>
     </div>
 
-    <!-- Finestra modal per afegir botiga -->
-    <div v-if="showAddModal" class="modal">
+    <!-- ➕ Modal Nova Botiga -->
+    <div v-if="showAddModal" class="modal" @click.self="showAddModal = false">
       <div class="modal-content">
         <h3>Afegir Botiga</h3>
+        <label>Nom</label>
+        <input v-model="newBotiga.nom" />
+        <label>Descripció</label>
+        <textarea v-model="newBotiga.descripcio"></textarea>
 
-        <table class="modal-table">
-          <tbody>
-            <tr>
-              <td><strong>Nom:</strong></td>
-              <td><input v-model="newBotiga.nom" placeholder="Nom de la botiga" /></td>
-            </tr>
-            <tr>
-              <td><strong>Descripció:</strong></td>
-              <td><textarea v-model="newBotiga.descripcio" placeholder="Descripció"></textarea></td>
-            </tr>
-            <tr>
-              <td colspan="2">
-                <div ref="mapAdd" style="height: 250px; width: 100%; border-radius: 10px; margin-top: 10px;"></div>
-              </td>
-            </tr>
-            <tr>
-              <td><strong>Latitud:</strong></td>
-              <td><input v-model="newBotiga.latitude" readonly /></td>
-            </tr>
-            <tr>
-              <td><strong>Longitud:</strong></td>
-              <td><input v-model="newBotiga.longitude" readonly /></td>
-            </tr>
-          </tbody>
-        </table>
+        <div id="mapAdd" class="map-container"></div>
+
+        <label>Latitud</label>
+        <input v-model="newBotiga.latitude" readonly />
+        <label>Longitud</label>
+        <input v-model="newBotiga.longitude" readonly />
+
+        <HorarisEditor v-model:horaris="newBotiga.horaris" />
 
         <div class="modal-actions">
-          <button @click="addBotiga" class="confirm-btn">💾 Desa</button>
-          <button @click="showAddModal = false" class="delete-btn">❌ Cancel·lar</button>
+          <button class="confirm-btn" @click="addBotiga">💾 Desa</button>
+          <button class="delete-btn" @click="showAddModal = false">❌ Cancel·lar</button>
         </div>
       </div>
     </div>
 
+    <!-- ➕ Modal Eliminar Botiga -->
+    <div v-if="showDeleteModal" class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-content">
+          <h3>Confirmació</h3>
+          <p>Segur que vols eliminar aquesta botiga? Aquesta acció és irreversible.</p>
+          <div class="modal-actions">
+            <button @click="deleteBotiga" class="delete-btn">Sí, eliminar</button>
+            <button @click="showDeleteModal = false" class="btn btn-secondary">Cancel·lar</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .container {
-  min-height: 80vh; /* Ajusta segons sigui necessari */
+  max-width: 900px;
   margin: auto;
   padding: 20px;
   text-align: center;
 }
 
-.add-botiga input {
-  margin: 5px;
-  padding: 8px;
-  width: 200px;
-  border: 1px solid #ccc;
+.search-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.search-input {
+  flex: 1; /* 🔥 Fa que ocupi l'espai disponible però sense passar-se */
+  max-width: 300px; /* 📏 Límit màxim perquè no sigui massa gran */
+  padding: 6px;
   border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px; /* 📌 Espai entre els botons */
+}
+
+.add-btn {
+  background: #42b983;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 5px;
+  white-space: nowrap; /* 🔥 Evita que el text es trenqui */
+}
+
+.add-btn:hover {
+  background: #368c6e;
+}
+
+.secondary-btn {
+  background: #f0ad4e; /* 🔶 Color diferent per "Productes" */
+}
+
+.secondary-btn:hover {
+  background: #d99a3e;
+}
+
+
+
+input, textarea {
+  width: 100%;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
 }
 
 button {
   background: #42b983;
-  color: #f9f9f9;
+  color: white;
   border: none;
   padding: 8px 12px;
-  border-radius: 5px;
   cursor: pointer;
-  margin: 10px 0;
+  border-radius: 5px;
+  margin: 5px;
 }
 
 button:hover {
-  background: #f9f9f9;
-  color: #368c6e;
-  outline: 2px solid #368c6e;
+  background: #368c6e;
+}
+
+.search-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
 .botiga-list {
@@ -339,147 +381,71 @@ button:hover {
 .botiga-list li {
   display: flex;
   justify-content: space-between;
-  background: #f9f9f9;
   padding: 10px;
-  border-radius: 5px;
+  background: #f9f9f9;
   margin-bottom: 10px;
+  border-radius: 5px;
   align-items: center;
-}
-
-.botiga-actions {
-  display: flex;
-  gap: 10px;
 }
 
 .edit-btn {
   background: #f0ad4e;
-  color: #f9f9f9;
-  margin-right: 20px;
 }
 
 .edit-btn:hover {
-  background: #f9f9f9;
-  color: #f0ad4e;
-  outline: 2px solid #f0ad4e;
+  background: #d99a3e;
 }
 
-.delete-btn {
-  background: #d9534f;
-  color: #f9f9f9;
-}
-
-.delete-btn:hover {
-  background: #f9f9f9;
-  color: #d9534f;
-  outline: 2px solid #d9534f;
-}
-
-.confirm-btn {
-  background: #42b983;
-  color: white;
-  margin-left:20px;
-  border: none;
-}
-
-.confirm-btn:hover {
-  background: #f9f9f9;
-  color: #42b983;
-  outline: 2px solid #42b983;
-}
-
-.search-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.search-container input {
-  padding: 8px;
-  width: 40%;
-  border: 1px solid #42b983;
-  border-radius: 5px;
-  outline: none;
-  font-size: 16px;
-  transition: border 0.3s ease-in-out;
-}
-
-/* Finestra modal */
 .modal {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  min-height: 100vh; /* Evita que es faci massa gran */
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: center; /* Centrat verticalment */
+  padding: 20px; /* Marge extra per evitar que el modal quedi enganxat */
 }
 
 .modal-content {
   background: white;
-  padding: 20px;
+  padding: 25px;
   border-radius: 10px;
-  text-align: center;
-  width: 500px;
-  max-width: 90%;
+  width: 600px;
+  max-height: 80vh; /* Reduïm l’alçada màxima perquè no baixi massa */
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  text-align: left;
 }
 
-#mapAdd,
-#mapEdit {
-  width: 100% !important;
-  height: 250px !important;
-  border-radius: 10px;
-  margin-top: 10px;
-}
 
-/* Taula dins la modal */
-.modal-table {
+.map-container {
   width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 15px;
-}
-
-.modal-table td {
-  padding: 8px;
-  vertical-align: middle;
-}
-
-.modal-table input,
-.modal-table textarea {
-  width: 100%;
-  padding: 6px;
+  height: 250px;
   border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 14px;
+  border-radius: 10px;
+  margin: 10px 0;
 }
 
-/* Ajustament correcte de mida per la descripció */
-.modal-table textarea {
-  height: 80px;
-  resize: none;
-}
-
-/* Botons */
 .modal-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 10px;
   margin-top: 15px;
 }
 
 .confirm-btn {
   background: #42b983;
-  color: white;
-  padding: 8px 15px;
-  border-radius: 5px;
 }
 
-.cancel-btn {
+.delete-btn {
   background: #d9534f;
-  color: white;
-  padding: 8px 15px;
-  border-radius: 5px;
+}
+
+.delete-btn:hover {
+  background: #c9302c;
 }
 </style>

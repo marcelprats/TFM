@@ -21,4 +21,11 @@ class Botiga extends Model
     {
         return $this->belongsToMany(Producte::class, 'botiga_productes', 'botiga_id', 'product_id');
     }
+
+    public function horaris()
+    {
+        return $this->hasMany(HorariBotiga::class, 'botiga_id');
+    }
+    
+
 }
