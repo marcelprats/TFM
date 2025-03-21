@@ -80,13 +80,13 @@ onUnmounted(() => {
     <h1>Botiga</h1>
 
     <div class="search-bar">
-      <label for="search">Cercar producte:</label>
+      <label for="search">Cercar producte: </label>
       <input id="search" v-model="searchQuery" type="text" placeholder="Cercar producte..." />
     </div>
 
     <div class="filters">
       <div class="dropdown" @mouseenter="showStoreDropdown = true" @mouseleave="showStoreDropdown = false">
-        <button>Filtrar per botiga ▼</button>
+        <button>Botiga ▼</button>
         <div v-if="showStoreDropdown" class="dropdown-content">
           <div v-for="store in stores" :key="store" @click="handleStoreSelection(store)" :class="{ 'selected': selectedStores.includes(store) }">
             {{ store }}

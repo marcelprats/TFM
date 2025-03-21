@@ -75,7 +75,7 @@ const filteredBotigues = computed(() =>
   )
 );
 
-// 📌 Mapa (pro)
+// 📌 Mapa
 const maps = new Map();
 
 const initMap = (mapId, botiga) => {
@@ -215,7 +215,7 @@ onMounted(fetchBotigues);
     <ul class="botiga-list">
       <li v-for="botiga in filteredBotigues" :key="botiga.id">
         <div class="botiga-info">
-          <strong>{{ botiga.nom }}</strong> - {{ botiga.descripcio }}
+          <strong>{{ botiga.nom }}</strong>
         </div>
         <div class="botiga-actions">
           <button @click="openEditBotiga(botiga)" class="btn edit-btn">✏ Editar</button>
