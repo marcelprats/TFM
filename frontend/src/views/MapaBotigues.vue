@@ -119,6 +119,26 @@ const calcularDistancia = (lat1, lon1, lat2, lon2) => {
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
 };
 
+const horarisPerBotiga = (botiga) => {
+  const perDia = {};
+  diesSetmana.forEach((dia) => {
+    const horarisDia = botiga.horaris?.filter(
+      h => h.dia.toLowerCase() === dia.toLowerCase()
+    );
+    if (horarisDia && horarisDia.length > 0) {
+      perDia[dia] = horarisDia.map(h => {
+        const ob = h.obertura?.slice(0, 5); // Ex: "09:00"
+        const tc = h.tancament?.slice(0, 5);
+        return `${ob} - ${tc}`;
+      }).join(", ");
+    } else {
+      perDia[dia] = "Tancat";
+    }
+  });
+  return perDia;
+};
+
+
 const renderMap = () => {
   if (map.value) map.value.remove();
   map.value = L.map("mapa").setView([41.3851, 2.1734], 13);
@@ -165,10 +185,13 @@ const renderMap = () => {
         .addTo(map.value)
         .bindPopup(`<b><a href='/info-botiga/${b.id}'>${text}</a></b>`);
 
-      marker.on("click", () => {
-        selectedBotigaId.value = b.id;
-        marker.openPopup();
-      });
+        marker.on("click", () => {
+          selectedBotigaId.value = b.id;
+          nextTick(() => {
+            marker.openPopup();
+          });
+        });
+
 
       b.marker = marker; // vincular amb la llista
     }
@@ -219,6 +242,9 @@ onMounted(() => {
 
     <!-- 🔍 Filtres -->
     <div class="filters">
+      <button @click="obertAra = !obertAra" :class="{ active: obertAra }">
+        ✅ Obert ara
+      </button>
       <button @click="mostrarHorari = !mostrarHorari" :class="{ active: mostrarHorari }">
         🕒 Horari
       </button>
@@ -235,9 +261,6 @@ onMounted(() => {
         </select>
       </template>
 
-      <button @click="obertAra = !obertAra" :class="{ active: obertAra }">
-        ✅ Obert ara
-      </button>
 
       <button @click="obtenirUbicacio">📍 La meva ubicació</button>
     </div>
@@ -272,17 +295,25 @@ onMounted(() => {
               class="botiga-card"
               :class="{ selected: selectedBotigaId === b.id }"
             >
-              <h4 class="botiga-nom">{{ b.nom }}</h4>
+              <div class="botiga-header">
+                <h4 class="botiga-nom">{{ b.nom }}</h4>
+              </div>
               <p class="botiga-distancia" v-if="distancies[b.id]">📍 {{ distancies[b.id] }} km</p>
 
               <div v-if="selectedBotigaId === b.id" class="detall-botiga">
-                <p class="horaris-title">🕒 Horari:</p>
-                <ul class="horaris-list">
-                  <li v-for="h in b.horaris" :key="h.id">{{ h.dia }}: {{ h.obertura }} - {{ h.tancament }}</li>
-                </ul>
+                <table class="horari-taula">
+                  <tbody>
+                    <tr v-for="dia in diesSetmana" :key="dia">
+                      <td class="dia"><strong>{{ dia }}</strong></td>
+                      <td class="horari">{{ horarisPerBotiga(b)[dia] }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
                 <a :href="'/info-botiga/' + b.id" class="detall-enllac">🔗 Veure fitxa completa</a>
               </div>
             </li>
+
           </ul>
         </div>
       </aside>
@@ -351,10 +382,12 @@ onMounted(() => {
 .sidebar-top {
   padding: 12px;
   border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
 }
 
 .search-sidebar {
-  width: 100%;
+  width: 90%;
   padding: 8px 10px;
   border-radius: 6px;
   border: 1px solid #ccc;
@@ -428,5 +461,74 @@ onMounted(() => {
   color: #666;
   margin-top: 4px;
 }
+
+.horari-taula {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.horari-taula td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.horari-taula .dia {
+  width: 100px;
+  font-weight: bold;
+  color: #333;
+}
+
+.horari-taula .horari {
+  color: #444;
+}
+
+.detall-enllac {
+  display: inline-block;
+  margin-top: 16px;
+  font-weight: bold;
+  text-decoration: none;
+  color: #42b983;
+}
+
+.detall-enllac:hover {
+  text-decoration: underline;
+}
+
+.order-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+/* Responsive per mòbils i tauletes */
+@media (max-width: 900px) {
+  .map-layout {
+    flex-direction: column;
+  }
+
+  .mapa-container {
+    height: 50vh;
+    flex: none;
+  }
+
+  .sidebar-list {
+    max-height: none;
+    flex: none;
+    margin-top: 10px;
+  }
+
+  .search-sidebar {
+    width: 100%;
+  }
+
+  .sidebar-scroll {
+    max-height: 50vh;
+  }
+}
+
 
 </style>
