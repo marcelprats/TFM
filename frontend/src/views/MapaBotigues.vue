@@ -294,6 +294,7 @@ onMounted(() => {
               @click="toggleBotigaDetall(b)"
               class="botiga-card"
               :class="{ selected: selectedBotigaId === b.id }"
+              :aria-expanded="selectedBotigaId === b.id"
             >
               <div class="botiga-header">
                 <h4 class="botiga-nom">{{ b.nom }}</h4>
@@ -528,6 +529,15 @@ onMounted(() => {
   .sidebar-scroll {
     max-height: 50vh;
   }
+}
+
+.detall-botiga {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 
