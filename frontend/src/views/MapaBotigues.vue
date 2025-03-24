@@ -298,8 +298,8 @@ onMounted(() => {
             >
               <div class="botiga-header">
                 <h4 class="botiga-nom">{{ b.nom }}</h4>
+                <p class="botiga-distancia" v-if="distancies[b.id]">📍 {{ distancies[b.id] }} km</p>
               </div>
-              <p class="botiga-distancia" v-if="distancies[b.id]">📍 {{ distancies[b.id] }} km</p>
 
               <div v-if="selectedBotigaId === b.id" class="detall-botiga">
                 <table class="horari-taula">
@@ -311,7 +311,7 @@ onMounted(() => {
                   </tbody>
                 </table>
 
-                <a :href="'/info-botiga/' + b.id" class="detall-enllac">🔗 Veure fitxa completa</a>
+                <a :href="'/info-botiga/' + b.id" class="detall-enllac">🔗 Veure informació completa</a>
               </div>
             </li>
 
@@ -455,6 +455,12 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   color: #333;
+}
+
+.botiga-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .botiga-distancia {
