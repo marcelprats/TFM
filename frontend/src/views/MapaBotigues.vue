@@ -1,275 +1,432 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, onUnmounted } from "vue";
+import { ref, onMounted, watch, computed, nextTick } from "vue";
 import axios from "axios";
 import L from "leaflet";
-import { useRouter } from "vue-router";
+import "leaflet/dist/leaflet.css";
 
 const API_URL = "http://127.0.0.1:8000/api";
+
 const botigues = ref([]);
-const categories = ref([]);
+const filtreDia = ref("");
+const filtreHora = ref("");
+const obertAra = ref(false);
+const llistaQuery = ref("");
+const userLocation = ref(null);
+const distancies = ref({});
 const map = ref(null);
-const markers = ref(new Map());
-const searchQuery = ref("");
-const selectedCategory = ref("");
-const showList = ref(false);
-const router = useRouter();
-const activePopup = ref(null);
+const orderBy = ref("nom");
+const mostrarHorari = ref(false);
+
+const selectedBotigaId = ref(null);
+
+const toggleBotigaDetall = (b) => {
+  selectedBotigaId.value = selectedBotigaId.value === b.id ? null : b.id;
+  mostrarBotiga(b);
+};
+
+watch(mostrarHorari, (val) => {
+  if (!val) {
+    filtreDia.value = "";
+    filtreHora.value = "";
+  } else {
+    obertAra.value = false;
+  }
+});
+
+watch(obertAra, (val) => {
+  if (val) {
+    mostrarHorari.value = false;
+    filtreDia.value = "";
+    filtreHora.value = "";
+  }
+});
 
 
-// Carregar botigues
-const fetchBotigues = async () => {
+const handleOrderByDistancia = () => {
+  if (!userLocation.value) {
+    obtenirUbicacio();
+  }
+  orderBy.value = "distancia";
+};
+
+
+const diesSetmana = ["Dilluns", "Dimarts", "Dimecres", "Dijous", "Divendres", "Dissabte", "Diumenge"];
+const hores = Array.from({ length: 24 }, (_, i) => `${i}`);
+
+const botiguesFiltrades = computed(() => {
+  const query = llistaQuery.value.toLowerCase();
+  const ara = new Date();
+  const diaActual = diesSetmana[(ara.getDay() + 6) % 7];
+  const minutsActuals = ara.getHours() * 60 + ara.getMinutes();
+
+  return botigues.value
+    .filter(b => b.nom.toLowerCase().includes(query))
+    .filter(b => {
+      if (!b.horaris || !Array.isArray(b.horaris)) {
+        return !obertAra.value;
+      }
+      if (obertAra.value) {
+        return b.horaris.some(h => {
+          return (
+            h.dia.toLowerCase() === diaActual.toLowerCase() &&
+            parseInt(h.obertura) * 60 <= minutsActuals &&
+            minutsActuals < parseInt(h.tancament) * 60
+          );
+        });
+      } else {
+        return b.horaris.some(h => {
+          const diaOk = !filtreDia.value || h.dia.toLowerCase() === filtreDia.value.toLowerCase();
+          const horaOk = !filtreHora.value || (
+            parseInt(h.obertura) <= parseInt(filtreHora.value) &&
+            parseInt(filtreHora.value) < parseInt(h.tancament)
+          );
+          return diaOk && horaOk;
+        });
+      }
+
+    })
+    .sort((a, b) => {
+      if (orderBy.value === "distancia") {
+        return (distancies.value[a.id] || Infinity) - (distancies.value[b.id] || Infinity);
+      } else {
+        return a.nom.localeCompare(b.nom);
+      }
+    });
+});
+
+const carregarBotigues = async () => {
   try {
     const token = localStorage.getItem("userToken");
-    if (!token) {
-      console.error("No hi ha cap token d'autenticació.");
-      return;
-    }
-
-    const response = await axios.get(`${API_URL}/botigues-mes`, {
+    const res = await axios.get(`${API_URL}/botigues-mes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-
-    botigues.value = response.data;
-    filteredBotigues.value = botigues.value;
-    carregarMapa();
-    carregarCategories();
-  } catch (error) {
-    console.error("Error carregant botigues:", error);
+    botigues.value = res.data;
+    await nextTick();
+    renderMap();
+  } catch (err) {
+    console.error("Error carregant botigues:", err);
   }
 };
 
-// Filtrar i ordenar botigues en temps real
-const filteredBotigues = computed(() => {
-  let resultat = botigues.value;
-
-  if (searchQuery.value) {
-    resultat = resultat.filter((botiga) =>
-      botiga.nom.toLowerCase().includes(searchQuery.value.toLowerCase())
-    );
-  }
-
-  if (selectedCategory.value) {
-    resultat = resultat.filter((botiga) => botiga.categoria === selectedCategory.value);
-  }
-
-  // Ordenar alfabèticament per nom
-  return resultat.sort((a, b) => a.nom.localeCompare(b.nom));
-});
-
-
-// Carregar categories
-const carregarCategories = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/categories`);
-    categories.value = response.data;
-  } catch (error) {
-    console.error("Error carregant categories:", error);
-  }
+const calcularDistancia = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) *
+            Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
 };
 
-// Carregar mapa
-const carregarMapa = () => {
-  if (map.value) {
-    map.value.remove();
-  }
-
-  map.value = L.map("mapContainer").setView([41.3851, 2.1734], 12);
+const renderMap = () => {
+  if (map.value) map.value.remove();
+  map.value = L.map("mapa").setView([41.3851, 2.1734], 13);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; OpenStreetMap contributors',
+    attribution: "© OpenStreetMap",
   }).addTo(map.value);
 
-  actualitzarMarcadors();
-};
+  const allCoords = [];
 
-// Afegir marcadors
-const actualitzarMarcadors = () => {
-  markers.value.forEach((marker) => map.value.removeLayer(marker));
-  markers.value.clear();
+  if (userLocation.value) {
+    const { lat, lng } = userLocation.value;
+    allCoords.push([lat, lng]);
 
-  filteredBotigues.value.forEach((botiga) => {
-    if (botiga.latitude && botiga.longitude) {
-      const marker = L.marker([botiga.latitude, botiga.longitude])
+    const redIcon = L.icon({
+      iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    L.marker([lat, lng], { icon: redIcon })
+      .addTo(map.value)
+      .bindPopup("📍 Estàs aquí")
+      .openPopup();
+  }
+
+  botiguesFiltrades.value.forEach(b => {
+    if (b.latitude && b.longitude) {
+      allCoords.push([b.latitude, b.longitude]);
+
+      let text = b.nom;
+      if (userLocation.value) {
+        const d = calcularDistancia(userLocation.value.lat, userLocation.value.lng, b.latitude, b.longitude);
+        distancies.value[b.id] = d;
+        text += ` (${d} km)`;
+      }
+
+      const horarisText = b.horaris?.map(h => `${h.dia}: ${h.obertura} - ${h.tancament}`).join("<br>") || "Horari no disponible";
+
+      const marker = L.marker([b.latitude, b.longitude])
         .addTo(map.value)
-        .bindPopup(
-          `<b><a href="#" class="popup-link" data-id="${botiga.id}">${botiga.nom}</a></b>`
-        )
-        .on("popupopen", () => {
-          setTimeout(() => {
-            document.querySelectorAll(".popup-link").forEach((el) => {
-              el.addEventListener("click", (event) => {
-                event.preventDefault();
-                const id = event.target.getAttribute("data-id");
-                router.push(`/info-botiga/${id}`);
-              });
-            });
-          }, 100);
-        });
+        .bindPopup(`<b><a href='/info-botiga/${b.id}'>${text}</a></b>`);
 
-      markers.value.set(botiga.id, marker);
+      marker.on("click", () => {
+        selectedBotigaId.value = b.id;
+        marker.openPopup();
+      });
+
+      b.marker = marker; // vincular amb la llista
     }
   });
-};
 
-// Filtrar botigues en temps real
-watch(searchQuery, (newVal) => {
-  if (!newVal) {
-    filteredBotigues.value = botigues.value;
-  } else {
-    filteredBotigues.value = botigues.value.filter((botiga) =>
-      botiga.nom.toLowerCase().includes(newVal.toLowerCase())
-    );
-  }
-  actualitzarMarcadors();
-});
-
-// Filtrar per categoria
-watch(selectedCategory, (newVal) => {
-  if (!newVal) {
-    filteredBotigues.value = botigues.value;
-  } else {
-    filteredBotigues.value = botigues.value.filter((botiga) => botiga.categoria === newVal);
-  }
-  actualitzarMarcadors();
-});
-
-// Centrar i obrir popup de la botiga seleccionada
-const seleccionarBotiga = (botiga) => {
-  if (botiga.latitude && botiga.longitude) {
-    map.value.setView([botiga.latitude, botiga.longitude], 15);
-    activePopup.value = botiga.id;
-    showList.value = false;
-
-    setTimeout(() => {
-      const marker = markers.value.get(botiga.id);
-      if (marker) {
-        marker.openPopup();
-      }
-    }, 500);
+  if (allCoords.length > 0) {
+    map.value.fitBounds(allCoords, { padding: [30, 30] });
   }
 };
 
-// Tancar la llista en fer clic fora
-const tancarLlista = (event) => {
-  if (!event.target.closest(".search-container")) {
-    showList.value = false;
+const obtenirUbicacio = () => {
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLocation.value = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      };
+      renderMap();
+    },
+    err => {
+      console.error("No es pot obtenir la ubicació", err);
+    }
+  );
+};
+
+const mostrarBotiga = (botiga) => {
+  if (botiga.marker) {
+    map.value.setView(botiga.marker.getLatLng(), 16, { animate: true });
+    botiga.marker.openPopup();
   }
 };
 
-// Afegim event listener en muntar
+
+watch([filtreDia, filtreHora, obertAra, llistaQuery, orderBy], renderMap);
 onMounted(() => {
-  fetchBotigues();
-  document.addEventListener("click", tancarLlista);
+  carregarBotigues();
 });
 
-// Eliminem event listener en desmuntar
-onUnmounted(() => {
-  document.removeEventListener("click", tancarLlista);
-});
+
+
+
 </script>
 
+
 <template>
-  <div class="map-page">
+  <div class="map-wrapper">
     <h1>Mapa de Botigues</h1>
 
-    <!-- 🔍 Buscador i filtres -->
-    <div class="controls">
-      <div class="search-container">
-        <input
-          v-model="searchQuery"
-          placeholder="🔍 Busca una botiga..."
-          @focus="showList = true"
-        />
-        <div v-if="showList" class="botiga-list">
-          <ul>
-            <li v-for="botiga in filteredBotigues" :key="botiga.id" @click="seleccionarBotiga(botiga)">
-              {{ botiga.nom }}
+    <!-- 🔍 Filtres -->
+    <div class="filters">
+      <button @click="mostrarHorari = !mostrarHorari" :class="{ active: mostrarHorari }">
+        🕒 Horari
+      </button>
+
+      <template v-if="mostrarHorari">
+        <select v-model="filtreDia">
+          <option value="">Tots els dies</option>
+          <option v-for="d in diesSetmana" :key="d" :value="d">{{ d }}</option>
+        </select>
+
+        <select v-model="filtreHora">
+          <option value="">Totes les hores</option>
+          <option v-for="h in hores" :key="h" :value="parseInt(h)">{{ h }}h</option>
+        </select>
+      </template>
+
+      <button @click="obertAra = !obertAra" :class="{ active: obertAra }">
+        ✅ Obert ara
+      </button>
+
+      <button @click="obtenirUbicacio">📍 La meva ubicació</button>
+    </div>
+
+
+
+    <!-- 🗺️ Mapa + Llista -->
+    <div class="map-layout">
+      <div id="mapa" class="mapa-container"></div>
+
+      <aside class="sidebar-list">
+        <div class="order-buttons">
+          <button @click="orderBy = 'nom'" :class="{ active: orderBy === 'nom' }">🔤 Nom</button>
+          <button @click="handleOrderByDistancia" :class="{ active: orderBy === 'distancia' }">📍 Distància</button>
+        </div>
+
+        <div class="sidebar-top">
+          <input 
+            v-model="llistaQuery"
+            type="text"
+            placeholder="🔍 Cerca una botiga..."
+            class="search-sidebar"
+          />
+        </div>
+
+        <div class="sidebar-scroll">
+          <ul class="botiga-cards">
+            <li
+              v-for="b in botiguesFiltrades"
+              :key="b.id"
+              @click="toggleBotigaDetall(b)"
+              class="botiga-card"
+              :class="{ selected: selectedBotigaId === b.id }"
+            >
+              <h4 class="botiga-nom">{{ b.nom }}</h4>
+              <p class="botiga-distancia" v-if="distancies[b.id]">📍 {{ distancies[b.id] }} km</p>
+
+              <div v-if="selectedBotigaId === b.id" class="detall-botiga">
+                <p class="horaris-title">🕒 Horari:</p>
+                <ul class="horaris-list">
+                  <li v-for="h in b.horaris" :key="h.id">{{ h.dia }}: {{ h.obertura }} - {{ h.tancament }}</li>
+                </ul>
+                <a :href="'/info-botiga/' + b.id" class="detall-enllac">🔗 Veure fitxa completa</a>
+              </div>
             </li>
           </ul>
         </div>
-      </div>
-
-      <!-- Filtre de categories -->
-      <select v-model="selectedCategory">
-        <option value="">Totes les categories</option>
-        <option v-for="categoria in categories" :key="categoria.id" :value="categoria.nom">
-          {{ categoria.nom }}
-        </option>
-      </select>
+      </aside>
     </div>
 
-    <!-- Mapa -->
-    <div id="mapContainer"></div>
   </div>
 </template>
 
 <style scoped>
-.map-page {
-  text-align: center;
+.map-wrapper {
   padding: 20px;
-  position: relative;
 }
 
-.controls {
+.filters {
   display: flex;
-  justify-content: center;
   gap: 10px;
   margin-bottom: 15px;
+  flex-wrap: wrap;
 }
 
-.search-container {
-  position: relative;
+.filters select {
+  min-width: 120px;
+}
+.filters button {
+  min-width: 100px;
 }
 
-.search-container input {
-  padding: 8px;
-  width: 250px;
+.filters select,
+.filters button {
+  padding: 8px 12px;
+  border-radius: 6px;
   border: 1px solid #ccc;
-  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
-/* Llista de botigues en buscador */
-.botiga-list {
-  position: absolute;
-  top: 35px;
-  left: 0;
-  width: 250px;
-  max-height: 200px;
+.filters button.active {
+  background-color: #42b983;
+  color: white;
+  border: none;
+}
+
+.map-layout {
+  display: flex;
+  gap: 20px;
+}
+
+.mapa-container {
+  flex: 2;
+  height: 80vh;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+
+.sidebar-list {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.sidebar-top {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+.search-sidebar {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.sidebar-scroll {
+  padding: 12px;
   overflow-y: auto;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-  z-index: 2000;
+  flex-grow: 1;
 }
 
-.botiga-list ul {
+.sidebar-scroll ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.botiga-list li {
-  padding: 10px;
+.sidebar-scroll li {
+  margin-bottom: 8px;
+}
+
+.sidebar-scroll a {
+  color: #42b983;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.sidebar-scroll a:hover {
+  text-decoration: underline;
+}
+
+.distance {
+  color: #777;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.botiga-cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.botiga-card {
+  background: #ffffff;
+  padding: 12px 14px;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
   cursor: pointer;
-  border-bottom: 1px solid #ddd;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.botiga-list li:hover {
-  background: #f0f0f0;
+.botiga-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.15);
 }
 
-select {
-  padding: 8px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  cursor: pointer;
+.botiga-nom {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
 }
 
-#mapContainer {
-  width: 100%;
-  height: 80vh;
-  border-radius: 10px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+.botiga-distancia {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
 }
+
 </style>
