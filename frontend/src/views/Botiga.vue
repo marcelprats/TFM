@@ -76,7 +76,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="store-page">
+  <div class="store-page container">
     <h1>Botiga</h1>
 
     <div class="search-bar">
@@ -122,12 +122,18 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.store-page {
-  min-height: 80vh;
-  width: 100%;
-  margin: 0 auto;
-  padding: 20px;
-}
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .store-page {
+    min-height: 80vh;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+  }
 
 .search-bar {
   margin-bottom: 20px;
@@ -229,4 +235,45 @@ onUnmounted(() => {
 .product-card:hover {
   transform: scale(1.05);
 }
+
+@media (max-width: 768px) {
+  .store-page {
+    padding: 10px;
+  }
+  .search-bar {
+    margin-bottom: 10px;
+  }
+  .filters {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .price-filter {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .store-page {
+    padding: 5px;
+  }
+  .search-bar {
+    margin-bottom: 5px;
+  }
+  .filters {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .price-filter {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 </style>

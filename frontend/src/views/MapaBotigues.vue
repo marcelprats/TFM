@@ -97,7 +97,7 @@ const botiguesFiltrades = computed(() => {
 const carregarBotigues = async () => {
   try {
     const token = localStorage.getItem("userToken");
-    const res = await axios.get(`${API_URL}/botigues-mes`, {
+    const res = await axios.get(`${API_URL}/botigues`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     botigues.value = res.data;
@@ -324,6 +324,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+
 .map-wrapper {
   padding: 20px;
 }
