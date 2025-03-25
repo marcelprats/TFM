@@ -57,6 +57,12 @@ const formatHoraris = (horarisDB) => {
   return horaris;
 };
 
+const hores = Array.from({ length: 24 * 4 }, (_, i) => {
+  const h = Math.floor(i / 4).toString().padStart(2, "0");
+  const m = (i % 4 * 15).toString().padStart(2, "0");
+  return `${h}:${m}`;
+});
+
 // 📌 Carregar botigues
 const fetchBotigues = async () => {
   const token = localStorage.getItem("userToken");
@@ -201,15 +207,14 @@ onMounted(fetchBotigues);
   <div class="container">
     <h1>Gestió de Botigues</h1>
 
-  <!-- 🔍 Buscador i botons d'acció -->
-  <div class="search-container">
-    <input v-model="searchQuery" placeholder="Cerca botiga..." class="search-input"/>
-    <div class="action-buttons">
-      <button class="add-btn" @click="openAddBotiga">➕ Afegir Botiga</button>
-      <button class="add-btn secondary-btn" @click="goToProductes">📦 Productes</button>
+    <!-- 🔍 Buscador i botons d'acció -->
+    <div class="search-container">
+      <input v-model="searchQuery" placeholder="Cerca botiga..." class="search-input"/>
+      <div class="action-buttons">
+        <button class="add-btn" @click="openAddBotiga">➕ Afegir Botiga</button>
+        <button class="add-btn secondary-btn" @click="goToProductes">📦 Productes</button>
+      </div>
     </div>
-  </div>
-
 
     <!-- 📋 Llistat -->
     <ul class="botiga-list">
@@ -223,7 +228,6 @@ onMounted(fetchBotigues);
         </div>
       </li>
     </ul>
-
 
     <!-- 🛠️ Modal Edició -->
     <div v-if="showEditModal" class="modal" @click.self="showEditModal = false">
@@ -301,14 +305,17 @@ onMounted(fetchBotigues);
 
 .search-container {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
+  gap: 10px;
 }
 
 .search-input {
-  flex: 1; /* 🔥 Fa que ocupi l'espai disponible però sense passar-se */
-  max-width: 300px; /* 📏 Límit màxim perquè no sigui massa gran */
+  flex: 1;
+  min-width: 200px;
+  max-width: 300px;
   padding: 6px;
   border-radius: 5px;
   border: 1px solid #ccc;
@@ -316,7 +323,8 @@ onMounted(fetchBotigues);
 
 .action-buttons {
   display: flex;
-  gap: 10px; /* 📌 Espai entre els botons */
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .add-btn {
@@ -326,7 +334,7 @@ onMounted(fetchBotigues);
   padding: 8px 14px;
   cursor: pointer;
   border-radius: 5px;
-  white-space: nowrap; /* 🔥 Evita que el text es trenqui */
+  white-space: nowrap;
 }
 
 .add-btn:hover {
@@ -334,16 +342,14 @@ onMounted(fetchBotigues);
 }
 
 .secondary-btn {
-  background: #f0ad4e; /* 🔶 Color diferent per "Productes" */
+  background: #f0ad4e;
 }
 
 .secondary-btn:hover {
   background: #d99a3e;
 }
 
-
-
-input, textarea {
+input, textarea, select {
   width: 100%;
   padding: 8px;
   border-radius: 5px;
@@ -365,13 +371,6 @@ button:hover {
   background: #368c6e;
 }
 
-.search-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
 .botiga-list {
   list-style: none;
   padding: 0;
@@ -380,12 +379,21 @@ button:hover {
 
 .botiga-list li {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   padding: 10px;
   background: #f9f9f9;
   margin-bottom: 10px;
   border-radius: 5px;
-  align-items: center;
+}
+
+@media (min-width: 600px) {
+  .botiga-list li {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .edit-btn {
@@ -401,24 +409,29 @@ button:hover {
   top: 0;
   left: 0;
   width: 100%;
-  min-height: 100vh; /* Evita que es faci massa gran */
+  min-height: 100vh;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
-  align-items: center; /* Centrat verticalment */
-  padding: 20px; /* Marge extra per evitar que el modal quedi enganxat */
+  align-items: center;
+  padding: 20px;
+  z-index: 1000;
 }
 
 .modal-content {
   background: white;
   padding: 25px;
   border-radius: 10px;
-  width: 600px;
-  max-height: 80vh; /* Reduïm l’alçada màxima perquè no baixi massa */
+  max-width: 600px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  max-height: 80vh;
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
   text-align: left;
+  box-sizing: border-box;
 }
 
 
@@ -435,6 +448,7 @@ button:hover {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 15px;
+  flex-wrap: wrap;
 }
 
 .confirm-btn {
@@ -448,4 +462,12 @@ button:hover {
 .delete-btn:hover {
   background: #c9302c;
 }
+
+@media (max-width: 768px) {
+  .modal-content {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+}
+
 </style>

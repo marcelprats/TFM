@@ -17,10 +17,18 @@
           <td>
             <div v-if="horari.tancat">🔒 Tancat</div>
             <div v-else>
-              <div v-for="(franja, i) in horari.franjes" :key="i" class="franja">
-                <input type="time" v-model="franja.obertura" />
+              <div
+                v-for="(franja, i) in horari.franjes"
+                :key="i"
+                class="franja"
+              >
+                <select v-model="franja.obertura" class="hour-select">
+                  <option v-for="h in hores" :key="'o' + h" :value="h">{{ h }}</option>
+                </select>
                 <span>-</span>
-                <input type="time" v-model="franja.tancament" />
+                <select v-model="franja.tancament" class="hour-select">
+                  <option v-for="h in hores" :key="'t' + h" :value="h">{{ h }}</option>
+                </select>
                 <button @click="eliminarFranja(horari, i)" class="delete-btn">❌</button>
               </div>
               <button @click="afegirFranja(horari)" class="add-btn">➕ Afegir franja</button>
@@ -37,23 +45,26 @@ const props = defineProps({
   horaris: { type: Array, required: true }
 });
 
+const hores = Array.from({ length: 24 * 4 }, (_, i) => {
+  const h = Math.floor(i / 4).toString().padStart(2, "0");
+  const m = (i % 4 * 15).toString().padStart(2, "0");
+  return `${h}:${m}`;
+});
+
 const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const afegirFranja = (horari) => {
   if (!horari.franjes.length) {
-    // Primera franja sempre de 09:00 a 13:00
     horari.franjes.push({ obertura: "09:00", tancament: "13:00" });
   } else {
-    // Nova franja: inicia 1h després de l'última i acaba a les 00:00
     const ultimaFranja = horari.franjes[horari.franjes.length - 1];
-    const novaObertura = (parseInt(ultimaFranja.tancament.split(":")[0], 10) + 1)
+    const novaObertura = (parseInt(ultimaFranja.tancament.split(":"), 10) + 1)
       .toString()
       .padStart(2, "0") + ":00";
 
     horari.franjes.push({ obertura: novaObertura, tancament: "00:00" });
   }
 };
-
 
 const eliminarFranja = (horari, index) => {
   horari.franjes.splice(index, 1);
@@ -69,6 +80,10 @@ const toggleTancat = (horari) => {
 </script>
 
 <style scoped>
+.horaris-container {
+  padding: 0 16px;
+}
+
 .horaris-table {
   width: 100%;
   border-collapse: collapse;
@@ -88,15 +103,18 @@ const toggleTancat = (horari) => {
 .franja {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 5px;
+  flex-wrap: wrap;
   justify-content: center;
 }
 
-input[type="time"] {
-  padding: 4px;
-  border-radius: 5px;
+.hour-select {
+  padding: 4px 6px;
+  font-size: 14px;
+  border-radius: 4px;
   border: 1px solid #ccc;
+  min-width: 85px;
 }
 
 .add-btn {
@@ -106,6 +124,7 @@ input[type="time"] {
   padding: 4px 8px;
   cursor: pointer;
   border-radius: 4px;
+  font-size: 14px;
 }
 
 .add-btn:hover {
@@ -119,9 +138,34 @@ input[type="time"] {
   padding: 4px 8px;
   cursor: pointer;
   border-radius: 4px;
+  font-size: 14px;
 }
 
 .delete-btn:hover {
   background-color: #c62828;
+}
+
+@media (max-width: 600px) {
+  .franja {
+    flex-direction: row;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .hour-select {
+    font-size: 13px;
+    min-width: 70px;
+  }
+
+  .add-btn,
+  .delete-btn {
+    font-size: 13px;
+    padding: 4px 6px;
+  }
+
+  .horaris-container {
+    padding: 0 12px;
+  }
 }
 </style>

@@ -19,10 +19,12 @@ const mostrarHorari = ref(false);
 
 const selectedBotigaId = ref(null);
 
-const toggleBotigaDetall = (b) => {
+const toggleBotigaDetall = async (b) => {
   selectedBotigaId.value = selectedBotigaId.value === b.id ? null : b.id;
+  await nextTick(); 
   mostrarBotiga(b);
 };
+
 
 watch(mostrarHorari, (val) => {
   if (!val) {
@@ -209,6 +211,7 @@ const obtenirUbicacio = () => {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
       };
+      orderBy.value = "distancia";
       renderMap();
     },
     err => {
@@ -217,12 +220,28 @@ const obtenirUbicacio = () => {
   );
 };
 
-const mostrarBotiga = (botiga) => {
-  if (botiga.marker) {
-    map.value.setView(botiga.marker.getLatLng(), 16, { animate: true });
-    botiga.marker.openPopup();
-  }
+const mostrarBotiga = async (botiga) => {
+  await nextTick(); // espera que Vue acabi de renderitzar
+  setTimeout(() => {
+    if (botiga.marker && map.value) {
+      const latLng = botiga.marker.getLatLng();
+
+      // 1. Obre el popup
+      botiga.marker.openPopup();
+
+      // 2. Centra el mapa amb una petita variació per forçar l’animació
+      map.value.setView([latLng.lat + 0.00001, latLng.lng + 0.00001], 16, {
+        animate: true,
+      });
+
+      // 3. Just després, torna al punt original
+      setTimeout(() => {
+        map.value.setView(latLng, 16, { animate: true });
+      }, 100);
+    }
+  }, 100);
 };
+
 
 
 watch([filtreDia, filtreHora, obertAra, llistaQuery, orderBy], renderMap);
@@ -517,6 +536,13 @@ html, body {
   gap: 8px;
   margin: 12px 0;
 }
+
+.order-buttons button.active {
+  background-color: #42b983;
+  color: white;
+  border: none;
+}
+
 
 /* Responsive per mòbils i tauletes */
 @media (max-width: 900px) {

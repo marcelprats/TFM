@@ -34,15 +34,16 @@ onMounted(async () => {
 
 <style scoped>
 .info-botigues {
-  min-height: 80vh; /* Ajusta segons sigui necessari */
+  min-height: 80vh;
   margin: 50px auto;
   padding: 20px;
   text-align: center;
+  max-width: 1200px;
 }
 
 .botiga-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr); /* 5 columnes */
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 20px;
   margin-top: 20px;
 }
@@ -56,9 +57,21 @@ onMounted(async () => {
   text-decoration: none;
   color: black;
   border: 1px solid #ddd;
+  transition: background 0.2s ease;
 }
 
 .botiga-card:hover {
   background: #f1f1f1;
+}
+
+/* Responsive optimitzat per mòbil i tablets */
+@media (max-width: 768px) {
+  .info-botigues {
+    padding: 10px;
+  }
+
+  .botiga-card {
+    padding: 16px;
+  }
 }
 </style>
