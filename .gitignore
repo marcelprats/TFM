@@ -1,1 +1,14 @@
-vendor/\nnode_modules/\n.env
+# arrel del projecte
+node_modules/
+dist/
+.env
+
+# backend Laravel
+/vendor
+/storage/*.key
+/storage/oauth-private.key
+/storage/oauth-public.key
+
+# frontend
+/frontend/node_modules
+/frontend/dist
