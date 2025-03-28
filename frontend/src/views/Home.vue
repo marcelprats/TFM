@@ -23,8 +23,9 @@ onMounted(async () => {
 
 <template>
   <div class="home">
-    <h1>Benvingut a la plataforma per al comerç local!</h1>
-
+    <h1 class="text-3xl font-bold text-center mt-8">
+      Benvingut a <span class="text-primary">Totaki</span>, la plataforma pel comerç local!
+    </h1>
     <div class="lists-container">
       <!-- Llista d'Usuaris Registrats -->
       <div class="user-list">

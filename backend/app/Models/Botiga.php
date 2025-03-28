@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Botiga extends Model
 {
@@ -15,17 +14,18 @@ class Botiga extends Model
     protected $fillable = ['nom', 'descripcio', 'vendor_id', 'latitude', 'longitude'];
 
     /**
-     * Relació Many-to-Many amb productes (una botiga pot tenir molts productes).
+     * Una botiga pot tenir molts productes (relació one-to-many).
      */
-    public function productes(): BelongsToMany
+    public function productes()
     {
-        return $this->belongsToMany(Producte::class, 'botiga_productes', 'botiga_id', 'product_id');
+        return $this->hasMany(Producte::class, 'botiga_id');
     }
 
+    /**
+     * Relació amb els horaris de la botiga.
+     */
     public function horaris()
     {
         return $this->hasMany(HorariBotiga::class, 'botiga_id');
     }
-    
-
 }

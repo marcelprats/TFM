@@ -115,10 +115,11 @@ export const fetchProducts = async () => {
       id: product.id,
       name: product.nom,
       description: product.descripcio,
-      price: product.preu || 0,
-      stores: product.botigues ? product.botigues.map((b: any) => ({ id: b.id, name: b.nom })) : [],
-      vendor: product.vendor ? { id: product.vendor.id, name: product.vendor.name } : null // ✅ Assignació correcta del venedor
+      price: parseFloat(product.preu) || 0,
+      store: product.botiga ? { id: product.botiga.id, name: product.botiga.nom } : null,
+      vendor: product.vendor ? { id: product.vendor.id, name: product.vendor.name } : null
     }));
+    
 
   } catch (error) {
     console.error("Error obtenint productes:", error);

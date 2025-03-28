@@ -19,9 +19,22 @@ onMounted(async () => {
   <div class="info-venedors">
     <h1>Llista de Venedors</h1>
     <div class="venedor-grid">
-      <router-link v-for="venedor in venedors" :key="venedor.id" :to="'/info-venedor/' + venedor.id" class="venedor-card">
+      <router-link
+        v-for="venedor in venedors"
+        :key="venedor.id"
+        :to="'/info-venedor/' + venedor.id"
+        class="venedor-card"
+      >
         <h2>{{ venedor.name }}</h2>
         <p>Email: {{ venedor.email }}</p>
+
+        <p><strong>Botigues:</strong></p>
+        <ul>
+          <li v-if="venedor.botigues?.length > 0" v-for="botiga in venedor.botigues" :key="botiga.id">
+            {{ botiga.nom }}
+          </li>
+          <li v-else>No té cap botiga</li>
+        </ul>
       </router-link>
     </div>
   </div>
@@ -29,7 +42,7 @@ onMounted(async () => {
 
 <style scoped>
 .info-venedors {
-  min-height: 80vh; /* Ajusta segons sigui necessari */
+  min-height: 80vh;
   margin: 50px auto;
   padding: 20px;
   text-align: center;
@@ -55,5 +68,14 @@ onMounted(async () => {
 
 .venedor-card:hover {
   background: #f1f1f1;
+}
+
+.venedor-card ul {
+  padding-left: 0;
+  list-style: none;
+}
+
+.venedor-card li {
+  margin: 4px 0;
 }
 </style>

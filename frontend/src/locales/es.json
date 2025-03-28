@@ -1,0 +1,39 @@
+{
+    "import": {
+      "title": "Importar productos",
+      "step1": "Seleccionar archivo y tienda",
+      "step2": "Mapear columnas",
+      "step3": "Categoría común (opcional)",
+      "step4": "Previsualizar y editar",
+      "step5": "Resultado",
+      "selectStore": "Selecciona una tienda",
+      "chooseStore": "Elige una tienda",
+      "selectFile": "Selecciona un archivo Excel",
+      "mapColumns": "Mapea las columnas del archivo",
+      "optionalCategory": "Categoría común (opcional)",
+      "preview": "Previsualización de productos",
+      "editNote": "Puedes editar directamente los valores antes de importarlos.",
+      "upload": "Importar productos",
+      "success": "Se han importado correctamente {count} productos.",
+      "errorsFound": "Se han encontrado errores:",
+      "row": "Fila",
+      "downloadErrors": "Descargar Excel con errores",
+      "errorUpload": "Hubo un error al subir el archivo.",
+      "ignore": "Ignorar"
+    },
+    "fields": {
+      "nom": "Nombre",
+      "preu": "Precio",
+      "stock": "Stock",
+      "descripcio": "Descripción",
+      "categoria": "Categoría",
+      "imatge": "Imagen"
+    },
+    "common": {
+      "next": "Siguiente",
+      "previous": "Anterior",
+      "close": "Cerrar",
+      "actions": "Acciones"
+    }
+  }
+  

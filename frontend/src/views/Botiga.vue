@@ -16,13 +16,12 @@ const selectedMaxPrice = ref(500);
 
 onMounted(async () => {
   products.value = await fetchProducts();
+  console.log("Productes rebuts:", products.value);
 
-  // Determina el preu més baix i més alt entre tots els productes
   if (products.value.length > 0) {
-    minPrice.value = Math.min(...products.value.map(p => p.price));
-    maxPrice.value = Math.max(...products.value.map(p => p.price));
-
-    // Inicialitzar els filtres amb aquests valors
+    const prices = products.value.map(p => parseFloat(p.price));
+    minPrice.value = Math.min(...prices);
+    maxPrice.value = Math.max(...prices);
     selectedMinPrice.value = minPrice.value;
     selectedMaxPrice.value = maxPrice.value;
   }
@@ -31,13 +30,11 @@ onMounted(async () => {
 });
 
 const updateFilteredStores = () => {
-  const uniqueStores = new Set();
-  products.value.forEach(product => {
-    if (product.stores && product.stores.length > 0) {
-      product.stores.forEach(store => uniqueStores.add(store.name));
-    }
+  const unique = new Set();
+  products.value.forEach(p => {
+    if (p.store && p.store.name) unique.add(p.store.name);
   });
-  stores.value = [...uniqueStores];
+  stores.value = [...unique];
 };
 
 const toggleSelection = (list: Ref<string[]>, value: string) => {
@@ -55,10 +52,10 @@ const handleStoreSelection = (store: string) => {
 const filteredProducts = computed(() => {
   return products.value.filter((product) => {
     return (
-      product.name.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
-      (selectedStores.value.length === 0 || product.stores?.some(store => selectedStores.value.includes(store.name))) &&
-      product.price >= selectedMinPrice.value &&
-      product.price <= selectedMaxPrice.value
+      product.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) &&
+      (selectedStores.value.length === 0 || (product.store && selectedStores.value.includes(product.store.name))) &&
+      parseFloat(product.price) >= selectedMinPrice.value &&
+      parseFloat(product.price) <= selectedMaxPrice.value
     );
   });
 });
@@ -88,7 +85,12 @@ onUnmounted(() => {
       <div class="dropdown" @mouseenter="showStoreDropdown = true" @mouseleave="showStoreDropdown = false">
         <button>Botiga ▼</button>
         <div v-if="showStoreDropdown" class="dropdown-content">
-          <div v-for="store in stores" :key="store" @click="handleStoreSelection(store)" :class="{ 'selected': selectedStores.includes(store) }">
+          <div
+            v-for="store in stores"
+            :key="store"
+            @click="handleStoreSelection(store)"
+            :class="{ 'selected': selectedStores.includes(store) }"
+          >
             {{ store }}
           </div>
         </div>
@@ -104,36 +106,41 @@ onUnmounted(() => {
     </div>
 
     <div class="product-grid">
-      <router-link v-for="product in filteredProducts" :key="product.id" :to="{ name: 'Producte', params: { id: product.id } }" class="product-card">
+      <router-link
+        v-for="product in filteredProducts"
+        :key="product.id"
+        :to="{ name: 'Producte', params: { id: product.id } }"
+        class="product-card"
+      >
         <h2>{{ product.name }}</h2>
         <p class="price">{{ product.price }} €</p>
         <p class="store">
           Botiga:
-          <template v-if="product.stores.length > 0">
-            <router-link v-for="store in product.stores" :key="store.id" :to="'/info-botiga/' + store.id">
-              {{ store.name }}
+          <template v-if="product.store && product.store.name">
+            <router-link :to="'/info-botiga/' + product.store.id">
+              {{ product.store.name }}
             </router-link>
           </template>
           <span v-else>No assignada</span>
         </p>
+
+
       </router-link>
     </div>
   </div>
 </template>
 
 <style scoped>
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-  }
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-  .store-page {
-    min-height: 80vh;
-    width: 100%;
-    margin: 0 auto;
-    padding: 20px;
-  }
+.store-page {
+  min-height: 80vh;
+  padding: 20px;
+}
 
 .search-bar {
   margin-bottom: 20px;
@@ -146,13 +153,6 @@ onUnmounted(() => {
   font-size: 16px;
   border: 1px solid #ccc;
   border-radius: 5px;
-  outline: none;
-  transition: 0.3s;
-}
-
-.search-bar input:focus {
-  border-color: #42b983;
-  box-shadow: 0 0 8px rgba(66, 185, 131, 0.5);
 }
 
 .filters {
@@ -184,7 +184,6 @@ onUnmounted(() => {
   background: white;
   border: 1px solid #ddd;
   border-radius: 5px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   padding: 10px;
   width: 150px;
   max-height: 200px;
@@ -195,10 +194,10 @@ onUnmounted(() => {
 .dropdown-content div {
   padding: 5px;
   cursor: pointer;
-  transition: background 0.3s;
 }
 
-.dropdown-content div:hover, .dropdown-content div.selected {
+.dropdown-content div.selected,
+.dropdown-content div:hover {
   background-color: #42b983;
   color: white;
 }
@@ -215,7 +214,7 @@ onUnmounted(() => {
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 20px;
   padding: 20px;
 }
@@ -227,9 +226,9 @@ onUnmounted(() => {
   padding: 20px;
   text-align: center;
   border: 1px solid #ddd;
-  transition: 0.3s;
   text-decoration: none;
   color: inherit;
+  transition: transform 0.2s ease;
 }
 
 .product-card:hover {
@@ -237,43 +236,14 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .store-page {
-    padding: 10px;
-  }
-  .search-bar {
-    margin-bottom: 10px;
-  }
-  .filters {
-    flex-direction: column;
-    gap: 10px;
-  }
-  .price-filter {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .product-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .store-page {
-    padding: 5px;
-  }
-  .search-bar {
-    margin-bottom: 5px;
-  }
-  .filters {
-    flex-direction: column;
-    gap: 5px;
-  }
-  .price-filter {
-    flex-direction: column;
-    align-items: flex-start;
-  }
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
+@media (max-width: 480px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

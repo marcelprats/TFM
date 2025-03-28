@@ -4,32 +4,37 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-
 
 class Producte extends Model
 {
     use HasFactory;
 
-    protected $table = 'productes'; // 👈 Definim el nom correcte de la taula
+    protected $table = 'productes';
 
-    protected $fillable = ['nom', 'descripcio', 'preu', 'stock', 'imatge', 'vendor_id'];
+    protected $fillable = [
+        'nom',
+        'descripcio',
+        'categoria',
+        'preu',
+        'stock',
+        'imatge',
+        'vendor_id',
+        'botiga_id',
+    ];
 
     /**
-     * Relació amb el venedor (cada producte pertany a un venedor).
+     * Cada producte pertany a un venedor.
      */
     public function vendor()
     {
         return $this->belongsTo(Vendor::class, 'vendor_id');
     }
-    
 
     /**
-     * Relació Many-to-Many amb botigues (un producte pot estar en diverses botigues).
+     * Cada producte pertany a una única botiga.
      */
-    public function botigues(): BelongsToMany
+    public function botiga()
     {
-        return $this->belongsToMany(Botiga::class, 'botiga_productes', 'product_id', 'botiga_id');
+        return $this->belongsTo(Botiga::class, 'botiga_id');
     }
-     
 }

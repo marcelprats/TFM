@@ -2,9 +2,10 @@
 import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import ProductImportWizard from "../components/ProductImportWizard.vue";
 
 const API_URL = "http://127.0.0.1:8000/api";
-const productes = ref<{ id: number; nom: string; descripcio: string; preu: number; stock: number; botiga_id: number; botiga?: { nom: string } }[]>([]);
+const productes = ref<{ id: number; nom: string; descripcio: string; preu: number; stock: number; imatge?: string; categoria?: string; botiga_id: number; botiga?: { nom: string } }[]>([]);
 const botigues = ref<{ id: number; nom: string }[]>([]);
 const newProduct = ref({ nom: "", descripcio: "", preu: 0, stock: 0, botiga_id: null });
 const editProduct = ref<{ id: number; nom: string; descripcio: string; preu: number; stock: number; botiga_id: number } | null>(null);
@@ -14,6 +15,7 @@ const errorMessage = ref("");
 const searchQuery = ref("");
 const showDeleteModal = ref(false);
 const deleteProductId = ref<number | null>(null);
+const showImportWizard = ref(false);
 
 const sortColumn = ref(""); // Guarda la columna que s'està ordenant
 const sortDirection = ref("asc"); // Direcció inicial ascendent
@@ -32,9 +34,10 @@ const fetchProductes = async () => {
 
     productes.value = response.data.map(producte => ({
       ...producte,
-      preu: Number(producte.preu), // 🔥 Convertim `preu` a número aquí
-      botiga_nom: producte.botigues?.length ? producte.botigues.map(b => b.nom).join(", ") : "No assignat"
+      preu: Number(producte.preu),
+      botiga_nom: producte.botiga?.nom ?? "No assignada"
     }));
+
 
   } catch (error) {
     console.error("Error carregant productes:", error);
@@ -72,17 +75,18 @@ const addProducte = async () => {
   }
 };
 
-const openEditProduct = (producte: { id: number; nom: string; descripcio: string; preu: number; stock: number; botigues: { id: number; nom: string }[] }) => {
+const openEditProduct = (producte: any) => {
   editProduct.value = {
     id: producte.id,
     nom: producte.nom,
     descripcio: producte.descripcio,
     preu: producte.preu,
     stock: producte.stock,
-    botiga_id: producte.botigues?.length ? producte.botigues[0].id : null, // 🔹 Selecciona la primera botiga associada
+    botiga_id: producte.botiga?.id ?? null,
   };
   showEditModal.value = true;
 };
+
 
 const updateProducte = async () => {
   if (editProduct.value) {
@@ -221,6 +225,15 @@ onMounted(() => {
       <input v-model="searchQuery" placeholder="Cerca producte..." />
       <button class="add-btn" @click="showAddModal = true">➕ Afegir Producte</button>
       <button class="add-btn" @click="goToBotigues">Botigues</button>
+      <div>
+        <button class="add-btn" @click="showImportWizard = true">📥 Importar Excel</button>
+        <ProductImportWizard
+          v-if="showImportWizard"
+          :botigues="botigues"
+          @close="showImportWizard = false"
+          @refresh="fetchProductes"
+        />
+      </div>
     </div>
 
     <table class="producte-table">
@@ -239,6 +252,8 @@ onMounted(() => {
           <th @click="sortProducts('descripcio')">Descripció</th>
           <th @click="sortPreu()">Preu (€)</th>
           <th @click="sortProducts('stock')">Stock</th>
+          <th>Categoria</th>
+          <th>Imatge</th>
           <th @click="sortProducts('botiga_nom')">
             Botiga
             <button @click.stop="toggleFilterDropdown('botiga_nom')">🔍</button>
@@ -262,6 +277,11 @@ onMounted(() => {
           <td>{{ producte.descripcio }}</td>
           <td>{{ producte.preu }}</td>
           <td>{{ producte.stock }}</td>
+          <td>{{ producte.categoria || '—' }}</td> <!-- Nova columna -->
+          <td>
+            <img v-if="producte.imatge" :src="producte.imatge" alt="Imatge" width="40" height="40" />
+            <span v-else>—</span>
+          </td>
           <td>{{ producte.botiga_nom }}</td>
           <td class="actions">
             <button class="edit-btn" @click="openEditProduct(producte)">✏️ Editar</button>
@@ -270,6 +290,7 @@ onMounted(() => {
         </tr>
       </tbody>
     </table>
+
 
 <!-- Finestra modal per afegir producte -->
 <div v-if="showAddModal" class="modal">

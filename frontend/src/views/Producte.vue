@@ -72,13 +72,9 @@ watch(() => route.params.id, loadProduct);
 
             <p>
               <strong>Botiga:</strong>
-              <template v-if="product.botigues && product.botigues.length > 0">
-                <router-link 
-                  v-for="botiga in product.botigues" 
-                  :key="botiga.id" 
-                  :to="'/info-botiga/' + botiga.id" 
-                  class="link">
-                  {{ botiga.nom }}
+              <template v-if="product.botiga">
+                <router-link :to="'/info-botiga/' + product.botiga.id" class="link">
+                  {{ product.botiga.nom }}
                 </router-link>
               </template>
               <span v-else>No disponible</span>
@@ -126,8 +122,8 @@ watch(() => route.params.id, loadProduct);
 
               <p class="related-store">
                 <strong>Botiga:</strong> 
-                <span v-if="related.stores && Array.isArray(related.stores) && related.stores.length > 0">
-                  {{ related.stores[0].name }}
+                <span v-if="related.store">
+                  {{ related.store.name }}
                 </span>
                 <span v-else>No disponible</span>
               </p>

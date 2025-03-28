@@ -1,0 +1,38 @@
+{
+  "import": {
+    "title": "Importa productes",
+    "step1": "Botiga i fitxer",
+    "step2": "Mapeig de columnes",
+    "step3": "Categoria",
+    "step4": "Previsualització",
+    "step5": "Resultats",
+    "selectStore": "Selecciona una botiga",
+    "chooseStore": "Escull una botiga",
+    "selectFile": "Selecciona un fitxer Excel",
+    "mapColumns": "Mapeig de les columnes del fitxer",
+    "ignore": "Ignorar",
+    "optionalCategory": "Categoria comuna (opcional)",
+    "preview": "Previsualització de dades",
+    "editNote": "Pots editar els valors abans d’importar.",
+    "upload": "Importar productes",
+    "success": "{count} productes importats correctament.",
+    "errorsFound": "S’han trobat errors:",
+    "downloadErrors": "Descarrega els errors",
+    "errorUpload": "Error durant la importació.",
+    "row": "Fila"
+  },
+  "fields": {
+    "nom": "Nom",
+    "preu": "Preu",
+    "stock": "Stock",
+    "descripcio": "Descripció",
+    "categoria": "Categoria",
+    "imatge": "Imatge"
+  },
+  "common": {
+    "next": "Següent",
+    "previous": "Anterior",
+    "close": "Tancar",
+    "actions": "Accions"
+  }
+}
