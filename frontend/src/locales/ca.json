@@ -12,6 +12,7 @@
     "mapColumns": "Mapeig de les columnes del fitxer",
     "ignore": "Ignorar",
     "optionalCategory": "Categoria comuna (opcional)",
+    "optionalSubcategory": "Subcategoria comuna (opcional)",
     "preview": "Previsualització de dades",
     "editNote": "Pots editar els valors abans d’importar.",
     "upload": "Importar productes",
@@ -27,6 +28,7 @@
     "stock": "Stock",
     "descripcio": "Descripció",
     "categoria": "Categoria",
+    "subcategoria": "Subcategoria",
     "imatge": "Imatge"
   },
   "common": {

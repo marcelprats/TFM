@@ -2,21 +2,24 @@
   <div class="wizard">
     <div class="modal">
       <div class="modal-content">
-        <button class="close-button" @click="reset">✖</button>
-        <h2>{{ t('import.title') }}</h2>
+        <div class="header">
+          <h2>{{ t('import.title') }}</h2>
+          <button class="close-btn" @click="reset">✖</button>
+        </div>      
 
         <div class="steps">
           <span
             v-for="(step, i) in steps"
             :key="i"
-            :class="{ active: currentStep === i + 1, clickable: currentStep > i + 1 }"
-            @click="currentStep > i + 1 ? currentStep = i + 1 : null"
+            :class="{ active: currentStep === i + 1, clickable: currentStep >= i + 1 }"
+            @click="() => { if (currentStep >= i + 1) currentStep = i + 1 }"
           >
+            <span v-if="currentStep > i + 1">✅</span>
             {{ i + 1 }}. {{ t(step.label) }}
           </span>
         </div>
 
-        <!-- Step 1 -->
+        <!-- Step 1: Botiga i fitxer -->
         <div v-if="currentStep === 1">
           <label>{{ t('import.selectStore') }}</label>
           <select v-model="form.botiga_id">
@@ -33,38 +36,55 @@
           </div>
         </div>
 
-        <!-- Step 2: Mapping -->
+        <!-- Step 2: Mapatge -->
         <div v-else-if="currentStep === 2">
-        <h4>{{ t('import.mapColumns') }}</h4>
-        <div v-for="field in modelFields" :key="field">
-          <label>{{ t('fields.' + field) }}</label>
-          <select v-model="mapping[field]">
-            <option value="">{{ t('import.ignore') }}</option>
-            <option v-for="header in headers" :key="header" :value="header">{{ header }}</option>
-          </select>
-        </div>
-        <button @click="mapAndPreview">{{ t('common.next') }}</button>
-        <button @click="prevStep">{{ t('common.previous') }}</button>
-        </div>
-
-
-        <!-- Step 3 -->
-        <div v-else-if="currentStep === 3">
-          <label>{{ t('import.optionalCategory') }}</label>
-          <input v-model="form.categoria" placeholder="Fruita, Carn..." />
+          <h4>{{ t('import.mapColumns') }}</h4>
+          <div v-for="field in modelFields" :key="field">
+            <label>{{ t('fields.' + field) }}</label>
+            <select v-model="mapping[field]">
+              <option value="">{{ t('import.ignore') }}</option>
+              <option v-for="header in headers" :key="header" :value="header">{{ header }}</option>
+            </select>
+          </div>
           <div class="nav-buttons">
-            <button @click="currentStep--">{{ t('common.previous') }}</button>
-            <button @click="currentStep++">{{ t('common.next') }}</button>
+            <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
+            <button @click="goToStep(3)">➡️ {{ t('common.next') }}</button>
           </div>
         </div>
 
-        <!-- Step 4 -->
+        <!-- Step 3: Categoria i subcategoria -->
+        <div v-else-if="currentStep === 3">
+          <label>{{ t('import.optionalCategory') }}</label>
+          <select v-model="form.categoria">
+            <option disabled value="">Selecciona una categoria</option>
+            <option v-for="cat in parentCategories" :key="cat.id" :value="cat.nom">
+              {{ cat.nom }}
+            </option>
+          </select>
+
+          <label>{{ t('import.optionalSubcategory') }}</label>
+          <select v-model="form.subcategoria" :disabled="!form.categoria">
+            <option disabled value="">Selecciona una subcategoria</option>
+            <option v-for="sub in filteredSubcategories" :key="sub.id" :value="sub.nom">
+              {{ sub.nom }}
+            </option>
+          </select>
+
+          <div class="nav-buttons">
+            <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
+            <button @click="mapAndPreview">➡️ {{ t('common.next') }}</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Previsualització -->
         <div v-else-if="currentStep === 4">
           <h4>{{ t('import.preview') }}</h4>
           <table>
             <thead>
               <tr>
                 <th v-for="col in modelFields" :key="col">{{ t('fields.' + col) }}</th>
+                <th>{{ t('fields.categoria') }}</th>
+                <th>{{ t('fields.subcategoria') }}</th>
                 <th>{{ t('common.actions') }}</th>
               </tr>
             </thead>
@@ -73,22 +93,47 @@
                 <td v-for="field in modelFields" :key="field">
                   <input
                     :class="{ error: hasError(index, field) }"
-                    v-model="preview[index][field]"
+                    v-model="product[field]"
                     @blur="sanitizeField(index, field)"
                   />
+                </td>
+                <td>
+                  <select v-model="product.categoria">
+                    <option disabled value="">Selecciona una categoria</option>
+                    <option
+                      v-for="cat in parentCategories"
+                      :key="cat.id"
+                      :value="cat.nom"
+                    >
+                      {{ cat.nom }}
+                    </option>
+                  </select>
+                </td>
+                <td>
+                  <select v-model="product.subcategoria" :disabled="!product.categoria">
+                    <option disabled value="">Selecciona una subcategoria</option>
+                    <option
+                      v-for="sub in categories.filter(c => c.parent_id === getCategoryId(product.categoria))"
+                      :key="sub.id"
+                      :value="sub.nom"
+                    >
+                      {{ sub.nom }}
+                    </option>
+                  </select>
                 </td>
                 <td><button @click="removeRow(index)">🗑️</button></td>
               </tr>
             </tbody>
           </table>
+
           <p>* {{ t('import.editNote') }}</p>
           <div class="nav-buttons">
-            <button @click="currentStep--">{{ t('common.previous') }}</button>
-            <button @click="handleUpload">{{ t('import.upload') }}</button>
+            <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
+            <button @click="handleUpload">🚀 {{ t('import.upload') }}</button>
           </div>
         </div>
 
-        <!-- Step 5 -->
+        <!-- Step 5: Resultat -->
         <div v-else-if="currentStep === 5">
           <p>{{ result.message }}</p>
           <p>{{ t('import.success', { count: result.importats }) }}</p>
@@ -100,37 +145,39 @@
                 {{ t('import.row') }} {{ error.fila }}: {{ formatError(error.errors) }}
               </li>
             </ul>
-            <button @click="downloadErrorExcel">{{ t('import.downloadErrors') }}</button>
+            <button @click="downloadErrorExcel">📥 {{ t('import.downloadErrors') }}</button>
           </div>
 
-          <button @click="reset">{{ t('common.close') }}</button>
+          <button @click="reset">❌ {{ t('common.close') }}</button>
         </div>
       </div>
     </div>
   </div>
 </template>
 
+
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
-import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
+const emit = defineEmits(['close', 'refresh']);
+const props = defineProps<{ botigues: { id: number; nom: string }[] }>();
+
 const API_URL = 'http://127.0.0.1:8000/api';
 
-const props = defineProps<{ botigues: { id: number; nom: string }[] }>();
-const emit = defineEmits(['close', 'refresh']);
-
 const currentStep = ref(1);
+const form = ref({ botiga_id: '', categoria: '', subcategoria: '' });
 const file = ref<File | null>(null);
 const headers = ref<string[]>([]);
 const mapping = ref<Record<string, string>>({});
 const preview = ref<any[]>([]);
 const result = ref({ importats: 0, errors: [], message: '' });
+const categories = ref<any[]>([]);
 
-const form = ref({ botiga_id: '', categoria: '' });
 const modelFields = ['nom', 'preu', 'stock', 'descripcio', 'categoria', 'imatge'];
 const steps = [
   { label: 'import.step1' },
@@ -140,29 +187,89 @@ const steps = [
   { label: 'import.step5' },
 ];
 
-const handleFileChange = (e: Event) => {
+// Categories
+onMounted(async () => {
+  try {
+    const token = localStorage.getItem('userToken');
+    const response = await axios.get(`${API_URL}/categories`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    categories.value = response.data;
+  } catch {
+    console.warn("No s'han pogut carregar les categories");
+  }
+});
+const parentCategories = computed(() => categories.value.filter(c => !Number.isFinite(c.parent_id)));
+const filteredSubcategories = computed(() => {
+  const parent = categories.value.find(c => c.nom === form.value.categoria);
+  return categories.value.filter(c => c.parent_id === parent?.id);
+});
+function getCategoryId(nom: string) {
+  return categories.value.find(c => c.nom === nom)?.id || null;
+}
+
+// Pas de pas
+function goToStep(n: number) { currentStep.value = n; }
+function nextStep() { currentStep.value++; }
+function prevStep() { currentStep.value--; }
+function reset() {
+  currentStep.value = 1;
+  file.value = null;
+  headers.value = [];
+  mapping.value = {};
+  preview.value = [];
+  result.value = { importats: 0, errors: [], message: '' };
+  emit('close');
+}
+
+// Fitxer i mapatge
+function handleFileChange(e: Event) {
   const target = e.target as HTMLInputElement;
   if (target.files && target.files.length > 0) {
     file.value = target.files[0];
     extractHeaders();
   }
-};
-
-const extractHeaders = async () => {
+}
+function extractHeaders() {
   if (!file.value) return;
   const reader = new FileReader();
   reader.onload = e => {
     const data = new Uint8Array(e.target?.result as ArrayBuffer);
     const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
     headers.value = json[0] as string[];
+    autoMapFields();
     currentStep.value = 2;
   };
   reader.readAsArrayBuffer(file.value);
-};
+}
+function autoMapFields() {
+  const fieldKeywords: Record<string, string[]> = {
+    nom: ['nom', 'name', 'product'],
+    preu: ['preu', 'price', 'cost'],
+    stock: ['stock', 'unitats', 'quantitat'],
+    descripcio: ['descripcio', 'description', 'detall'],
+    categoria: ['categoria', 'category'],
+    imatge: ['imatge', 'image', 'img'],
+  };
 
-const mapAndPreview = async () => {
+  modelFields.forEach(field => {
+    const keywords = fieldKeywords[field];
+    const match = headers.value.find(h =>
+      keywords.some(k => h.toLowerCase().includes(k))
+    );
+    if (match) mapping.value[field] = match;
+  });
+}
+
+function availableHeaders(currentField: string) {
+  const selected = Object.entries(mapping).filter(([key]) => key !== currentField).map(([, val]) => val);
+  return headers.value.filter(h => !selected.includes(h));
+}
+
+function mapAndPreview() {
+  if (!file.value) return;
   const reader = new FileReader();
   reader.onload = e => {
     const data = new Uint8Array(e.target?.result as ArrayBuffer);
@@ -174,67 +281,67 @@ const mapAndPreview = async () => {
     preview.value = dataRows.map(row => {
       const obj: any = {};
       modelFields.forEach(field => {
-        const sourceColumn = mapping.value[field];
-        if (sourceColumn) {
-          const index = headers.value.indexOf(sourceColumn);
-          if (index !== -1) {
-            obj[field] = row[index];
-          }
+        const header = mapping.value[field];
+        if (header) {
+          const index = headers.value.indexOf(header);
+          if (index !== -1) obj[field] = row[index];
         }
       });
 
-      // Neteja forta
-      if (obj.preu !== undefined && obj.preu !== null) {
-        obj.preu = parseFloat(String(obj.preu).toString().replace(',', '.')) || 0;
+      if (obj.preu) obj.preu = parseFloat(String(obj.preu).replace(',', '.')) || 0;
+      if (obj.stock) {
+        const clean = String(obj.stock).replace(/[^\d.]/g, '').replace(',', '.');
+        obj.stock = Number.isFinite(parseFloat(clean)) ? Math.round(parseFloat(clean)) : 0;
       }
-      if (obj.stock !== undefined && obj.stock !== null) {
-        const cleaned = String(obj.stock).replace(/[^\d.]/g, '').replace(',', '.');
-        const number = parseFloat(cleaned);
-        obj.stock = Number.isFinite(number) ? Math.round(number) : 0;
-      }
+
+      obj.categoria = form.value.categoria;
+      obj.subcategoria = form.value.subcategoria;
 
       return obj;
     });
 
-    console.log('🔍 Preview netejada i generada:', preview.value);
-    currentStep.value = 3;
+    currentStep.value = 4;
   };
   reader.readAsArrayBuffer(file.value);
-};
+}
 
-const handleUpload = async () => {
+// Validació
+function sanitizeField(index: number, field: string) {
+  const value = preview.value[index][field];
+  if (field === 'preu') preview.value[index][field] = parseFloat(String(value).replace(',', '.')) || 0;
+  if (field === 'stock') preview.value[index][field] = parseInt(String(value).replace(/[^\d]/g, '')) || 0;
+}
+function hasError(index: number, field: string) {
+  const row = result.value.errors.find(e => e.fila === index + 2);
+  return row?.errors?.[field];
+}
+function formatError(errors: Record<string, string>) {
+  return Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join(', ');
+}
+
+// Upload
+function handleUpload() {
   const formData = new FormData();
   if (file.value) formData.append('fitxer', file.value);
   formData.append('botiga_id', form.value.botiga_id);
   formData.append('categoria', form.value.categoria || '');
+  formData.append('subcategoria', form.value.subcategoria || '');
   formData.append('preview', JSON.stringify(preview.value));
 
   const token = localStorage.getItem('userToken');
-  try {
-    const response = await axios.post(`${API_URL}/import-productes`, formData, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    console.log('✅ Resposta del backend:', response.data);
-    result.value = response.data;
+  axios.post(`${API_URL}/import-productes`, formData, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then(res => {
+    result.value = res.data;
     currentStep.value = 5;
     emit('refresh');
-  } catch (error) {
-    console.error('❌ Error a la importació:', error);
+  }).catch(() => {
     result.value.message = t('import.errorUpload');
     currentStep.value = 5;
-  }
-};
+  });
+}
 
-const hasError = (index: number, field: string) => {
-  const row = result.value.errors.find(e => e.fila === index + 2);
-  return row?.errors?.[field];
-};
-
-const removeRow = (index: number) => {
-  preview.value.splice(index, 1);
-};
-
-const downloadErrorExcel = () => {
+function downloadErrorExcel() {
   const errorSheet = preview.value.map((row, i) => {
     const base = { ...row };
     const error = result.value.errors.find(e => e.fila === i + 2);
@@ -246,23 +353,13 @@ const downloadErrorExcel = () => {
   XLSX.utils.book_append_sheet(wb, worksheet, 'Errors');
   const blob = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   saveAs(new Blob([blob]), 'errors.xlsx');
-};
+}
 
-const nextStep = () => currentStep.value++;
-const prevStep = () => currentStep.value--;
-const reset = () => {
-  currentStep.value = 1;
-  file.value = null;
-  mapping.value = {};
-  preview.value = [];
-  result.value = { importats: 0, errors: [], message: '' };
-  emit('close');
-};
-
-const formatError = (errors: Record<string, string>) => {
-  return Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join(', ');
-};
+function removeRow(index: number) {
+  preview.value.splice(index, 1);
+}
 </script>
+
 
 
 <style scoped>

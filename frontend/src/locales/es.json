@@ -11,6 +11,7 @@
       "selectFile": "Selecciona un archivo Excel",
       "mapColumns": "Mapea las columnas del archivo",
       "optionalCategory": "Categoría común (opcional)",
+      "optionalSubcategory": "Subcategoría común (opcional)",
       "preview": "Previsualización de productos",
       "editNote": "Puedes editar directamente los valores antes de importarlos.",
       "upload": "Importar productos",
@@ -27,6 +28,7 @@
       "stock": "Stock",
       "descripcio": "Descripción",
       "categoria": "Categoría",
+      "subcategoria": "Subcategoria",
       "imatge": "Imagen"
     },
     "common": {

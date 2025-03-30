@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\VendorAuthController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\BotigaController;
+use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ImportacioController;
 use App\Http\Controllers\ProducteController;
 use App\Http\Controllers\ProducteImportController;
@@ -18,6 +19,9 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/analitza-excel', [ProducteImportController::class, 'analitzaExcel']);
 Route::post('/import-productes', [ProducteImportController::class, 'importar']);
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+
+Route::middleware('auth:sanctum')->get('/categories', [CategoriaController::class, 'index']);
+Route::get('/botigues-mes', [BotigaController::class, 'botiguesMes']);
 
 
 Route::post('/import-productes', [ImportacioController::class, 'importar'])->middleware('auth:sanctum');
