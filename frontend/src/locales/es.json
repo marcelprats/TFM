@@ -8,6 +8,8 @@
       "step5": "Resultado",
       "selectStore": "Selecciona una tienda",
       "chooseStore": "Elige una tienda",
+      "dragOrClick":"Arrastra o selecciona un documento para importar",
+      "dropHere":"Arrastra a aquí",
       "selectFile": "Selecciona un archivo Excel",
       "mapColumns": "Mapea las columnas del archivo",
       "chooseCategory": "Elige una categoria",

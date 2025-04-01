@@ -12,3 +12,5 @@ dist/
 # frontend
 /frontend/node_modules
 /frontend/dist
+
+init

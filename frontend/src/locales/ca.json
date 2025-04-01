@@ -8,6 +8,8 @@
     "step5": "Resultats",
     "selectStore": "Selecciona una botiga",
     "chooseStore": "Escull una botiga",
+    "dragOrClick":"Arrosega o selecciona un document per importar",
+    "dropHere":"Arrosega a aquí",
     "selectFile": "Selecciona un fitxer Excel",
     "mapColumns": "Mapeig de les columnes del fitxer",
     "ignore": "Ignorar",
