@@ -1,0 +1,6 @@
+API -> php artisan serve
+
+Front -> npm run dev
+
+BBDD -> mysql -u root -p
+

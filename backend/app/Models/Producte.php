@@ -15,6 +15,7 @@ class Producte extends Model
         'nom',
         'descripcio',
         'categoria',
+        'subcategoria',
         'preu',
         'stock',
         'imatge',
