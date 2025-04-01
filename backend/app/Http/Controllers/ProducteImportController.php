@@ -48,24 +48,32 @@ class ProducteImportController extends Controller
                 'file'        => 'required|file|mimes:xlsx,xls',
                 'botiga_id'   => 'required|integer',
                 'mapping'     => 'required|json',
-                'preview'     => 'required|string', // La previsualització enviada com a JSON
+                'preview'     => 'required|string',
             ]);
-
+    
+            // Registre inicial: imprimim tot el request per veure els camps rebuts
+            Log::debug('Request all:', $request->all());
+    
             // Decodifiquem el preview
             $previewJson = $request->input('preview');
             $preview = json_decode($previewJson, true);
             if (!is_array($preview)) {
+                Log::error('Preview invàlid:', ['preview' => $previewJson]);
                 return response()->json(['error' => 'Preview invàlid'], 400);
             }
-
+    
             $botiga_id = $request->input('botiga_id');
             // Camps comuns enviats pel formulari (Step 3)
-            $categoriaComuna    = $request->input('categoria');
+            $categoriaComuna = $request->input('categoria');
             $subcategoriaComuna = $request->input('subcategoria');
-
+    
+            // Registre dels valors globals
+            Log::debug('Valor global - categoria:', ['categoria' => $categoriaComuna]);
+            Log::debug('Valor global - subcategoria:', ['subcategoria' => $subcategoriaComuna]);
+    
             $importats = 0;
-            foreach ($preview as $rowData) {
-                // Processa cada fila del preview
+            foreach ($preview as $index => $rowData) {
+                // Processa cada fila del preview i afegeix registres per cada fila
                 $data = [
                     'botiga_id'   => $botiga_id,
                     'nom'         => isset($rowData['nom']) ? trim((string)$rowData['nom']) : '',
@@ -73,29 +81,30 @@ class ProducteImportController extends Controller
                     'preu'        => isset($rowData['preu']) ? floatval($rowData['preu']) : 0,
                     'stock'       => isset($rowData['stock']) ? intval($rowData['stock']) : 0,
                     'imatge'      => isset($rowData['imatge']) ? trim((string)$rowData['imatge']) : '',
-                    // Utilitzem el valor del preview si conté una subcategoria vàlida,
-                    // sinó, fem fallback al valor comú rebut.
+                    // Utilitzem el valor del preview si conté dades, sinó fem fallback
                     'categoria'   => (isset($rowData['categoria']) && strlen(trim((string)$rowData['categoria'])) > 0)
-                                        ? $rowData['categoria']
-                                        : $categoriaComuna,
+                                        ? trim((string)$rowData['categoria'])
+                                        : (strlen(trim((string)$categoriaComuna)) > 0 ? trim((string)$categoriaComuna) : null),
                     'subcategoria'=> (isset($rowData['subcategoria']) && strlen(trim((string)$rowData['subcategoria'])) > 0)
-                                        ? $rowData['subcategoria']
-                                        : $subcategoriaComuna,
+                                        ? trim((string)$rowData['subcategoria'])
+                                        : (strlen(trim((string)$subcategoriaComuna)) > 0 ? trim((string)$subcategoriaComuna) : null),
                 ];
-
-                // Comprovem que els camps obligatoris tinguin valor
+    
+                // Afegim un registre per veure com es processa cada fila
+                Log::debug("Fila $index - dades preparades:", $data);
+    
+                // Comprovem els camps obligatoris
                 if (empty($data['nom']) || $data['preu'] == 0 || !isset($data['stock'])) {
-                    Log::warning('Producte amb dades incompletes', $data);
+                    Log::warning("Fila $index - Dades incompletes", $data);
                     continue;
                 }
-
-                // Log per depuració
-                Log::debug('Dades per crear producte', $data);
-
+    
+                // Creació del producte
                 Producte::create($data);
                 $importats++;
             }
-
+    
+            Log::debug("Total productes importats: $importats");
             return response()->json([
                 'message' => "$importats productes importats correctament."
             ]);
@@ -105,8 +114,9 @@ class ProducteImportController extends Controller
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
             ]);
-
+    
             return response()->json(['error' => 'Error durant la importació.'], 500);
         }
     }
+    
 }

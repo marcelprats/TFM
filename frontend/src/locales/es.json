@@ -10,6 +10,8 @@
       "chooseStore": "Elige una tienda",
       "selectFile": "Selecciona un archivo Excel",
       "mapColumns": "Mapea las columnas del archivo",
+      "chooseCategory": "Elige una categoria",
+      "chooseSubcategory": "Elige una subcategoria",
       "optionalCategory": "Categoría común (opcional)",
       "optionalSubcategory": "Subcategoría común (opcional)",
       "preview": "Previsualización de productos",

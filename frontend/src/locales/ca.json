@@ -11,6 +11,8 @@
     "selectFile": "Selecciona un fitxer Excel",
     "mapColumns": "Mapeig de les columnes del fitxer",
     "ignore": "Ignorar",
+    "chooseCategory": "Escull una categoria",
+    "chooseSubcategory": "Escull una subcategoria",
     "optionalCategory": "Categoria comuna (opcional)",
     "optionalSubcategory": "Subcategoria comuna (opcional)",
     "preview": "Previsualització de dades",

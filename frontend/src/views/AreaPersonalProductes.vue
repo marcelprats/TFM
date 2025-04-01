@@ -1,405 +1,3 @@
-<script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import axios from "axios";
-import { useRouter } from "vue-router";
-import ProductImportWizard from "../components/ProductImportWizard.vue";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
-
-const API_URL = "http://127.0.0.1:8000/api";
-
-// Interfaces
-interface Botiga {
-  id: number;
-  nom: string;
-}
-
-interface Category {
-  id: number;
-  nom: string;
-  slug: string;
-  parent_id: number | null;
-}
-
-interface Producte {
-  id: number;
-  nom: string;
-  descripcio: string;
-  preu: number;
-  stock: number;
-  imatge?: string;
-  categoria: number | null;     // id de la categoria (convertit a number)
-  subcategoria: number | null;  // id de la subcategoria (convertit a number)
-  botiga_id: number | null;
-  botiga?: { nom: string };
-  botiga_nom?: string;
-}
-
-// Variables reactives
-const productes = ref<Producte[]>([]);
-const botigues = ref<Botiga[]>([]);
-const categories = ref<Category[]>([]);
-
-const newProduct = ref({
-  nom: "",
-  descripcio: "",
-  preu: 0,
-  stock: 0,
-  categoria: null as number | null,
-  subcategoria: null as number | null,
-  imatge: "",
-  botiga_id: null as number | null,
-});
-
-const editProduct = ref<{
-  id: number;
-  nom: string;
-  descripcio: string;
-  preu: number;
-  stock: number;
-  categoria: number | null;
-  subcategoria: number | null;
-  imatge: string;
-  botiga_id: number | null;
-} | null>(null);
-
-const showAddModal = ref(false);
-const showEditModal = ref(false);
-const errorMessage = ref("");
-const searchQuery = ref("");
-const showDeleteModal = ref(false);
-const deleteProductId = ref<number | null>(null);
-const showImportWizard = ref(false);
-
-const sortColumn = ref("");
-const sortDirection = ref("asc");
-const columnFilters = ref<{ [key: string]: string[] }>({});
-const showFilters = ref<{ [key: string]: boolean }>({});
-
-const imageFile = ref<File | null>(null);
-
-const router = useRouter();
-
-// Carregar productes des de l'API
-const fetchProductes = async () => {
-  try {
-    const token = localStorage.getItem("userToken");
-    if (!token) return;
-    const response = await axios.get(`${API_URL}/productes`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    productes.value = response.data.map((producte: any) => ({
-      ...producte,
-      preu: Number(producte.preu),
-      botiga_nom: producte.botiga?.nom ?? "No assignada",
-      // Convertim els camps categoria i subcategoria a número si tenen valor
-      categoria: producte.categoria ? Number(producte.categoria) : null,
-      subcategoria: producte.subcategoria ? Number(producte.subcategoria) : null,
-    }));
-  } catch (error) {
-    console.error("Error carregant productes:", error);
-  }
-};
-
-// Carregar botigues
-const fetchBotigues = async () => {
-  try {
-    const token = localStorage.getItem("userToken");
-    const response = await axios.get(`${API_URL}/botigues-mes`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    botigues.value = response.data;
-  } catch (error) {
-    console.error("Error carregant botigues:", error);
-  }
-};
-
-// Carregar categories
-const fetchCategories = async () => {
-  try {
-    const token = localStorage.getItem("userToken");
-    if (!token) return;
-    const response = await axios.get(`${API_URL}/categories`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    categories.value = response.data;
-  } catch (error) {
-    console.error("Error carregant categories:", error);
-  }
-};
-
-// Funció per afegir producte amb FormData
-const addProducte = async () => {
-  try {
-    const token = localStorage.getItem("userToken");
-    if (!token) return;
-    
-    const formData = new FormData();
-    formData.append("nom", newProduct.value.nom);
-    formData.append("descripcio", newProduct.value.descripcio);
-    formData.append("preu", newProduct.value.preu.toString());
-    formData.append("stock", newProduct.value.stock.toString());
-    formData.append("categoria", newProduct.value.categoria?.toString() || "");
-    formData.append("subcategoria", newProduct.value.subcategoria?.toString() || "");
-    formData.append("botiga_id", newProduct.value.botiga_id?.toString() || "");
-    if (imageFile.value) {
-      formData.append("imatge", imageFile.value);
-    } else {
-      formData.append("imatge", newProduct.value.imatge);
-    }
-    
-    await axios.post(`${API_URL}/productes`, formData, {
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data"
-      },
-    });
-    
-    newProduct.value = {
-      nom: "",
-      descripcio: "",
-      preu: 0,
-      stock: 0,
-      categoria: null,
-      subcategoria: null,
-      imatge: "",
-      botiga_id: null,
-    };
-    imageFile.value = null;
-    showAddModal.value = false;
-    fetchProductes();
-  } catch (error) {
-    errorMessage.value = "Error afegint producte.";
-    console.error("Error addProducte:", error);
-  }
-};
-
-// Funció per obrir el modal d'edició
-const openEditProduct = (producte: any) => {
-  editProduct.value = {
-    id: producte.id,
-    nom: producte.nom,
-    descripcio: producte.descripcio,
-    preu: producte.preu,
-    stock: producte.stock,
-    categoria: producte.categoria || null,
-    subcategoria: producte.subcategoria || null,
-    imatge: producte.imatge || "",
-    botiga_id: producte.botiga?.id ?? null,
-  };
-  showEditModal.value = true;
-};
-
-// Funció per actualitzar producte
-const updateProducte = async () => {
-  console.log("updateProducte triggered");
-  if (editProduct.value) {
-    try {
-      const token = localStorage.getItem("userToken");
-      if (!token) return;
-
-      const formData = new FormData();
-      // Mètode override perquè Laravel processi correctament el multipart en PUT
-      formData.append("_method", "PUT");
-
-      // Afegeix els camps obligatoris
-      formData.append("nom", editProduct.value.nom);
-      formData.append("descripcio", editProduct.value.descripcio);
-      formData.append("preu", editProduct.value.preu.toString());
-      formData.append("stock", editProduct.value.stock.toString());
-      formData.append("categoria", editProduct.value.categoria ? editProduct.value.categoria.toString() : "");
-
-      // Només afegeix subcategoria si té valor (altrament, es deixa fora perquè Laravel ho tractarà com a null)
-      if (editProduct.value.subcategoria) {
-        formData.append("subcategoria", editProduct.value.subcategoria.toString());
-      }
-
-      formData.append("botiga_id", editProduct.value.botiga_id ? editProduct.value.botiga_id.toString() : "");
-
-      // Gestiona la imatge: si s'ha seleccionat un fitxer, l'envia; si no, si existeix una URL, l'envia; si està buit, no l'envia
-      if (imageFile.value) {
-        formData.append("imatge", imageFile.value);
-      } else if (editProduct.value.imatge && editProduct.value.imatge !== "") {
-        formData.append("imatge", editProduct.value.imatge);
-      }
-
-      // Log de depuració: mostra el contingut del FormData
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-
-      // Envía la petició amb POST i el mètode override
-      await axios.post(`${API_URL}/productes/${editProduct.value.id}`, formData, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data"
-        },
-      });
-
-      console.log("PUT (via POST) request completed successfully");
-      showEditModal.value = false;
-      imageFile.value = null;
-      fetchProductes();
-    } catch (error: any) {
-      console.error("Error updating product:", error.response || error);
-      errorMessage.value = "Error actualitzant producte.";
-    }
-  }
-};
-
-// Funció per eliminar producte
-const deleteProducte = async (id: number) => {
-  try {
-    const token = localStorage.getItem("userToken");
-    await axios.delete(`${API_URL}/productes/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    fetchProductes();
-  } catch (error) {
-    errorMessage.value = "Error eliminant producte.";
-  }
-};
-
-const goToBotigues = () => {
-  router.push("/area-personal-botigues");
-};
-
-const filteredProductes = computed(() => {
-  return productes.value.filter(producte =>
-    producte.nom.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    producte.descripcio.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
-});
-
-const confirmDeleteProduct = (id: number) => {
-  deleteProductId.value = id;
-  showDeleteModal.value = true;
-};
-
-const deleteConfirmedProduct = async () => {
-  if (deleteProductId.value !== null) {
-    try {
-      const token = localStorage.getItem("userToken");
-      await axios.delete(`${API_URL}/productes/${deleteProductId.value}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      showDeleteModal.value = false;
-      fetchProductes();
-    } catch (error) {
-      errorMessage.value = "Error eliminant producte.";
-    }
-  }
-};
-
-const exportTableData = () => {
-  // Mapeja les dades dels productes a un format pla
-  const data = productes.value.map(prod => ({
-    ID: prod.id,
-    Nom: prod.nom,
-    Descripcio: prod.descripcio,
-    Preu: prod.preu,
-    Stock: prod.stock,
-    Imatge: prod.imatge,
-    Categoria: prod.categoria,
-    Subcategoria: prod.subcategoria,
-    Botiga: prod.botiga_nom
-  }));
-
-  // Crea una worksheet i un workbook amb XLSX
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Productes");
-
-  // Escriu el workbook i dispara la descàrrega
-  const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  saveAs(new Blob([wbout]), "productes.xlsx");
-};
-
-const sortPreu = () => {
-  if (sortColumn.value !== "preu") {
-    sortColumn.value = "preu";
-    sortDirection.value = "asc";
-  } else {
-    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
-  }
-  productes.value = [...productes.value].sort((a, b) => 
-    sortDirection.value === "asc" ? a.preu - b.preu : b.preu - a.preu
-  );
-};
-
-const sortProducts = (column: string) => {
-  if (sortColumn.value === column) {
-    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
-  } else {
-    sortColumn.value = column;
-    sortDirection.value = "asc";
-  }
-};
-
-const sortedProducts = computed(() => {
-  return [...productes.value]
-    .filter(producte => {
-      return Object.keys(columnFilters.value).every(key => {
-        return columnFilters.value[key].length === 0 || columnFilters.value[key].includes((producte as any)[key]);
-      });
-    })
-    .sort((a, b) => {
-      if (!sortColumn.value) return 0;
-      const valueA = (a as any)[sortColumn.value];
-      const valueB = (b as any)[sortColumn.value];
-      if (typeof valueA === "string" && typeof valueB === "string") {
-        return sortDirection.value === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-      } else if (typeof valueA === "number" && typeof valueB === "number") {
-        return sortDirection.value === "asc" ? valueA - valueB : valueB - valueA;
-      }
-      return 0;
-    });
-});
-
-const toggleFilterDropdown = (column: string) => {
-  showFilters.value[column] = !showFilters.value[column];
-};
-
-const toggleColumnFilter = (column: string, value: string) => {
-  if (!columnFilters.value[column]) columnFilters.value[column] = [];
-  if (columnFilters.value[column].includes(value)) {
-    columnFilters.value[column] = columnFilters.value[column].filter(v => v !== value);
-  } else {
-    columnFilters.value[column].push(value);
-  }
-};
-
-// Computed per obtenir les categories principals (sense parent)
-const parentCategories = computed(() => {
-  return categories.value.filter(cat => cat.parent_id === null);
-});
-
-// Funció per obtenir les subcategories d'una categoria principal
-const getSubcategories = (categoryId: number | null) => {
-  if (!categoryId) return [];
-  return categories.value.filter(cat => cat.parent_id === categoryId);
-};
-
-const onFileChange = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  if (target.files && target.files.length > 0) {
-    imageFile.value = target.files[0];
-    // Genera una URL temporal per a la previsualització
-    if (showAddModal.value) {
-      newProduct.value.imatge = URL.createObjectURL(imageFile.value);
-    } else if (showEditModal.value && editProduct.value) {
-      editProduct.value.imatge = URL.createObjectURL(imageFile.value);
-    }
-  }
-};
-
-onMounted(() => {
-  fetchProductes();
-  fetchBotigues();
-  fetchCategories();
-});
-</script>
-
 <template>
   <div class="container">
     <h1>Gestió de Productes</h1>
@@ -639,56 +237,456 @@ onMounted(() => {
   </div>
 </template>
 
+<script setup lang="ts">
+import { ref, onMounted, computed } from "vue";
+import axios from "axios";
+import { useRouter } from "vue-router";
+import ProductImportWizard from "../components/ProductImportWizard.vue";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
+const API_URL = "http://127.0.0.1:8000/api";
+
+// Interfaces
+interface Botiga {
+  id: number;
+  nom: string;
+}
+
+interface Category {
+  id: number;
+  nom: string;
+  slug: string;
+  parent_id: number | null;
+}
+
+interface Producte {
+  id: number;
+  nom: string;
+  descripcio: string;
+  preu: number;
+  stock: number;
+  imatge?: string;
+  categoria: number | null;
+  subcategoria: number | null;
+  botiga_id: number | null;
+  botiga?: { nom: string };
+  botiga_nom?: string;
+}
+
+// Variables reactives
+const productes = ref<Producte[]>([]);
+const botigues = ref<Botiga[]>([]);
+const categories = ref<Category[]>([]);
+
+const newProduct = ref({
+  nom: "",
+  descripcio: "",
+  preu: 0,
+  stock: 0,
+  categoria: null as number | null,
+  subcategoria: null as number | null,
+  imatge: "",
+  botiga_id: null as number | null,
+});
+
+const editProduct = ref<{
+  id: number;
+  nom: string;
+  descripcio: string;
+  preu: number;
+  stock: number;
+  categoria: number | null;
+  subcategoria: number | null;
+  imatge: string;
+  botiga_id: number | null;
+} | null>(null);
+
+const showAddModal = ref(false);
+const showEditModal = ref(false);
+const errorMessage = ref("");
+const searchQuery = ref("");
+const showDeleteModal = ref(false);
+const deleteProductId = ref<number | null>(null);
+const showImportWizard = ref(false);
+
+const sortColumn = ref("");
+const sortDirection = ref("asc");
+const columnFilters = ref<{ [key: string]: string[] }>({});
+const showFilters = ref<{ [key: string]: boolean }>({});
+
+const imageFile = ref<File | null>(null);
+
+const router = useRouter();
+
+// Funcions per carregar dades
+const fetchProductes = async () => {
+  try {
+    const token = localStorage.getItem("userToken");
+    if (!token) return;
+    const response = await axios.get(`${API_URL}/productes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    productes.value = response.data.map((prod: any) => ({
+      ...prod,
+      preu: Number(prod.preu),
+      botiga_nom: prod.botiga?.nom ?? "No assignada",
+      categoria: prod.categoria ? Number(prod.categoria) : null,
+      subcategoria: prod.subcategoria ? Number(prod.subcategoria) : null,
+    }));
+  } catch (error) {
+    console.error("Error carregant productes:", error);
+  }
+};
+
+const fetchBotigues = async () => {
+  try {
+    const token = localStorage.getItem("userToken");
+    const response = await axios.get(`${API_URL}/botigues-mes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    botigues.value = response.data;
+  } catch (error) {
+    console.error("Error carregant botigues:", error);
+  }
+};
+
+const fetchCategories = async () => {
+  try {
+    const token = localStorage.getItem("userToken");
+    if (!token) return;
+    const response = await axios.get(`${API_URL}/categories`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    categories.value = response.data;
+  } catch (error) {
+    console.error("Error carregant categories:", error);
+  }
+};
+
+// Afegir producte
+const addProducte = async () => {
+  try {
+    const token = localStorage.getItem("userToken");
+    if (!token) return;
+    
+    const formData = new FormData();
+    formData.append("nom", newProduct.value.nom);
+    formData.append("descripcio", newProduct.value.descripcio);
+    formData.append("preu", newProduct.value.preu.toString());
+    formData.append("stock", newProduct.value.stock.toString());
+    formData.append("categoria", newProduct.value.categoria?.toString() || "");
+    formData.append("subcategoria", newProduct.value.subcategoria?.toString() || "");
+    formData.append("botiga_id", newProduct.value.botiga_id?.toString() || "");
+    if (imageFile.value) {
+      formData.append("imatge", imageFile.value);
+    } else {
+      formData.append("imatge", newProduct.value.imatge);
+    }
+    
+    await axios.post(`${API_URL}/productes`, formData, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data"
+      },
+    });
+    
+    newProduct.value = { nom: "", descripcio: "", preu: 0, stock: 0, categoria: null, subcategoria: null, imatge: "", botiga_id: null };
+    imageFile.value = null;
+    showAddModal.value = false;
+    fetchProductes();
+  } catch (error) {
+    errorMessage.value = "Error afegint producte.";
+    console.error("Error addProducte:", error);
+  }
+};
+
+// Obre modal d'edició
+const openEditProduct = (prod: any) => {
+  editProduct.value = {
+    id: prod.id,
+    nom: prod.nom,
+    descripcio: prod.descripcio,
+    preu: prod.preu,
+    stock: prod.stock,
+    categoria: prod.categoria || null,
+    subcategoria: prod.subcategoria || null,
+    imatge: prod.imatge || "",
+    botiga_id: prod.botiga?.id ?? null,
+  };
+  showEditModal.value = true;
+};
+
+// Actualitza producte
+const updateProducte = async () => {
+  console.log("updateProducte triggered");
+  if (editProduct.value) {
+    try {
+      const token = localStorage.getItem("userToken");
+      if (!token) return;
+      const formData = new FormData();
+      formData.append("_method", "PUT");
+      formData.append("nom", editProduct.value.nom);
+      formData.append("descripcio", editProduct.value.descripcio);
+      formData.append("preu", editProduct.value.preu.toString());
+      formData.append("stock", editProduct.value.stock.toString());
+      formData.append("categoria", editProduct.value.categoria ? editProduct.value.categoria.toString() : "");
+      if (editProduct.value.subcategoria) {
+        formData.append("subcategoria", editProduct.value.subcategoria.toString());
+      }
+      formData.append("botiga_id", editProduct.value.botiga_id ? editProduct.value.botiga_id.toString() : "");
+      if (imageFile.value) {
+        formData.append("imatge", imageFile.value);
+      } else if (editProduct.value.imatge && editProduct.value.imatge !== "") {
+        formData.append("imatge", editProduct.value.imatge);
+      }
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+      await axios.post(`${API_URL}/productes/${editProduct.value.id}`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        },
+      });
+      console.log("PUT (via POST) request completed successfully");
+      showEditModal.value = false;
+      imageFile.value = null;
+      fetchProductes();
+    } catch (error: any) {
+      console.error("Error updating product:", error.response || error);
+      errorMessage.value = "Error actualitzant producte.";
+    }
+  }
+};
+
+// Elimina producte
+const deleteProducte = async (id: number) => {
+  try {
+    const token = localStorage.getItem("userToken");
+    await axios.delete(`${API_URL}/productes/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    fetchProductes();
+  } catch (error) {
+    errorMessage.value = "Error eliminant producte.";
+  }
+};
+
+const goToBotigues = () => {
+  router.push("/area-personal-botigues");
+};
+
+const filteredProductes = computed(() => {
+  return productes.value.filter(producte =>
+    producte.nom.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    producte.descripcio.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
+const confirmDeleteProduct = (id: number) => {
+  deleteProductId.value = id;
+  showDeleteModal.value = true;
+};
+
+const deleteConfirmedProduct = async () => {
+  if (deleteProductId.value !== null) {
+    try {
+      const token = localStorage.getItem("userToken");
+      await axios.delete(`${API_URL}/productes/${deleteProductId.value}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showDeleteModal.value = false;
+      fetchProductes();
+    } catch (error) {
+      errorMessage.value = "Error eliminant producte.";
+    }
+  }
+};
+
+const exportTableData = () => {
+  const data = productes.value.map(prod => ({
+    ID: prod.id,
+    Nom: prod.nom,
+    Descripcio: prod.descripcio,
+    Preu: prod.preu,
+    Stock: prod.stock,
+    Imatge: prod.imatge,
+    Categoria: prod.categoria ? (categories.value.find(c => c.id === prod.categoria)?.nom || prod.categoria) : "",
+    Subcategoria: prod.subcategoria ? (categories.value.find(c => c.id === prod.subcategoria)?.nom || prod.subcategoria) : "",
+    Botiga: prod.botiga_nom,
+  }));
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Productes");
+  const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  saveAs(new Blob([wbout]), "productes.xlsx");
+};
+
+const sortPreu = () => {
+  if (sortColumn.value !== "preu") {
+    sortColumn.value = "preu";
+    sortDirection.value = "asc";
+  } else {
+    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+  }
+  productes.value = [...productes.value].sort((a, b) => 
+    sortDirection.value === "asc" ? a.preu - b.preu : b.preu - a.preu
+  );
+};
+
+const sortProducts = (column: string) => {
+  if (sortColumn.value === column) {
+    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+  } else {
+    sortColumn.value = column;
+    sortDirection.value = "asc";
+  }
+};
+
+const sortedProducts = computed(() => {
+  return [...productes.value]
+    .filter(producte => {
+      return Object.keys(columnFilters.value).every(key => {
+        return columnFilters.value[key].length === 0 || columnFilters.value[key].includes((producte as any)[key]);
+      });
+    })
+    .sort((a, b) => {
+      if (!sortColumn.value) return 0;
+      const valueA = (a as any)[sortColumn.value];
+      const valueB = (b as any)[sortColumn.value];
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return sortDirection.value === "asc" ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+      } else if (typeof valueA === "number" && typeof valueB === "number") {
+        return sortDirection.value === "asc" ? valueA - valueB : valueB - valueA;
+      }
+      return 0;
+    });
+});
+
+const toggleFilterDropdown = (column: string) => {
+  showFilters.value[column] = !showFilters.value[column];
+};
+
+const toggleColumnFilter = (column: string, value: string) => {
+  if (!columnFilters.value[column]) columnFilters.value[column] = [];
+  if (columnFilters.value[column].includes(value)) {
+    columnFilters.value[column] = columnFilters.value[column].filter(v => v !== value);
+  } else {
+    columnFilters.value[column].push(value);
+  }
+};
+
+const parentCategories = computed(() => {
+  return categories.value.filter(cat => cat.parent_id === null);
+});
+
+const getSubcategories = (categoryId: number | null) => {
+  if (!categoryId) return [];
+  return categories.value.filter(cat => cat.parent_id === categoryId);
+};
+
+const onFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    imageFile.value = target.files[0];
+    if (showAddModal.value) {
+      newProduct.value.imatge = URL.createObjectURL(imageFile.value);
+    } else if (showEditModal.value && editProduct.value) {
+      editProduct.value.imatge = URL.createObjectURL(imageFile.value);
+    }
+  }
+};
+
+onMounted(() => {
+  fetchProductes();
+  fetchBotigues();
+  fetchCategories();
+});
+</script>
+
 <style scoped>
+/* Estils Moderns i Responsius */
+
+/* Contenidor principal */
 .container {
-  min-height: 80vh;
-  margin: auto;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Capçalera principal */
+h1 {
   text-align: center;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Barra de cerca i accions */
+.search-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.search-container input {
+  flex: 1 1 300px;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #42b983;
+  border-radius: 5px;
+  transition: border 0.3s ease;
+}
+
+.search-container input:focus {
+  border-color: #368c6e;
 }
 
 .add-btn {
   background: #42b983;
-  color: #f9f9f9;
+  color: #fff;
   border: none;
-  padding: 8px 12px;
+  padding: 10px 15px;
   border-radius: 5px;
   cursor: pointer;
-  margin: 10px 0;
+  transition: background 0.3s ease;
 }
 
 .add-btn:hover {
-  background: #f9f9f9;
-  color: #368c6e;
-  outline: 2px solid #368c6e;
+  background: #368c6e;
 }
 
+/* Taula de productes */
 .producte-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
-  text-align: left;
+  margin-bottom: 20px;
+  font-size: 14px;
 }
 
 .producte-table th,
 .producte-table td {
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ddd;
+  text-align: left;
 }
 
 .producte-table th {
   background: #42b983;
-  color: #f9f9f9;
-  cursor: pointer;
+  color: #fff;
   position: relative;
-  padding: 10px;
+  cursor: pointer;
 }
 
 .producte-table th button {
-  background: none;
+  background: transparent;
   border: none;
   cursor: pointer;
-  color: white;
+  color: #fff;
   margin-left: 5px;
 }
 
@@ -696,7 +694,7 @@ onMounted(() => {
   position: absolute;
   background: #42b983;
   border: 1px solid #ddd;
-  padding: 10px;
+  padding: 8px;
   width: 150px;
   top: 100%;
   left: 0;
@@ -712,6 +710,7 @@ onMounted(() => {
   margin-right: 5px;
 }
 
+/* Files parells */
 .producte-table tr:nth-child(even) {
   background: #f9f9f9;
 }
@@ -720,88 +719,62 @@ onMounted(() => {
   background: #e3f2fd;
 }
 
+/* Botons d'acció */
 .actions {
-  text-align: center;
+  display: flex;
   gap: 10px;
+  justify-content: center;
 }
 
 .edit-btn {
   background: #f0ad4e;
-  color: #f9f9f9;
-  margin-right: 20px;
+  color: #fff;
   border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.3s ease;
 }
 
 .edit-btn:hover {
-  background: #f9f9f9;
-  color: #f0ad4e;
-  outline: 2px solid #f0ad4e;
+  background: #e89c3b;
 }
 
 .delete-btn {
   background: #d9534f;
-  color: #f9f9f9;
+  color: #fff;
   border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.3s ease;
 }
 
 .delete-btn:hover {
-  background: #f9f9f9;
-  color: #d9534f;
-  outline: 2px solid #d9534f;
+  background: #c9302c;
 }
 
-.confirm-btn {
-  background: #42b983;
-  color: white;
-  margin-left: 20px;
-  border: none;
-}
-
-.confirm-btn:hover {
-  background: #f9f9f9;
-  color: #42b983;
-  outline: 2px solid #42b983;
-}
-
-.search-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.search-container input {
-  padding: 8px;
-  width: 40%;
-  border: 1px solid #42b983;
-  border-radius: 5px;
-  outline: none;
-  font-size: 16px;
-  transition: border 0.3s ease-in-out;
-}
-
-.search-container input:focus {
-  border-color: #368c6e;
-}
-
+/* Modal estilitzat */
 .modal {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 .modal-content {
-  background: white;
-  padding: 20px;
+  background: #fff;
+  padding: 30px;
   border-radius: 10px;
-  text-align: center;
-  width: 450px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .modal-table {
@@ -811,32 +784,47 @@ onMounted(() => {
 }
 
 .modal-table td {
-  padding: 8px;
+  padding: 10px;
   vertical-align: middle;
 }
 
 .modal-table input,
 .modal-table textarea {
   width: 100%;
-  padding: 6px;
+  padding: 8px;
   border: 1px solid #ccc;
   border-radius: 5px;
   font-size: 14px;
 }
 
-.modal-table textarea {
-  height: 80px;
-  resize: none;
-}
-
 .modal-actions {
   display: flex;
   justify-content: space-between;
-  margin-top: 15px;
+  margin-top: 20px;
 }
 
+/* Missatges d'error */
 .error {
-  color: red;
+  color: #d9534f;
   margin-top: 20px;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .search-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-container input {
+    width: 100%;
+  }
+  .producte-table th, .producte-table td {
+    padding: 8px;
+    font-size: 12px;
+  }
+  .modal-content {
+    max-width: 90%;
+  }
 }
 </style>

@@ -31,6 +31,7 @@ class ImportacioController extends Controller
             $descripcio = trim($fila['descripcio'] ?? '');
             $imatge = trim($fila['imatge'] ?? '');
             $categoria = trim($fila['categoria'] ?? '');
+            $subcategoria = trim($fila['subcategoria'] ?? '');
             $preuRaw = str_replace(',', '.', strval($fila['preu'] ?? ''));
             $stockRaw = strval($fila['stock'] ?? '');
     
@@ -55,6 +56,7 @@ class ImportacioController extends Controller
                     'stock' => intval($stockRaw),
                     'imatge' => $imatge,
                     'categoria' => $categoria,
+                    'subcategoria' => $subcategoria,
                     'botiga_id' => $request->botiga_id,
                     'vendor_id' => auth()->id()
                 ]);

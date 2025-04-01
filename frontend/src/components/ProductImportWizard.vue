@@ -1,148 +1,155 @@
 <template>
   <div class="wizard">
-    <div class="modal">
-      <div class="modal-content">
+    <!-- Overlay complet: Si es clica fora de la finestra (modal-content) es tanca -->
+    <div class="modal" @click="reset">
+      <!-- Contenidor principal: impedeix la propagació del clic -->
+      <div class="modal-content" @click.stop>
         <!-- Header -->
-        <div class="header">
+        <header class="wizard-header">
           <h2>{{ t('import.title') }}</h2>
           <button class="close-btn" @click="reset">✖</button>
-        </div>
+        </header>
 
-        <!-- Pasos -->
-        <div class="steps">
-          <span
-            v-for="(step, index) in steps"
-            :key="index"
-            :class="{ active: currentStep === index + 1, clickable: currentStep > index + 1 }"
-            @click="goToStep(index + 1)"
-          >
-            <span v-if="currentStep > index + 1">✅</span>
-            {{ index + 1 }}. {{ t(step.label) }}
-          </span>
-        </div>
+        <!-- Navegació dels passos -->
+        <nav class="wizard-nav">
+          <ul>
+            <li
+              v-for="(step, index) in steps"
+              :key="index"
+              :class="{
+                active: currentStep === index + 1,
+                completed: currentStep > index + 1
+              }"
+              @click="goToStep(index + 1)"
+            >
+              <span v-if="currentStep > index + 1">✅</span>
+              {{ index + 1 }}. {{ t(step.label) }}
+            </li>
+          </ul>
+        </nav>
 
-        <!-- Step 1: Botiga i fitxer -->
-        <div v-if="currentStep === 1">
-          <label>{{ t('import.selectStore') }}</label>
-          <select v-model="form.botiga_id">
-            <option disabled value="">{{ t('import.chooseStore') }}</option>
-            <option v-for="b in botigues" :key="b.id" :value="b.id">{{ b.nom }}</option>
-          </select>
-
-          <label>{{ t('import.selectFile') }}</label>
-          <input type="file" accept=".xlsx,.xls" @change="handleFileChange" />
-
-          <div class="nav-buttons">
-            <button disabled>{{ t('common.previous') }}</button>
-            <button @click="nextStep" :disabled="!form.botiga_id || !file">{{ t('common.next') }}</button>
-          </div>
-        </div>
-
-        <!-- Step 2: Mapatge de columnes -->
-        <div v-else-if="currentStep === 2">
-          <h4>{{ t('import.mapColumns') }}</h4>
-          <div v-for="field in modelFields" :key="field" class="map-field">
-            <label>{{ t('fields.' + field) }}</label>
-            <select v-model="mapping[field]">
-              <option value="">{{ t('import.ignore') }}</option>
-              <option v-for="header in headers" :key="header" :value="header">{{ header }}</option>
+        <!-- Contingut dels passos -->
+        <section class="wizard-step">
+          <!-- Step 1: Selecció de Botiga i Fitxer -->
+          <div v-if="currentStep === 1">
+            <label>{{ t('import.selectStore') }}</label>
+            <select v-model="form.botiga_id">
+              <option disabled value="">{{ t('import.chooseStore') }}</option>
+              <option v-for="b in botigues" :key="b.id" :value="b.id">{{ b.nom }}</option>
             </select>
+            <label>{{ t('import.selectFile') }}</label>
+            <input type="file" accept=".xlsx,.xls" @change="handleFileChange" />
+            <div class="nav-buttons">
+              <button disabled>{{ t('common.previous') }}</button>
+              <button @click="nextStep" :disabled="!form.botiga_id || !file">{{ t('common.next') }}</button>
+            </div>
           </div>
-          <div class="nav-buttons">
-            <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
-            <button @click="goToStep(3)">{{ t('common.next') }} ➡️</button>
+
+          <!-- Step 2: Mapatge de Columnes -->
+          <div v-else-if="currentStep === 2">
+            <h4>{{ t('import.mapColumns') }}</h4>
+            <div v-for="field in modelFields" :key="field" class="mapping-row">
+              <label>{{ t('fields.' + field) }}</label>
+              <select v-model="mapping[field]">
+                <option value="">{{ t('import.ignore') }}</option>
+                <option v-for="header in headers" :key="header" :value="header">{{ header }}</option>
+              </select>
+            </div>
+            <div class="nav-buttons">
+              <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
+              <button @click="goToStep(3)">{{ t('common.next') }} ➡️</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Step 3: Selecció de categoria i subcategoria -->
-        <div v-else-if="currentStep === 3">
-          <label>{{ t('import.optionalCategory') }}</label>
-          <select v-model="form.categoria">
-            <option disabled :value="null">{{ t('import.chooseCategory') }}</option>
-            <option v-for="cat in parentCategories" :key="cat.id" :value="cat.id">
-              {{ cat.nom }}
-            </option>
-          </select>
-
-          <label>{{ t('import.optionalSubcategory') }}</label>
-          <select v-model="form.subcategoria" :disabled="!form.categoria">
-            <option disabled :value="null">{{ t('import.chooseSubcategory') }}</option>
-            <option v-for="sub in filteredSubcategories" :key="sub.id" :value="sub.id">
-              {{ sub.nom }}
-            </option>
-          </select>
-
-          <div class="nav-buttons">
-            <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
-            <button @click="mapAndPreview">{{ t('common.next') }} ➡️</button>
+          <!-- Step 3: Selecció de Categoria i Subcategoria -->
+          <div v-else-if="currentStep === 3">
+            <label>{{ t('import.optionalCategory') }}</label>
+            <select v-model="form.categoria">
+              <option disabled :value="null">{{ t('import.chooseCategory') }}</option>
+              <option v-for="cat in parentCategories" :key="cat.id" :value="cat.id">
+                {{ cat.nom }}
+              </option>
+            </select>
+            <label>{{ t('import.optionalSubcategory') }}</label>
+            <select v-model="form.subcategoria" :disabled="!form.categoria">
+              <option disabled :value="null">{{ t('import.chooseSubcategory') }}</option>
+              <option v-for="sub in filteredSubcategories" :key="sub.id" :value="sub.id">
+                {{ sub.nom }}
+              </option>
+            </select>
+            <div class="nav-buttons">
+              <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
+              <button @click="mapAndPreview">{{ t('common.next') }} ➡️</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Step 4: Previsualització i edició -->
-        <div v-else-if="currentStep === 4">
-          <h4>{{ t('import.preview') }}</h4>
-          <table>
-            <thead>
-              <tr>
-                <!-- Mostra els camps extrets (sense categoria i subcategoria) -->
-                <th v-for="col in modelFields" :key="col">{{ t('fields.' + col) }}</th>
-                <!-- Columnes separades per categoria i subcategoria -->
-                <th>{{ t('fields.categoria') }}</th>
-                <th>{{ t('fields.subcategoria') }}</th>
-                <th>{{ t('common.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(product, index) in preview" :key="index">
-                <td v-for="field in modelFields" :key="field">
-                  <input
-                    :class="{ error: hasError(index, field) }"
-                    v-model="product[field]"
-                    @blur="sanitizeField(index, field)"
-                  />
-                </td>
-                <td>
-                  <select v-model="product.categoria">
-                    <option disabled :value="null">{{ t('import.chooseCategory') }}</option>
-                    <option v-for="cat in parentCategories" :key="cat.id" :value="cat.id">
-                      {{ cat.nom }}
-                    </option>
-                  </select>
-                </td>
-                <td>
-                  <select v-model="product.subcategoria" :disabled="!product.categoria">
-                    <option disabled :value="null">{{ t('import.chooseSubcategory') }}</option>
-                    <option v-for="sub in categories.filter(c => c.parent_id == product.categoria)" :key="sub.id" :value="sub.id">
-                      {{ sub.nom }}
-                    </option>
-                  </select>
-                </td>
-                <td><button @click="removeRow(index)">🗑️</button></td>
-              </tr>
-            </tbody>
-          </table>
-          <p>* {{ t('import.editNote') }}</p>
-          <div class="nav-buttons">
-            <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
-            <button @click="handleUpload">{{ t('import.upload') }} 🚀</button>
+          <!-- Step 4: Previsualització i Edició -->
+          <div v-else-if="currentStep === 4">
+            <h4>{{ t('import.preview') }}</h4>
+            <table>
+              <thead>
+                <tr>
+                  <!-- Mostra els camps extrets (sense categoria i subcategoria) -->
+                  <th v-for="col in modelFields" :key="col">{{ t('fields.' + col) }}</th>
+                  <th>{{ t('fields.categoria') }}</th>
+                  <th>{{ t('fields.subcategoria') }}</th>
+                  <th>{{ t('common.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(product, index) in preview" :key="index">
+                  <td v-for="field in modelFields" :key="field">
+                    <input
+                      :class="{ error: hasError(index, field) }"
+                      v-model="product[field]"
+                      @blur="sanitizeField(index, field)"
+                    />
+                  </td>
+                  <td>
+                    <select v-model="product.categoria">
+                      <option disabled :value="null">{{ t('import.chooseCategory') }}</option>
+                      <option v-for="cat in parentCategories" :key="cat.id" :value="cat.id">
+                        {{ cat.nom }}
+                      </option>
+                    </select>
+                  </td>
+                  <td>
+                    <select v-model="product.subcategoria" :disabled="!product.categoria">
+                      <option disabled :value="null">{{ t('import.chooseSubcategory') }}</option>
+                      <option v-for="sub in categories.filter(c => c.parent_id == product.categoria)" :key="sub.id" :value="sub.id">
+                        {{ sub.nom }}
+                      </option>
+                    </select>
+                  </td>
+                  <td>
+                    <button @click="removeRow(index)">🗑️</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="note">* {{ t('import.editNote') }}</p>
+            <div class="nav-buttons">
+              <button @click="prevStep">⬅️ {{ t('common.previous') }}</button>
+              <button @click="handleUpload">{{ t('import.upload') }} 🚀</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Step 5: Resultat de la importació -->
-        <div v-else-if="currentStep === 5">
-          <p>{{ result.message }}</p>
-          <p>{{ t('import.success', { count: result.importats }) }}</p>
-          <div v-if="result.errors.length">
-            <h4>{{ t('import.errorsFound') }}</h4>
-            <ul>
-              <li v-for="error in result.errors" :key="error.fila">
-                {{ t('import.row') }} {{ error.fila }}: {{ formatError(error.errors) }}
-              </li>
-            </ul>
-            <button @click="downloadErrorExcel">{{ t('import.downloadErrors') }} 📥</button>
+          <!-- Step 5: Resultat de la Importació -->
+          <div v-else-if="currentStep === 5">
+            <p class="result-message">{{ result.message }}</p>
+            <p class="result-success">{{ t('import.success', { count: result.importats }) }}</p>
+            <div v-if="result.errors.length">
+              <h4>{{ t('import.errorsFound') }}</h4>
+              <ul>
+                <li v-for="error in result.errors" :key="error.fila">
+                  {{ t('import.row') }} {{ error.fila }}: {{ formatError(error.errors) }}
+                </li>
+              </ul>
+              <button @click="downloadErrorExcel" class="download-btn">{{ t('import.downloadErrors') }} 📥</button>
+            </div>
+            <button @click="reset" class="close-btn-large">{{ t('common.close') }} ❌</button>
           </div>
-          <button @click="reset">{{ t('common.close') }} ❌</button>
-        </div>
+        </section>
       </div>
     </div>
   </div>
@@ -201,15 +208,21 @@ const parentCategories = computed(() => {
   return categories.value.filter(cat => cat.parent_id == null);
 });
 
-// Computed per filtrar subcategories segons la categoria seleccionada en el formulari
+// Computed per filtrar subcategories segons la categoria seleccionada
 const filteredSubcategories = computed(() => {
   return categories.value.filter(cat => cat.parent_id == form.value.categoria);
 });
 
 // Navegació entre passos
-function goToStep(n: number) { currentStep.value = n; }
-function nextStep() { currentStep.value++; }
-function prevStep() { currentStep.value--; }
+function goToStep(n: number) {
+  currentStep.value = n;
+}
+function nextStep() {
+  currentStep.value++;
+}
+function prevStep() {
+  currentStep.value--;
+}
 function reset() {
   currentStep.value = 1;
   file.value = null;
@@ -228,7 +241,6 @@ function handleFileChange(e: Event) {
     extractHeaders();
   }
 }
-
 function extractHeaders() {
   if (!file.value) return;
   const reader = new FileReader();
@@ -243,7 +255,6 @@ function extractHeaders() {
   };
   reader.readAsArrayBuffer(file.value);
 }
-
 function autoMapFields() {
   const fieldKeywords: Record<string, string[]> = {
     nom: ['nom', 'name', 'product'],
@@ -253,22 +264,22 @@ function autoMapFields() {
     categoria: ['categoria', 'category'],
     imatge: ['imatge', 'image', 'img'],
   };
-
   modelFields.forEach(field => {
     const keywords = fieldKeywords[field];
-    const match = headers.value.find(h => 
+    const match = headers.value.find(h =>
       keywords.some(k => h.toLowerCase().includes(k))
     );
     if (match) mapping.value[field] = match;
   });
 }
-
 function availableHeaders(currentField: string) {
-  const selected = Object.entries(mapping).filter(([key]) => key !== currentField).map(([, val]) => val);
+  const selected = Object.entries(mapping)
+    .filter(([key]) => key !== currentField)
+    .map(([, val]) => val);
   return headers.value.filter(h => !selected.includes(h));
 }
 
-// Genera la previsualització basant-se en el fitxer i el mapatge; assigna els valors comuns de categoria i subcategoria
+// Genera la previsualització i assigna els valors globals de categoria i subcategoria
 function mapAndPreview() {
   if (!file.value) return;
   const reader = new FileReader();
@@ -278,7 +289,6 @@ function mapAndPreview() {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1 });
     const dataRows = raw.slice(1);
-
     preview.value = dataRows.map(row => {
       const obj: any = {};
       modelFields.forEach(field => {
@@ -288,22 +298,21 @@ function mapAndPreview() {
           if (index !== -1) obj[field] = row[index];
         }
       });
-      // Converteix preu i stock
       if (obj.preu) obj.preu = parseFloat(String(obj.preu).replace(',', '.')) || 0;
       if (obj.stock) {
         const clean = String(obj.stock).replace(/[^\d.]/g, '').replace(',', '.');
         obj.stock = Number.isFinite(parseFloat(clean)) ? Math.round(parseFloat(clean)) : 0;
       }
-      // Assigna els IDs de categoria i subcategoria del formulari
       obj.categoria = form.value.categoria;
       obj.subcategoria = form.value.subcategoria;
       return obj;
     });
-
+    console.log("Preview final:", preview.value);
     currentStep.value = 4;
   };
   reader.readAsArrayBuffer(file.value);
 }
+
 
 function sanitizeField(index: number, field: string) {
   const value = preview.value[index][field];
@@ -320,7 +329,6 @@ function formatError(errors: Record<string, string>) {
   return Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join(', ');
 }
 
-// Pujar la previsualització i enviar la request d'importació
 function handleUpload() {
   const formData = new FormData();
   if (file.value) formData.append('fitxer', file.value);
@@ -328,7 +336,12 @@ function handleUpload() {
   formData.append('categoria', form.value.categoria ? form.value.categoria.toString() : '');
   formData.append('subcategoria', form.value.subcategoria ? form.value.subcategoria.toString() : '');
   formData.append('preview', JSON.stringify(preview.value));
-
+  
+  console.log("FormData enviat:");
+  for (let [key, value] of formData.entries()) {
+    console.log(key, value);
+  }
+  
   const token = localStorage.getItem('userToken');
   axios.post(`${API_URL}/import-productes`, formData, {
     headers: { Authorization: `Bearer ${token}` },
@@ -344,6 +357,7 @@ function handleUpload() {
     });
 }
 
+
 function downloadErrorExcel() {
   const errorSheet = preview.value.map((row, i) => {
     const base = { ...row };
@@ -352,10 +366,10 @@ function downloadErrorExcel() {
     return base;
   });
   const worksheet = XLSX.utils.json_to_sheet(errorSheet);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, worksheet, 'Errors');
-  const blob = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  saveAs(new Blob([blob]), 'errors.xlsx');
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Errors');
+  const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  saveAs(new Blob([wbout]), "errors.xlsx");
 }
 
 function removeRow(index: number) {
@@ -363,11 +377,20 @@ function removeRow(index: number) {
 }
 
 onMounted(() => {
-  // Es poden carregar altres dades si és necessari, per exemple botigues i categories
+  // Es poden carregar altres dades si cal (per exemple botigues, categories, etc.)
 });
 </script>
 
 <style scoped>
+/* Contenidor principal */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Wizard Modal */
 .wizard {
   position: fixed;
   top: 60px;
@@ -376,80 +399,172 @@ onMounted(() => {
   z-index: 1000;
 }
 .modal {
-  background: rgba(0, 0, 0, 0.5);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
 }
 .modal-content {
-  background: white;
+  background: #fff;
   padding: 30px;
   max-width: 700px;
-  margin: auto;
+  width: 100%;
   border-radius: 10px;
   position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
-.close-btn {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-}
-.steps {
+
+/* Header i Navegació */
+.wizard-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
-  font-size: 14px;
+}
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 22px;
   cursor: pointer;
 }
-.steps span {
-  padding: 5px 10px;
-  border-bottom: 2px solid #ccc;
+.wizard-nav ul {
+  list-style: none;
+  display: flex;
+  justify-content: space-around;
+  padding: 0;
+  margin: 0 0 20px;
 }
-.steps span.active {
+.wizard-nav li {
+  padding: 10px 15px;
+  border-bottom: 2px solid #ccc;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+.wizard-nav li.active {
   border-color: #42b983;
   font-weight: bold;
 }
-.steps span.clickable:hover {
-  text-decoration: underline;
+.wizard-nav li.completed {
   color: #42b983;
 }
-input,
-select {
-  display: block;
-  margin: 10px 0;
-  padding: 8px;
-  width: 100%;
+
+/* Pasos */
+.wizard-step {
+  margin-bottom: 20px;
 }
-input.error {
-  border: 2px solid red;
+.mapping-row {
+  margin-bottom: 15px;
 }
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-th,
-td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: center;
-}
-button {
-  background: #42b983;
-  color: white;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 4px;
-  margin-top: 10px;
-}
-button:hover {
-  background: #368c6e;
-}
+
+/* Botons de navegació */
 .nav-buttons {
   display: flex;
   justify-content: space-between;
   margin-top: 20px;
+}
+
+/* Taula de previsualització */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 14px;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+th {
+  background: #42b983;
+  color: #fff;
+  position: relative;
+}
+th button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  margin-left: 5px;
+}
+.filter-dropdown {
+  position: absolute;
+  background: #42b983;
+  border: 1px solid #ddd;
+  padding: 8px;
+  width: 150px;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+}
+.filter-dropdown div {
+  display: flex;
+  align-items: center;
+}
+.filter-dropdown input {
+  margin-right: 5px;
+}
+
+/* Modals (Forms) */
+.modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+}
+.modal-table td {
+  padding: 10px;
+  vertical-align: middle;
+}
+.modal-table input,
+.modal-table textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+/* Missatges d'error i notes */
+.error {
+  color: #d9534f;
+  margin-top: 20px;
+  text-align: center;
+}
+.note {
+  font-size: 12px;
+  color: #666;
+  margin-top: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  .wizard-nav ul {
+    flex-direction: column;
+    align-items: center;
+  }
+  .wizard-nav li {
+    margin-bottom: 5px;
+  }
+  table, th, td {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .modal-content {
+    max-width: 90%;
+  }
 }
 </style>
