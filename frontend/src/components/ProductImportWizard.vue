@@ -1,7 +1,7 @@
 <template>
   <!-- Overlay que ocupa tota la pantalla -->
   <div class="wizard-overlay" @click="reset">
-    <!-- Modal, que impedeix la propagació del clic -->
+    <!-- Modal: clic dins no tanca -->
     <div class="wizard-modal" @click.stop>
       <!-- Header amb títol i botó de tancament -->
       <header class="wizard-header">
@@ -35,7 +35,6 @@
         <!-- PAS 1: Selecció de Fitxer -->
         <div v-if="currentStep === 1" class="step">
           <label class="step-label">{{ t('import.selectFile') }}</label>
-          <!-- Drop zone amb drag & drop -->
           <div
             class="drop-zone"
             @dragover.prevent="dragging = true"
@@ -46,7 +45,6 @@
             <p v-if="dragging" class="drop-message">{{ t('import.dropHere') }}</p>
             <p v-else-if="!file">{{ t('import.dragOrClick') }}</p>
             <p v-else>{{ file.name }}</p>
-            <!-- Input file invisible per pujar amb clic -->
             <input type="file" accept=".xlsx,.xls" @change="handleFileChange" class="hidden-file-input" />
           </div>
           <div class="nav-buttons">
@@ -75,14 +73,11 @@
 
         <!-- PAS 3: Selecció de botiga, categoria i subcategoria -->
         <div v-else-if="currentStep === 3" class="step">
-          <!-- Selecció de Botiga -->
           <label class="step-label">{{ t('import.selectStore') }}</label>
           <select v-model="form.botiga_id" class="input-field">
             <option disabled value="">{{ t('import.chooseStore') }}</option>
             <option v-for="b in botigues" :key="b.id" :value="b.id">{{ b.nom }}</option>
           </select>
-
-          <!-- Selecció de Categoria Global (opcional) -->
           <label class="step-label">{{ t('import.optionalCategory') }}</label>
           <select v-model="form.categoria" class="input-field">
             <option disabled :value="null">{{ t('import.chooseCategory') }}</option>
@@ -90,8 +85,6 @@
               {{ cat.nom }}
             </option>
           </select>
-
-          <!-- Selecció de Subcategoria Global (opcional) -->
           <label class="step-label">{{ t('import.optionalSubcategory') }}</label>
           <select v-model="form.subcategoria" :disabled="!form.categoria" class="input-field">
             <option disabled :value="null">{{ t('import.chooseSubcategory') }}</option>
@@ -99,10 +92,8 @@
               {{ sub.nom }}
             </option>
           </select>
-
           <div class="nav-buttons">
             <button class="btn" @click="prevStep">⬅️ {{ t('common.previous') }}</button>
-            <!-- Botó Next desactivat si no s'ha seleccionat botiga -->
             <button class="btn" @click="mapAndPreview" :disabled="!form.botiga_id">
               {{ t('common.next') }} ➡️
             </button>
@@ -116,7 +107,6 @@
             <table>
               <thead>
                 <tr>
-                  <!-- Columna per la numeració -->
                   <th>#</th>
                   <th v-for="col in modelFields" :key="col">{{ t('fields.' + col) }}</th>
                   <th>{{ t('fields.categoria') }}</th>
@@ -126,7 +116,6 @@
               </thead>
               <tbody>
                 <tr v-for="(product, index) in preview" :key="index">
-                  <!-- Mostra la numeració (index + 1) -->
                   <td>{{ index + 1 }}</td>
                   <td v-for="field in modelFields" :key="field">
                     <input
@@ -179,6 +168,13 @@
               {{ t('import.downloadErrors') }} 📥
             </button>
           </div>
+          <!-- Secció per veure el registre d'importació -->
+          <div class="import-record">
+            <p>{{ t('import.recordTitle') }}</p>
+            <button class="btn" @click="viewImportRecord">
+              {{ t('import.viewRecord') }}
+            </button>
+          </div>
           <button class="btn btn-large" @click="reset">{{ t('common.close') }} ❌</button>
         </div>
       </section>
@@ -188,12 +184,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 
 const { t } = useI18n();
+const router = useRouter();
 const emit = defineEmits(['close', 'refresh']);
 const props = defineProps<{ botigues: { id: number; nom: string }[] }>();
 
@@ -209,7 +207,7 @@ const file = ref<File | null>(null);
 const headers = ref<string[]>([]);
 const mapping = ref<Record<string, string>>({});
 const preview = ref<any[]>([]);
-const result = ref({ importats: 0, errors: [] as any[], message: '' });
+const result = ref({ importats: 0, errors: [] as any[], message: '', importacio_id: null });
 const categories = ref<any[]>([]);
 
 const modelFields = ['nom', 'preu', 'stock', 'descripcio', 'imatge'];
@@ -243,7 +241,6 @@ function goToStep(n: number) {
   currentStep.value = n;
 }
 function nextStep() {
-  // Validació del pas 1
   if (currentStep.value === 1 && (!form.value.botiga_id || !file.value)) {
     alert(t('import.errorStep1'));
     return;
@@ -259,11 +256,11 @@ function reset() {
   headers.value = [];
   mapping.value = {};
   preview.value = [];
-  result.value = { importats: 0, errors: [], message: '' };
+  result.value = { importats: 0, errors: [], message: '', importacio_id: null };
   emit('close');
 }
 
-// Gestió del fitxer amb drag & drop
+// Gestió del fitxer
 const dragging = ref(false);
 function handleFileChange(e: Event) {
   const target = e.target as HTMLInputElement;
@@ -281,7 +278,7 @@ function onDropFile(e: DragEvent) {
   }
 }
 function triggerFileInput() {
-  const input = (document.querySelector('.hidden-file-input') as HTMLInputElement);
+  const input = document.querySelector('.hidden-file-input') as HTMLInputElement;
   if (input) {
     input.click();
   }
@@ -300,7 +297,6 @@ function extractHeaders() {
   };
   reader.readAsArrayBuffer(file.value);
 }
-
 function autoMapFields() {
   const fieldKeywords: Record<string, string[]> = {
     nom: ['nom', 'name', 'product'],
@@ -318,7 +314,6 @@ function autoMapFields() {
     if (match) mapping.value[field] = match;
   });
 }
-
 function availableHeaders(currentField: string) {
   const selected = Object.entries(mapping)
     .filter(([key]) => key !== currentField)
@@ -326,7 +321,7 @@ function availableHeaders(currentField: string) {
   return headers.value.filter(h => !selected.includes(h));
 }
 
-// Genera la previsualització assignant els valors globals de categoria i subcategoria
+// Genera la previsualització
 function mapAndPreview() {
   if (!file.value) return;
   const reader = new FileReader();
@@ -342,16 +337,23 @@ function mapAndPreview() {
         const header = mapping.value[field];
         if (header) {
           const index = headers.value.indexOf(header);
-          if (index !== -1) obj[field] = row[index];
+          if (index !== -1) {
+            obj[field] = row[index];
+          }
         }
       });
-      if (obj.preu) obj.preu = parseFloat(String(obj.preu).replace(',', '.')) || 0;
+      if (obj.preu) {
+        obj.preu = parseFloat(String(obj.preu).replace(',', '.')) || 0;
+      }
       if (obj.stock) {
         const clean = String(obj.stock).replace(/[^\d.]/g, '').replace(',', '.');
         obj.stock = Number.isFinite(parseFloat(clean)) ? Math.round(parseFloat(clean)) : 0;
       }
+      // Assigna els valors globals
       obj.categoria = form.value.categoria;
       obj.subcategoria = form.value.subcategoria !== null ? form.value.subcategoria : null;
+      // Afegim la columna importacio_id amb valor null (a editar posteriorment si s'actualitza)
+      obj.importacio_id = null;
       return obj;
     });
     console.log("Preview final:", preview.value);
@@ -359,54 +361,40 @@ function mapAndPreview() {
   };
   reader.readAsArrayBuffer(file.value);
 }
-
 function sanitizeField(index: number, field: string) {
   const value = preview.value[index][field];
   if (field === 'preu') preview.value[index][field] = parseFloat(String(value).replace(',', '.')) || 0;
   if (field === 'stock') preview.value[index][field] = parseInt(String(value).replace(/[^\d]/g, '')) || 0;
 }
-
 function hasError(index: number, field: string) {
   const row = result.value.errors.find(e => e.fila === index + 2);
   return row?.errors?.[field];
 }
-
 function formatError(errors: Record<string, string>) {
   return Object.entries(errors).map(([k, v]) => `${k}: ${v}`).join(', ');
 }
-
 function validateProducts(): boolean {
   for (let i = 0; i < preview.value.length; i++) {
     const product = preview.value[i];
-    // Comprovem que "nom", "preu" i "stock" no siguin buits, i que "categoria" i "subcategoria" siguin diferents de null
-
-  if (!product.nom || product.preu === null || product.stock === null || product.categoria === null || product.subcategoria === null) {
-    alert(`El producte de la fila ${i + 1} no té tots els camps obligatoris. Si no pots assignar categoria/subcategoria global, has d'editar cada producte individualment.`);
-    return false;
-  }
-
+    if (!product.nom || product.preu === null || product.stock === null || product.categoria === null || product.subcategoria === null) {
+      alert(`El producte de la fila ${i + 1} no té tots els camps obligatoris. Si no pots assignar categoria/subcategoria global, has d'editar cada producte individualment.`);
+      return false;
+    }
   }
   return true;
 }
-
 function handleUpload() {
-  // Afegim la validació extra abans d'enviar
-  if (!validateProducts()) {
-    return; // Si algun producte no compleix la validació, aturem l'enviament
-  }
-
+  if (!validateProducts()) return;
   const formData = new FormData();
   if (file.value) formData.append('fitxer', file.value);
   formData.append('botiga_id', form.value.botiga_id);
   formData.append('categoria', form.value.categoria ? form.value.categoria.toString() : '');
   formData.append('subcategoria', form.value.subcategoria !== null ? form.value.subcategoria.toString() : '');
   formData.append('preview', JSON.stringify(preview.value));
-  
   console.log("FormData enviat:");
   for (let [key, value] of formData.entries()) {
     console.log(key, value);
   }
-  
   const token = localStorage.getItem('userToken');
   axios.post(`${API_URL}/import-productes`, formData, {
     headers: { Authorization: `Bearer ${token}` },
@@ -421,8 +409,6 @@ function handleUpload() {
       currentStep.value = 5;
     });
 }
-
-
 function downloadErrorExcel() {
   const errorSheet = preview.value.map((row, i) => {
     const base = { ...row };
@@ -436,18 +422,24 @@ function downloadErrorExcel() {
   const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
   saveAs(new Blob([wbout]), "errors.xlsx");
 }
-
 function removeRow(index: number) {
   preview.value.splice(index, 1);
 }
-
+// Mètode per veure el registre d'importació
+function viewImportRecord() {
+  if (result.value.importacio_id) {
+    router.push({ name: 'ImportRecord', params: { id: result.value.importacio_id } });
+  } else {
+    alert(t('import.noRecord'));
+  }
+}
 onMounted(() => {
-  // Es poden carregar altres dades si cal, per exemple botigues, categories...
+  // Carrega altres dades si cal...
 });
 </script>
 
 <style scoped>
-/* Contenidor principal del wizard */
+/* OVERLAY I MODAL */
 .wizard-overlay {
   position: fixed;
   top: 0;
@@ -470,12 +462,11 @@ onMounted(() => {
   position: relative;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 1100;
-  max-height: 90vh; /* Altura màxima */
-  overflow-y: auto; /* Afegit per desplaçament vertical */
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
-
-/* Capçalera */
+/* Header */
 .wizard-header {
   display: flex;
   justify-content: space-between;
@@ -584,23 +575,6 @@ th {
   color: #fff;
   position: relative;
 }
-.filter-dropdown {
-  position: absolute;
-  background: #42b983;
-  border: 1px solid #ddd;
-  padding: 8px;
-  width: 150px;
-  top: 100%;
-  left: 0;
-  z-index: 10;
-}
-.filter-dropdown div {
-  display: flex;
-  align-items: center;
-}
-.filter-dropdown input {
-  margin-right: 5px;
-}
 
 /* Botons */
 .nav-buttons {
@@ -609,17 +583,18 @@ th {
   margin-top: 20px;
 }
 .btn {
-  background: #42b983;
+  background: linear-gradient(45deg, #42b983, #368c6e);
   color: #fff;
-  padding: 10px 15px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s ease;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 .btn:hover {
-  background: #368c6e;
+  background: linear-gradient(45deg, #368c6e, #42b983);
+  transform: scale(1.03);
 }
 .btn:disabled, .btn.btn-disabled {
   background: #ccc;
@@ -636,7 +611,17 @@ th {
   font-size: 18px;
 }
 
-/* Missatges i notes */
+/* Secció del registre d'importació */
+.import-record {
+  margin-top: 20px;
+  text-align: center;
+}
+.import-record p {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* Notes i errors */
 .note {
   font-size: 12px;
   color: #888;

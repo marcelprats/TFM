@@ -12,6 +12,8 @@
     "dropHere":"Arrosega a aquí",
     "selectFile": "Selecciona un fitxer Excel",
     "mapColumns": "Mapeig de les columnes del fitxer",
+    "recordTitle":"S'ha creat i afegit un registre d'importacions",
+    "viewRecord":"Veure registre",
     "ignore": "Ignorar",
     "chooseCategory": "Escull una categoria",
     "chooseSubcategory": "Escull una subcategoria",

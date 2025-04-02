@@ -8,6 +8,8 @@ import AreaPersonal from "../views/AreaPersonal.vue";
 import AreaPersonalBotigues from "../views/AreaPersonalBotigues.vue";
 import AreaPersonalProductes from "../views/AreaPersonalProductes.vue";
 import MapaBotigues from "../views/MapaBotigues.vue";
+import ImportRecordIndex from '../views/ImportRecordIndex.vue';
+import ImportRecord from '../views/ImportRecord.vue';
 import Botiga from "../views/Botiga.vue";
 import Producte from "../views/Producte.vue";
 import InfoBotiga from "../views/InfoBotiga.vue";
@@ -26,6 +28,8 @@ const routes = [
   { path: "/area-personal-botigues", name: "AreaPersonalBotigues", component: AreaPersonalBotigues, meta: { requiresAuth: true, requiresVendor: true } },
   { path: "/area-personal-productes", name: "AreaPersonalProductes", component: AreaPersonalProductes, meta: { requiresAuth: true, requiresVendor: true } },
   { path: "/mapa-botigues", component: MapaBotigues },
+  { path: '/import-record', name: 'ImportRecordIndex', component: ImportRecordIndex },
+  { path: '/import-record/:id', name: 'ImportRecord', component: ImportRecord, props: true },  
   { path: "/botiga", component: Botiga },
   { path: "/producte/:id", component: Producte, name: "Producte" },
   { path: "/info-venedor", name: "InfoVenedors", component: InfoVenedors },

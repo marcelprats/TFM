@@ -12,6 +12,8 @@
       "dropHere":"Arrastra a aquí",
       "selectFile": "Selecciona un archivo Excel",
       "mapColumns": "Mapea las columnas del archivo",
+      "recordTitle":"Se ha creado y guardado un registro de importaciones",
+      "viewRecord":"Ver registro",
       "chooseCategory": "Elige una categoria",
       "chooseSubcategory": "Elige una subcategoria",
       "optionalCategory": "Categoría común (opcional)",

@@ -6,6 +6,7 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\BotigaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ImportacioController; // Ús aquest per la importació
+use App\Http\Controllers\ImportRecordController; 
 use App\Http\Controllers\ProducteController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Importació de productes (una única ruta per a importar)
     Route::post('/import-productes', [ImportacioController::class, 'importar']);
+
+    // Registre d'importació de productes
+    Route::get('/importacions', [ImportRecordController::class, 'indexApi']);
+    Route::get('/importacions/{id}', [ImportRecordController::class, 'showApi']);
 
     // Botigues per a venedors autenticats
     Route::get('/botigues-mes', [BotigaController::class, 'getBotiguesByAuthVendor']);

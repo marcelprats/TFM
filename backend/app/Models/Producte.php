@@ -21,6 +21,7 @@ class Producte extends Model
         'imatge',
         'vendor_id',
         'botiga_id',
+        'importacio_id',
     ];
 
     /**
