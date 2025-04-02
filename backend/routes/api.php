@@ -48,6 +48,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/productes', [ProducteController::class, 'index']);
     Route::post('/productes', [ProducteController::class, 'store']);
     Route::put('/productes/{id}', [ProducteController::class, 'update']);
+    Route::patch('/productes/{id}', [ProducteController::class, 'update']);
     Route::delete('/productes/{id}', [ProducteController::class, 'destroy']);
 
     // Importació de productes (una única ruta per a importar)

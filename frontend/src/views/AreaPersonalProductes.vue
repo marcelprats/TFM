@@ -326,18 +326,26 @@
       </div>
     </div>
 
-    <!-- Modal per Bulk Update -->
+    <!-- Modal per Bulk Update (tancar fent clic fora) -->
     <div v-if="bulkUpdateVisible" class="modal" @click.self="bulkUpdateVisible = false">
       <div class="modal-content" @click.stop>
         <h3>Actualització Massiva</h3>
         <div class="bulk-update-fields">
           <div class="form-group">
             <label>Preu (€):</label>
-            <input type="number" v-model.number="bulkUpdateValues.preu" class="input-field" />
+            <input
+              type="number"
+              v-model.number="bulkUpdateValues.preu"
+              class="input-field"
+            />
           </div>
           <div class="form-group">
             <label>Stock:</label>
-            <input type="number" v-model.number="bulkUpdateValues.stock" class="input-field" />
+            <input
+              type="number"
+              v-model.number="bulkUpdateValues.stock"
+              class="input-field"
+            />
           </div>
           <div class="form-group">
             <label>Categoria:</label>
@@ -352,18 +360,37 @@
             <label>Subcategoria:</label>
             <select v-model="bulkUpdateValues.subcategoria" class="input-field">
               <option disabled :value="null">Selecciona una subcategoria</option>
-              <option v-for="sub in getSubcategories(bulkUpdateValues.categoria)" :key="sub.id" :value="sub.id">
+              <option
+                v-for="sub in getSubcategories(bulkUpdateValues.categoria)"
+                :key="sub.id"
+                :value="sub.id"
+              >
                 {{ sub.nom }}
+              </option>
+            </select>
+          </div>
+          <!-- Nova secció per Botiga -->
+          <div class="form-group">
+            <label>Botiga:</label>
+            <select v-model="bulkUpdateValues.botiga" class="input-field">
+              <option disabled :value="null">Selecciona una botiga</option>
+              <option v-for="bot in botigues" :key="bot.id" :value="bot.id">
+                {{ bot.nom }}
               </option>
             </select>
           </div>
         </div>
         <div class="modal-actions">
-          <button class="btn confirm-btn" @click="bulkUpdateConfirm">Actualitza</button>
-          <button class="btn delete-btn" @click="bulkUpdateVisible = false">Cancel·la</button>
+          <button class="btn confirm-btn" @click="bulkUpdateConfirm">
+            Actualitza
+          </button>
+          <button class="btn delete-btn" @click="bulkUpdateVisible = false">
+            Cancel·la
+          </button>
         </div>
       </div>
     </div>
+
 
     <!-- Modal de confirmació d'eliminació -->
     <div v-if="showDeleteModal" class="modal" @click.self="showDeleteModal = false">
@@ -494,6 +521,7 @@ const bulkUpdateValues = ref({
   stock: null as number | null,
   categoria: null as number | null,
   subcategoria: null as number | null,
+  botiga: null as number | null,
 });
 
 const router = useRouter();
@@ -876,22 +904,46 @@ function openBulkUpdateModal() {
 async function bulkUpdateConfirm() {
   if (!selectedProducts.value.length) return;
   const token = localStorage.getItem("userToken");
+  if (!token) return;
+
   for (const id of selectedProducts.value) {
     try {
-      const updateData: any = {};
-      if (bulkUpdateValues.value.preu !== null)
-        updateData.preu = bulkUpdateValues.value.preu;
-      if (bulkUpdateValues.value.stock !== null)
-        updateData.stock = bulkUpdateValues.value.stock;
-      if (bulkUpdateValues.value.categoria !== null)
-        updateData.categoria = bulkUpdateValues.value.categoria;
-      if (bulkUpdateValues.value.subcategoria !== null)
-        updateData.subcategoria = bulkUpdateValues.value.subcategoria;
-      await axios.put(`${API_URL}/productes/${id}`, updateData, {
+      // Obtenim el producte actual
+      const product = productes.value.find((p) => p.id === id);
+      if (!product) continue;
+
+      // Construeix l'objecte d'actualització combinant els valors del bulk i els actuals
+      const updateData: any = {
+        // Actualitza només si hi ha un nou valor definit, sinó, manté l'original
+        preu: bulkUpdateValues.value.preu !== null
+          ? bulkUpdateValues.value.preu
+          : product.preu,
+        stock: bulkUpdateValues.value.stock !== null
+          ? bulkUpdateValues.value.stock
+          : product.stock,
+        categoria: bulkUpdateValues.value.categoria !== null
+          ? bulkUpdateValues.value.categoria
+          : product.categoria,
+        subcategoria: bulkUpdateValues.value.subcategoria !== null
+          ? bulkUpdateValues.value.subcategoria
+          : product.subcategoria,
+        botiga_id: bulkUpdateValues.value.botiga !== null
+          ? bulkUpdateValues.value.botiga
+          : product.botiga_id,
+        // Assegurem-nos d'enviar els camps obligatoris que no es modifiquen en el bulk
+        nom: product.nom,
+        descripcio: product.descripcio,
+        // imatge: product.imatge,
+      };
+
+      // Si no hi ha cap camp a actualitzar (per exemple, si tot és null en el bulk), podem saltar-lo
+      if (Object.keys(updateData).length === 0) continue;
+
+      await axios.patch(`${API_URL}/productes/${id}`, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (error) {
-      console.error("Error actualitzant producte amb id " + id, error);
+    } catch (error: any) {
+      console.error("Error actualitzant producte amb id " + id, error.response?.data || error);
     }
   }
   bulkUpdateVisible.value = false;
