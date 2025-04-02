@@ -109,7 +109,6 @@
           </div>
         </div>
 
-
         <!-- PAS 4: Previsualització i Edició -->
         <div v-else-if="currentStep === 4" class="step">
           <h4 class="step-title">{{ t('import.preview') }}</h4>
@@ -117,6 +116,8 @@
             <table>
               <thead>
                 <tr>
+                  <!-- Columna per la numeració -->
+                  <th>#</th>
                   <th v-for="col in modelFields" :key="col">{{ t('fields.' + col) }}</th>
                   <th>{{ t('fields.categoria') }}</th>
                   <th>{{ t('fields.subcategoria') }}</th>
@@ -125,6 +126,8 @@
               </thead>
               <tbody>
                 <tr v-for="(product, index) in preview" :key="index">
+                  <!-- Mostra la numeració (index + 1) -->
+                  <td>{{ index + 1 }}</td>
                   <td v-for="field in modelFields" :key="field">
                     <input
                       class="input-field"
@@ -376,16 +379,12 @@ function validateProducts(): boolean {
   for (let i = 0; i < preview.value.length; i++) {
     const product = preview.value[i];
     // Comprovem que "nom", "preu" i "stock" no siguin buits, i que "categoria" i "subcategoria" siguin diferents de null
-    if (
-      !product.nom ||
-      product.preu === 0 ||
-      product.stock === 0 ||
-      product.categoria === null ||
-      product.subcategoria === null
-    ) {
-      alert(`El producte de la fila ${i + 1} no té tots els camps obligatoris. Si no pots assignar categoria/subcategoria global, has d'editar cada producte individualment.`);
-      return false;
-    }
+
+  if (!product.nom || product.preu === null || product.stock === null || product.categoria === null || product.subcategoria === null) {
+    alert(`El producte de la fila ${i + 1} no té tots els camps obligatoris. Si no pots assignar categoria/subcategoria global, has d'editar cada producte individualment.`);
+    return false;
+  }
+
   }
   return true;
 }
@@ -469,9 +468,12 @@ onMounted(() => {
   width: 100%;
   border-radius: 10px;
   position: relative;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 1100;
+  max-height: 90vh; /* Altura màxima */
+  overflow-y: auto; /* Afegit per desplaçament vertical */
 }
+
 
 /* Capçalera */
 .wizard-header {
