@@ -1,9 +1,9 @@
 {
     "import": {
       "title": "Importar productos",
-      "step1": "Seleccionar archivo y tienda",
+      "step1": "Seleccionar archivo",
       "step2": "Mapear columnas",
-      "step3": "Categoría común (opcional)",
+      "step3": "Tienda y Categoría común",
       "step4": "Previsualizar y editar",
       "step5": "Resultado",
       "selectStore": "Selecciona una tienda",

@@ -32,13 +32,8 @@
 
       <!-- Contingut dels passos -->
       <section class="wizard-step">
-        <!-- PAS 1: Selecció de Botiga i Fitxer -->
+        <!-- PAS 1: Selecció de Fitxer -->
         <div v-if="currentStep === 1" class="step">
-          <label class="step-label">{{ t('import.selectStore') }}</label>
-          <select v-model="form.botiga_id" class="input-field">
-            <option disabled value="">{{ t('import.chooseStore') }}</option>
-            <option v-for="b in botigues" :key="b.id" :value="b.id">{{ b.nom }}</option>
-          </select>
           <label class="step-label">{{ t('import.selectFile') }}</label>
           <!-- Drop zone amb drag & drop -->
           <div
@@ -78,8 +73,16 @@
           </div>
         </div>
 
-        <!-- PAS 3: Selecció de Categoria i Subcategoria -->
+        <!-- PAS 3: Selecció de botiga, categoria i subcategoria -->
         <div v-else-if="currentStep === 3" class="step">
+          <!-- Selecció de Botiga -->
+          <label class="step-label">{{ t('import.selectStore') }}</label>
+          <select v-model="form.botiga_id" class="input-field">
+            <option disabled value="">{{ t('import.chooseStore') }}</option>
+            <option v-for="b in botigues" :key="b.id" :value="b.id">{{ b.nom }}</option>
+          </select>
+
+          <!-- Selecció de Categoria Global (opcional) -->
           <label class="step-label">{{ t('import.optionalCategory') }}</label>
           <select v-model="form.categoria" class="input-field">
             <option disabled :value="null">{{ t('import.chooseCategory') }}</option>
@@ -87,6 +90,8 @@
               {{ cat.nom }}
             </option>
           </select>
+
+          <!-- Selecció de Subcategoria Global (opcional) -->
           <label class="step-label">{{ t('import.optionalSubcategory') }}</label>
           <select v-model="form.subcategoria" :disabled="!form.categoria" class="input-field">
             <option disabled :value="null">{{ t('import.chooseSubcategory') }}</option>
@@ -94,11 +99,16 @@
               {{ sub.nom }}
             </option>
           </select>
+
           <div class="nav-buttons">
             <button class="btn" @click="prevStep">⬅️ {{ t('common.previous') }}</button>
-            <button class="btn" @click="mapAndPreview">{{ t('common.next') }} ➡️</button>
+            <!-- Botó Next desactivat si no s'ha seleccionat botiga -->
+            <button class="btn" @click="mapAndPreview" :disabled="!form.botiga_id">
+              {{ t('common.next') }} ➡️
+            </button>
           </div>
         </div>
+
 
         <!-- PAS 4: Previsualització i Edició -->
         <div v-else-if="currentStep === 4" class="step">

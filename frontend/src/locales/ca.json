@@ -1,9 +1,9 @@
 {
   "import": {
     "title": "Importa productes",
-    "step1": "Botiga i fitxer",
+    "step1": "Triar fitxer",
     "step2": "Mapeig de columnes",
-    "step3": "Categoria",
+    "step3": "Botiga i Categoria comú",
     "step4": "Previsualització",
     "step5": "Resultats",
     "selectStore": "Selecciona una botiga",
