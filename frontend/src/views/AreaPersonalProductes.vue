@@ -23,6 +23,7 @@
           <button class="btn" @click="showImportWizard = true">
             📥 Importar Excel
           </button>
+          <button class="btn" @click="goToRegistreImportacio">Registre d'importació</button>
           <button class="btn" @click="exportTableData">
             📤 Exportar Dades
           </button>
@@ -962,6 +963,10 @@ function onFileChange(e: Event) {
 // Navegació a Botigues
 function goToBotigues() {
   router.push("/area-personal-botigues");
+}
+
+function goToRegistreImportacio() {
+  router.push("/import-record");
 }
 </script>
 
