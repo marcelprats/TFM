@@ -5,8 +5,9 @@ use App\Http\Controllers\VendorAuthController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\BotigaController;
 use App\Http\Controllers\CategoriaController;
-use App\Http\Controllers\ImportacioController; // Ús aquest per la importació
-use App\Http\Controllers\ImportRecordController; 
+use App\Http\Controllers\ImportacioController;
+use App\Http\Controllers\ImportRecordController;
+use App\Http\Controllers\ReserveController;
 use App\Http\Controllers\ProducteController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +62,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Botigues per a venedors autenticats
     Route::get('/botigues-mes', [BotigaController::class, 'getBotiguesByAuthVendor']);
+
+    // Rutes per a les reserves (client)
+    Route::get('/reserves', [ReserveController::class, 'index']);
+    Route::get('/reserves/{id}', [ReserveController::class, 'show']);
+    Route::post('/reserves', [ReserveController::class, 'store']);
+    Route::put('/reserves/{id}', [ReserveController::class, 'update']);
+    Route::delete('/reserves/{id}', [ReserveController::class, 'destroy']);    
 });
 
 // Altres rutes per a productes

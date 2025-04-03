@@ -46,6 +46,18 @@ const goToProduct = (id: number) => {
   router.push(`/producte/${id}`);
 };
 
+// Funció per arreglar la ruta de la imatge
+function fixImageUrl(imgPath: string | null): string {
+  if (!imgPath) return '/img/no-imatge.jpg';
+  // Si la ruta ja és absoluta, la retorna
+  if (imgPath.startsWith('http')) return imgPath;
+  // Si la ruta ja inclou "/uploads/", assegura't que només apareix una vegada
+  if (imgPath.startsWith('/uploads/')) {
+    return `http://127.0.0.1:8000${imgPath}`;
+  }
+  // Si no, afegeix el prefix "/uploads/"
+  return `http://127.0.0.1:8000/uploads/${imgPath}`;
+}
 
 // Carregar el producte quan es carrega la pàgina
 onMounted(loadProduct);
@@ -61,10 +73,7 @@ watch(() => route.params.id, loadProduct);
         <h1 class="product-title">{{ product.nom }}</h1>
         <div class="product-details">
           <div class="product-image">
-            <img 
-              :src="product.imatge ? product.imatge : '/img/no-imatge.jpg'" 
-              :alt="product.nom" 
-            />
+            <img :src="fixImageUrl(product.imatge)" :alt="product.nom" />
           </div>
 
           <div class="product-info">
