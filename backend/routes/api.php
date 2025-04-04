@@ -5,6 +5,7 @@ use App\Http\Controllers\VendorAuthController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\BotigaController;
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ImportacioController;
 use App\Http\Controllers\ImportRecordController;
 use App\Http\Controllers\ReserveController;
@@ -68,7 +69,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/reserves/{id}', [ReserveController::class, 'show']);
     Route::post('/reserves', [ReserveController::class, 'store']);
     Route::put('/reserves/{id}', [ReserveController::class, 'update']);
-    Route::delete('/reserves/{id}', [ReserveController::class, 'destroy']);    
+    Route::delete('/reserves/{id}', [ReserveController::class, 'destroy']);  
+    
+    // Rutes per al carret
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart', [CartController::class, 'addItem']);
+    Route::put('/cart/{itemId}', [CartController::class, 'updateItem']);
+    Route::delete('/cart/{itemId}', [CartController::class, 'removeItem']);
+    Route::post('/cart/checkout', [CartController::class, 'checkout']);   
 });
 
 // Altres rutes per a productes

@@ -1,112 +1,62 @@
-<script setup lang="ts">
-import { ref, onMounted, computed, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { fetchProductById, fetchProducts } from "../services/authService";
-
-const route = useRoute();
-const router = useRouter();
-const product = ref(null);
-const allProducts = ref([]);
-const relatedProducts = ref([]);
-
-// Funció per barrejar una llista aleatòriament
-const shuffleArray = (array) => {
-  return array.sort(() => Math.random() - 0.5);
-};
-
-const loadProduct = async () => {
-  const productId = route.params.id;
-  product.value = await fetchProductById(productId);
-  allProducts.value = await fetchProducts();
-  updateRelatedProducts();
-};
-
-// Funció per trobar productes de la mateixa botiga i barrejar-los
-const updateRelatedProducts = () => {
-  if (!product.value || !allProducts.value.length) return;
-
-  const botigaId = product.value.botigues?.length ? product.value.botigues[0].id : null;
-
-  let sameStoreProducts = allProducts.value.filter(p =>
-    p.id !== product.value.id && p.botigues?.some(b => b.id === botigaId)
-  );
-
-  let extraProducts = shuffleArray(allProducts.value.filter(p => p.id !== product.value.id))
-    .slice(0, 4 - sameStoreProducts.length);
-
-  relatedProducts.value = shuffleArray([...sameStoreProducts, ...extraProducts]).slice(0, 4);
-
-  console.log("Productes relacionats després d'assignar:", relatedProducts.value);
-};
-
-
-// Funció per anar a un producte relacionat
-const goToProduct = (id: number) => {
-  console.log("Navegant a producte amb ID:", id); // DEBUG
-  router.push(`/producte/${id}`);
-};
-
-// Funció per arreglar la ruta de la imatge
-function fixImageUrl(imgPath: string | null): string {
-  if (!imgPath) return '/img/no-imatge.jpg';
-  // Si la ruta ja és absoluta, la retorna
-  if (imgPath.startsWith('http')) return imgPath;
-  // Si la ruta ja inclou "/uploads/", assegura't que només apareix una vegada
-  if (imgPath.startsWith('/uploads/')) {
-    return `http://127.0.0.1:8000${imgPath}`;
-  }
-  // Si no, afegeix el prefix "/uploads/"
-  return `http://127.0.0.1:8000/uploads/${imgPath}`;
-}
-
-// Carregar el producte quan es carrega la pàgina
-onMounted(loadProduct);
-
-// Recarregar quan es canvia de producte
-watch(() => route.params.id, loadProduct);
-</script>
-
 <template>
   <div class="product-page">
     <template v-if="product">
-      <div class="product-container">
-        <h1 class="product-title">{{ product.nom }}</h1>
-        <div class="product-details">
-          <div class="product-image">
-            <img :src="fixImageUrl(product.imatge)" :alt="product.nom" />
-          </div>
-
-          <div class="product-info">
-            <p class="price"><strong>Preu:</strong> {{ product.preu }} €</p>
-
-            <p>
-              <strong>Botiga:</strong>
-              <template v-if="product.botiga">
-                <router-link :to="'/info-botiga/' + product.botiga.id" class="link">
-                  {{ product.botiga.nom }}
-                </router-link>
-              </template>
-              <span v-else>No disponible</span>
-            </p>
-
-            <p>
-              <strong>Venedor:</strong>
-              <template v-if="product.vendor">
-                <router-link 
-                  :to="'/info-venedor/' + product.vendor.id" 
-                  class="link">
-                  {{ product.vendor.name }}
-                </router-link>
-              </template>
-              <span v-else>No disponible</span>
-            </p>
+      <div class="product-header">
+        <!-- Columna per a la imatge -->
+        <div class="column image-col">
+          <div class="image-container">
+            <img :src="getImageSrc(product.imatge)" :alt="product.nom" />
           </div>
         </div>
 
-        <div class="description-box">
-          <h2>Descripció</h2>
-          <p>{{ product.descripcio }}</p>
+        <!-- Columna d'informació del producte -->
+        <div class="column info-col">
+          <h1 class="product-title">{{ product.nom }}</h1>
+          <p class="price"><strong>Preu:</strong> {{ formattedPrice }}</p>
+          <p class="store">
+            <strong>Botiga: </strong>
+            <router-link
+              v-if="product.botiga"
+              :to="`/info-botiga/${product.botiga.id}`"
+              class="store-link"
+            >
+              {{ product.botiga.nom }}
+            </router-link>
+            <span v-else>No disponible</span>
+          </p>
+          <p class="vendor">
+            <strong>Venedor: </strong>
+            <router-link
+              v-if="product.vendor"
+              :to="`/info-venedor/${product.vendor.id}`"
+              class="vendor-link"
+            >
+              {{ product.vendor.name }}
+            </router-link>
+            <span v-else>No disponible</span>
+          </p>
         </div>
+
+        <!-- Columna per afegir al carret -->
+        <div class="column reserve-col">
+          <div class="reserve-section">
+            <label for="quantity" class="reserve-label"><strong>Quantitat a reservar:</strong></label>
+            <div class="quantity-selector">
+              <button class="quantity-btn" @click="decreaseQuantity">−</button>
+              <input id="quantity" type="number" v-model.number="quantity" min="1" />
+              <button class="quantity-btn" @click="increaseQuantity">+</button>
+            </div>
+            <button class="btn reserve-btn" @click="handleAddItem">
+              Afegir al Carret
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secció de descripció -->
+      <div class="description-section">
+        <h2>Descripció</h2>
+        <p>{{ product.descripcio }}</p>
       </div>
 
       <!-- 🛍️ CONTENIDOR DE PRODUCTES RELACIONATS -->
@@ -143,15 +93,132 @@ watch(() => route.params.id, loadProduct);
       </div>
     </template>
     <template v-else>
-      <p>Carregant producte...</p>
+      <p class="loading">Carregant producte...</p>
     </template>
   </div>
 </template>
 
+<script setup lang="ts">
+import { ref, onMounted, computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
+import { fetchProductById, fetchProducts } from '../services/authService';
 
+interface Product {
+  id: number;
+  nom: string;
+  descripcio: string;
+  preu: number | string;
+  imatge: string | null;
+  botiga?: { id: number; nom: string };
+  vendor?: { id: number; name: string };
+}
+
+const route = useRoute();
+const router = useRouter();
+const product = ref<Product | null>(null);
+const allProducts = ref<Product[]>([]);
+const relatedProducts = ref<Product[]>([]);
+const quantity = ref<number>(1);
+
+const API_URL = 'http://127.0.0.1:8000/api';
+const BACKEND_URL = 'http://127.0.0.1:8000';
+
+// Funció per barrejar una llista aleatòriament
+function shuffleArray<T>(array: T[]): T[] {
+  return array.sort(() => Math.random() - 0.5);
+}
+
+async function loadProduct() {
+  try {
+    const productId = route.params.id;
+    product.value = await fetchProductById(productId);
+    await loadAllProducts();
+    updateRelatedProducts();
+  } catch (error) {
+    console.error('Error carregant el producte:', error);
+  }
+}
+
+async function loadAllProducts() {
+  try {
+    const productsData = await fetchProducts();
+    allProducts.value = productsData;
+  } catch (error) {
+    console.error('Error carregant tots els productes:', error);
+  }
+}
+
+function updateRelatedProducts() {
+  if (!product.value || !allProducts.value.length) return;
+  const currentProductId = product.value.id;
+  const storeId = product.value.botiga?.id;
+  let sameStore = allProducts.value.filter(
+    (p) => p.id !== currentProductId && p.botiga?.id === storeId
+  );
+  let others = allProducts.value.filter((p) => p.id !== currentProductId);
+  others = shuffleArray(others).slice(0, 4 - sameStore.length);
+  relatedProducts.value = shuffleArray([...sameStore, ...others]).slice(0, 4);
+}
+
+function formatPrice(price: number | string): string {
+  const p = typeof price === 'number' ? price : parseFloat(price);
+  if (isNaN(p)) return 'No disponible';
+  return p.toFixed(2) + ' €';
+}
+
+const formattedPrice = computed(() => {
+  if (!product.value) return '—';
+  return formatPrice(product.value.preu);
+});
+
+function getImageSrc(imagePath: string | null): string {
+  if (!imagePath) return '/img/no-imatge.jpg';
+  if (imagePath.startsWith('/uploads/')) {
+    return `${BACKEND_URL}${imagePath}`;
+  }
+  if (imagePath.startsWith(BACKEND_URL)) {
+    return imagePath;
+  }
+  return `${BACKEND_URL}/uploads/${imagePath}`;
+}
+
+function goToProduct(id: number) {
+  router.push(`/producte/${id}`);
+}
+
+function decreaseQuantity() {
+  if (quantity.value > 1) quantity.value--;
+}
+
+function increaseQuantity() {
+  quantity.value++;
+}
+
+async function handleAddItem() {
+  if (!product.value) return;
+  const token = localStorage.getItem('userToken');
+  try {
+    // Enviem la petició amb el producte i la quantitat
+    const response = await axios.post(`${API_URL}/cart`, {
+      product_id: product.value.id,
+      quantity: quantity.value,
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    alert('Producte afegit al carret!');
+    console.log('Resposta del carret:', response.data);
+  } catch (error) {
+    console.error('Error afegint al carret:', error);
+    alert('Error afegint al carret');
+  }
+}
+
+onMounted(loadProduct);
+watch(() => route.params.id, loadProduct);
+</script>
 
 <style scoped>
-/* Contenidor principal */
 .product-page {
   width: 100%;
   min-height: 80vh;
@@ -159,92 +226,185 @@ watch(() => route.params.id, loadProduct);
   flex-direction: column;
   align-items: center;
   padding: 50px 20px;
+  background-color: #f9f9f9;
 }
 
-/* Contenidor del producte */
-.product-container {
-  width: 900px;
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-/* Títol */
-.product-title {
-  font-size: 32px;
-  font-weight: bold;
+.product-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
   margin-bottom: 20px;
 }
 
-/* Detalls del producte */
-.product-details {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-  gap: 40px;
-  margin-bottom: 30px;
+.column {
+  flex: 1;
+  min-width: 200px;
 }
 
-/* Imatge del producte */
-.product-image img {
-  width: 250px;
-  height: 250px;
-  object-fit: cover;
-  border-radius: 8px;
+.image-col .image-container {
+  width: 100%;
+  height: 300px;
   border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-/* Informació */
-.product-info p {
-  font-size: 18px;
-  margin: 10px 0;
+.image-col img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.info-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.product-title {
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #333;
 }
 
 .price {
-  font-size: 24px;
-  font-weight: bold;
-  color: black;
+  font-size: 22px;
+  color: #000;
+  margin-bottom: 10px;
 }
 
-/* Descripció */
-.description-box {
-  background: white;
-  padding: 20px;
+.store-link,
+.vendor-link {
+  color: #42b983;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.store-link:hover,
+.vendor-link:hover {
+  color: #368c6e;
+  text-decoration: underline;
+}
+
+.reserve-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reserve-section {
+  border: 1px solid #ddd;
   border-radius: 8px;
-  text-align: left;
+  background: #fff;
+  padding: 20px;
+  width: 220px;
+  text-align: center;
 }
 
-/* 🔹 Contenidor separat per a productes relacionats */
+.reserve-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #333;
+  font-size: 16px;
+}
+
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quantity-btn {
+  background-color: #42b983;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.quantity-btn:hover {
+  background-color: #368c6e;
+}
+
+.quantity-selector input {
+  width: 60px;
+  text-align: center;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.reserve-btn {
+  background-color: #28a745;
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 250px;
+}
+
+.reserve-btn:hover {
+  background-color: #218838;
+}
+
+.description-section {
+  background: #fff;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  width: 900px;
+}
+
+.description-section h2 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
 .related-products-container {
   margin-top: 40px;
   padding: 20px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
   text-align: center;
+  width: 900px;
 }
 
 .related-products h2 {
   font-size: 22px;
   font-weight: bold;
   margin-bottom: 20px;
+  color: #333;
 }
 
 .related-grid {
   display: flex;
-  justify-content: center;
-  gap: 15px;
   flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
 }
 
 .related-card {
-  background: white;
+  background: #fff;
+  border: 1px solid #ddd;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   padding: 15px;
   text-align: center;
   width: 200px;
@@ -253,7 +413,7 @@ watch(() => route.params.id, loadProduct);
 }
 
 .related-card:hover {
-  transform: scale(1.05);
+  transform: scale(1.03);
 }
 
 .related-image {
@@ -270,15 +430,24 @@ watch(() => route.params.id, loadProduct);
 .related-name {
   font-size: 18px;
   font-weight: bold;
+  margin: 8px 0;
+  color: #333;
 }
 
 .related-price {
   font-size: 16px;
   color: #42b983;
+  margin-bottom: 4px;
 }
 
 .related-store {
   font-size: 14px;
-  color: #666;
+  color: #333;
+}
+
+.loading {
+  margin-top: 50px;
+  font-size: 20px;
+  color: #333;
 }
 </style>

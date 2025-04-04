@@ -95,12 +95,14 @@ onBeforeUnmount(() => {
 
         <div class="auth">
           <template v-if="loggedIn">
+            <router-link to="/cart" class="auth-link">Carro</router-link>
             <router-link to="/perfil" class="btn btn-hello" @click="menuOpen = false">
               Hola, {{ user?.name }}
             </router-link>
             <button @click="handleLogout" class="btn btn-logout">Tancar Sessió</button>
           </template>
           <template v-else>
+            <router-link to="/cart" class="auth-link">Carro</router-link>
             <router-link to="/login" class="auth-link">Login</router-link>
             <router-link to="/register" class="auth-link">Registrar-se</router-link>
           </template>

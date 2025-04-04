@@ -11,6 +11,7 @@ import MapaBotigues from "../views/MapaBotigues.vue";
 import ImportRecordIndex from '../views/ImportRecordIndex.vue';
 import ImportRecord from '../views/ImportRecord.vue';
 import Botiga from "../views/Botiga.vue";
+import Cart from "../views/Cart.vue";
 import Producte from "../views/Producte.vue";
 import InfoBotiga from "../views/InfoBotiga.vue";
 import InfoVenedor from "../views/InfoVenedor.vue";
@@ -31,11 +32,20 @@ const routes = [
   { path: '/import-record', name: 'ImportRecordIndex', component: ImportRecordIndex },
   { path: '/import-record/:id', name: 'ImportRecord', component: ImportRecord, props: true },  
   { path: "/botiga", component: Botiga },
+  { path: "/cart", name: "Cart", component: Cart },
   { path: "/producte/:id", component: Producte, name: "Producte" },
   { path: "/info-venedor", name: "InfoVenedors", component: InfoVenedors },
   { path: "/info-venedor/:id", name: "InfoVenedor", component: InfoVenedor },
   { path: "/info-botiga", name: "InfoBotigues", component: InfoBotigues },
   { path: "/info-botiga/:id", name: "InfoBotiga", component: InfoBotiga },
+
+  {
+    path: '/cart-test',
+    name: 'CartTest',
+    component: () => import('../views/TestCart.vue')
+  }
+  
+
 ];
 
 const router = createRouter({
