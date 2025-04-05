@@ -77,6 +77,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/cart/{itemId}', [CartController::class, 'updateItem']);
     Route::delete('/cart/{itemId}', [CartController::class, 'removeItem']);
     Route::post('/cart/checkout', [CartController::class, 'checkout']);   
+
+    // Ruta per crear una comanda (checkout)
+    Route::post('/orders', [OrderController::class, 'store']);
+
 });
 
 // Altres rutes per a productes

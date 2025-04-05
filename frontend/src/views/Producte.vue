@@ -37,7 +37,7 @@
           </p>
         </div>
 
-        <!-- Columna per afegir al carret -->
+        <!-- Columna per afegir al carro -->
         <div class="column reserve-col">
           <div class="reserve-section">
             <label for="quantity" class="reserve-label"><strong>Quantitat a reservar:</strong></label>
@@ -47,7 +47,7 @@
               <button class="quantity-btn" @click="increaseQuantity">+</button>
             </div>
             <button class="btn reserve-btn" @click="handleAddItem">
-              Afegir al Carret
+              Afegir al Carro
             </button>
           </div>
         </div>
@@ -206,11 +206,11 @@ async function handleAddItem() {
     }, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    alert('Producte afegit al carret!');
-    console.log('Resposta del carret:', response.data);
+    alert('Producte afegit al carro!');
+    console.log('Resposta del carro:', response.data);
   } catch (error) {
-    console.error('Error afegint al carret:', error);
-    alert('Error afegint al carret');
+    console.error('Error afegint al carro:', error);
+    alert('Error afegint al carro');
   }
 }
 
