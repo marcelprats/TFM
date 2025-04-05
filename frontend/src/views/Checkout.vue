@@ -2,7 +2,14 @@
   <div class="checkout-container">
     <h1>Finalitzar Comanda</h1>
     
-    <div v-if="cart && reserve.id" class="order-summary">
+    <!-- Resum de la comanda: si el carret està carregat -->
+      <div class="financial-summary">
+        <p><strong>Total Reservat:</strong> {{ formatPrice(totalReserved) }}</p>
+        <p><strong>Deposit a pagar online (10%):</strong> {{ formatPrice(depositAmount) }}</p>
+        <p><strong>Resta a Pagar al Local:</strong> {{ formatPrice(remainder) }}</p>
+      </div>
+
+    <div v-if="cart && cart.cart_items && cart.cart_items.length > 0" class="order-summary">
       <h2>Resum de la Comanda</h2>
       <table class="summary-table">
         <thead>
@@ -23,13 +30,9 @@
         </tbody>
       </table>
       
-      <div class="financial-summary">
-        <p><strong>Total Reservat:</strong> {{ formatPrice(totalReserved) }}</p>
-        <p><strong>Deposit (10%):</strong> {{ formatPrice(depositAmount) }}</p>
-        <p><strong>Resta a Pagar al Local:</strong> {{ formatPrice(remainder) }}</p>
-      </div>
+
       
-      <!-- Barra de progrés -->
+      <!-- Barra de progress per visualitzar els percentatges -->
       <div class="progress-container">
         <div class="progress-bar">
           <div class="progress-deposit" :style="{ width: depositPercentage + '%' }"></div>
@@ -42,36 +45,35 @@
         </div>
       </div>
       
-      <div class="checkout-info">
-        <p>Pagament en línia: <strong>10% del total (Deposit)</strong></p>
-        <p>La resta es pagarà al local.</p>
-      </div>
+
       
-      <!-- Secció de condicions -->
       <div class="terms">
-        <!-- La checkbox està deshabilitada perquè només es pot marcar des del modal -->
+        <!-- La checkbox està habilitada per marcar-la automàticament des del modal -->
         <input
           type="checkbox"
           id="acceptConditions"
           :checked="acceptedConditions"
+          :class="{ error: errorMessage }"
           disabled
-          :class="{ error: !acceptedConditions && errorMessage }"
         />
         <label for="acceptConditions">
           Accepto les <a href="#" @click.prevent="openModal">condicions de reserva</a>
         </label>
-        <div v-if="!acceptedConditions && errorMessage" class="error-message">
+        <div v-if="errorMessage" class="error-message">
           {{ errorMessage }}
         </div>
       </div>
       
-      <button class="btn checkout-btn" @click="handleCheckout">
+      <button
+        class="btn checkout-btn"
+        @click="handleCheckout"
+      >
         Pagar Deposit i Confirmar Reserva
       </button>
     </div>
     
     <div v-else>
-      <p>Carregant informació del carret...</p>
+      <p>El teu carret està buit.</p>
     </div>
     
     <!-- Modal de Condicions de Reserva -->
@@ -80,25 +82,22 @@
         <h2>Condicions de Reserva</h2>
         <div class="modal-body">
           <p>
-            <strong>Termes i Condicions de Reserva:</strong>
+            Benvolgut client, abans de confirmar la teva reserva, si us plau, llegeix atentament les condicions:
           </p>
           <p>
-            1. La reserva dels productes implica un pagament inicial del 10% del valor total reservat.
+            1. El pagament en línia correspon al 10% del total reservat. Aquest import es pagarà a través del sistema en línia.
           </p>
           <p>
-            2. El pagament restant (90%) s'ha de efectuar al local, en el moment de la recollida o compra dels productes.
+            2. La resta del pagament haurà de ser efectuat al local en el moment de la recollida o consum dels productes.
           </p>
           <p>
-            3. La reserva tindrà una validesa de 48 hores des de la confirmació, després de la qual es cancelarà automàticament si no es compleix el pagament.
+            3. La reserva és vàlida durant 48 hores. Després d'aquest període, la reserva es cancel·larà automàticament sense reemborsament.
           </p>
           <p>
-            4. Els preus reservats són vàlids només per a la reserva realitzada i no inclouen possibles descomptes o ofertes posteriors.
+            4. En cas de cancel·lació, només es reemborsarà el pagament en línia, segons la política de cancel·lació.
           </p>
           <p>
-            5. La reserva és personal i intransferible. En cas de cancel·lació, el deposit no serà retornat.
-          </p>
-          <p>
-            6. Acceptant aquestes condicions, l'usuari confirma que ha llegit, entès i acceptat tots els termes de reserva.
+            5. Acceptar aquestes condicions implica que has llegit i entès totes les polítiques de reserva i pagament.
           </p>
         </div>
         <div class="modal-footer">
@@ -122,8 +121,10 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const API_URL = 'http://127.0.0.1:8000/api';
 
-// Variables per emmagatzemar el carret i calcular la reserva
+// Variable reactiva per emmagatzemar el carret
 const cart = ref<any>(null);
+
+// Reserva calculada dinàmicament a partir del carret
 const reserve = ref({
   id: null,
   total_reserved: 0,
@@ -133,10 +134,12 @@ const reserve = ref({
 
 // Càlculs dinàmics
 const totalReserved = computed(() => reserve.value.total_reserved);
-const depositAmount = computed(() => totalReserved.value > 0 ? +(totalReserved.value * 0.1).toFixed(2) : 0);
+const depositAmount = computed(() => +(totalReserved.value * 0.1).toFixed(2));
 const remainder = computed(() => totalReserved.value - depositAmount.value);
-const depositPercentage = computed(() => totalReserved.value > 0 ? (depositAmount.value / totalReserved.value) * 100 : 0);
-const remainderPercentage = computed(() => totalReserved.value > 0 ? 100 - depositPercentage.value : 0);
+
+// Percentatges per la barra de progress
+const depositPercentage = computed(() => (totalReserved.value > 0 ? (depositAmount.value / totalReserved.value) * 100 : 0));
+const remainderPercentage = computed(() => 100 - depositPercentage.value);
 
 // Variables per gestionar condicions
 const acceptedConditions = ref(false);
@@ -150,7 +153,7 @@ function formatPrice(price: number | string): string {
   return p.toFixed(2) + ' €';
 }
 
-// Funció per carregar el carret des del backend i actualitzar la reserva
+// Carrega el carret des del backend i actualitza la reserva amb els valors reals
 async function loadCart() {
   try {
     const token = localStorage.getItem('userToken');
@@ -171,7 +174,7 @@ async function loadCart() {
 
 onMounted(loadCart);
 
-// Funció per finalitzar el checkout
+// Funció per finalitzar el checkout (pagament del deposit i confirmació de la reserva)
 async function handleCheckout() {
   if (!acceptedConditions.value) {
     errorMessage.value = 'Has d’acceptar les condicions de reserva per poder continuar.';
@@ -201,7 +204,7 @@ async function handleCheckout() {
   }
 }
 
-// Funcions per gestionar el modal de condicions
+// Funcions per obrir/tancar el modal i acceptar condicions
 function openModal() {
   showModal.value = true;
 }
@@ -230,10 +233,8 @@ function acceptConditions() {
   text-align: center;
 }
 
-.checkout-summary {
+.order-summary {
   margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
 }
 
 .summary-table {
@@ -255,37 +256,35 @@ function acceptConditions() {
 }
 
 .progress-container {
-  margin: 15px 0;
+  margin: 20px 0;
 }
 
 .progress-bar {
   display: flex;
   height: 20px;
+  width: 100%;
+  background-color: #eee;
   border-radius: 10px;
   overflow: hidden;
-  background-color: #eee;
 }
 
 .progress-deposit {
   background-color: #28a745;
   height: 100%;
+  transition: width 0.3s ease;
 }
 
 .progress-remainder {
   background-color: #ffc107;
   height: 100%;
+  transition: width 0.3s ease;
 }
 
 .progress-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 5px;
   font-size: 14px;
-  color: #333;
-}
-
-.checkout-info {
-  margin: 20px 0;
+  margin-top: 5px;
 }
 
 .terms {
@@ -302,6 +301,7 @@ function acceptConditions() {
   color: red;
   font-size: 14px;
   margin-top: 5px;
+  text-align: left;
 }
 
 .btn.checkout-btn {
