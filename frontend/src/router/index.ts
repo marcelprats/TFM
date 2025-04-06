@@ -13,6 +13,7 @@ import ImportRecord from '../views/ImportRecord.vue';
 import Botiga from "../views/Botiga.vue";
 import Cart from "../views/Cart.vue";
 import Checkout from "../views/Checkout.vue";
+import OrderConfirmation from "../views/OrderConfirmation.vue";
 import Producte from "../views/Producte.vue";
 import InfoBotiga from "../views/InfoBotiga.vue";
 import InfoVenedor from "../views/InfoVenedor.vue";
@@ -35,6 +36,7 @@ const routes = [
   { path: "/botiga", component: Botiga },
   { path: "/cart", name: "Cart", component: Cart },
   { path: "/checkout", name: "Checkout", component: Checkout, meta: { requiresAuth: true } },
+  { path: "/order-confirmation/:id", name: "OrderConfirmation", component: OrderConfirmation, meta: { requiresAuth: true } },
   { path: "/producte/:id", component: Producte, name: "Producte" },
   { path: "/info-venedor", name: "InfoVenedors", component: InfoVenedors },
   { path: "/info-venedor/:id", name: "InfoVenedor", component: InfoVenedor },

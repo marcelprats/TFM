@@ -13,10 +13,10 @@ class Reserve extends Model
 
     protected $fillable = [
         'vendor_id',
-        'user_id',
+        'buyer_id',
         'botiga_id',
-        'total_price',
-        'reservation_fee',
+        'total_reserved',
+        'deposit_amount',
         'paid_amount',
         'status', // Ex.: 'pending', 'confirmed', 'cancelled', 'completed'
     ];
@@ -36,7 +36,7 @@ class Reserve extends Model
     // Relació amb l'usuari (client)
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(\App\Models\User::class, 'buyer_id');
     }
 
     // Relació amb la botiga

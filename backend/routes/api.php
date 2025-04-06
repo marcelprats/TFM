@@ -6,6 +6,7 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\BotigaController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ImportacioController;
 use App\Http\Controllers\ImportRecordController;
 use App\Http\Controllers\ReserveController;
@@ -80,6 +81,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Ruta per crear una comanda (checkout)
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+
 
 });
 

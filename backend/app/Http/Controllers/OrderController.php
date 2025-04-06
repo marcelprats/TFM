@@ -33,9 +33,12 @@ class OrderController extends Controller
         $order = Order::create([
             'reserve_id' => $validated['reserve_id'],
             'order_number' => 'ORD-' . time(), // Un codi únic per la comanda
-            'total' => $validated['total_amount'],
-            'payment_status' => $validated['status'],
-            'payment_date' => now(),
+            'total_amount' => $validated['total_amount'],
+            'payment_method' => $validated['payment_method'],
+            'transaction_id' => $validated['transaction_id'] ?? null,
+            'status' => $validated['status'],
+            'buyer_id'       => Auth::id(),
+            'payment_date'   => now(),
         ]);
 
         // Retornem la resposta
@@ -44,4 +47,17 @@ class OrderController extends Controller
             'order' => $order,
         ], 201);
     }
+
+    public function show($id)
+{
+    // Opcional: comprovar que la comanda pertany a l'usuari autenticat
+    $order = Order::with('reserve')->findOrFail($id);
+    if ($order->buyer_id !== auth()->id()) {
+        return response()->json(['message' => 'Accés no autoritzat.'], 403);
+    }
+
+    return response()->json($order);
+}
+
+
 }

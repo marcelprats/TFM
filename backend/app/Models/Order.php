@@ -14,10 +14,13 @@ class Order extends Model
     protected $fillable = [
         'reserve_id',
         'order_number',
-        'total',
-        'payment_status',  // Ex.: 'pending', 'paid', 'failed'
-        'payment_date',
+        'buyer_id',
+        'total_amount',
+        'payment_method',
+        'transaction_id',
+        'status',
     ];
+    
 
     // La comanda pertany a una reserva
     public function reserve()

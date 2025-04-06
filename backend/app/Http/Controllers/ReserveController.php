@@ -32,18 +32,27 @@ class ReserveController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'vendor_id' => 'required|exists:vendors,id',
-            'botiga_id' => 'required|exists:botigues,id',
-            'total_price' => 'required|numeric',
-            'reservation_fee' => 'required|numeric',
-            'paid_amount' => 'nullable|numeric',
-            'status' => 'required|string',
+            'vendor_id'      => 'required|exists:vendors,id',
+            'botiga_id'      => 'required|exists:botigues,id',
+            'total_price'    => 'required|numeric',
+            'reservation_fee'=> 'required|numeric',
+            'paid_amount'    => 'nullable|numeric',
+            'status'         => 'required|string',
         ]);
-
-        $data['user_id'] = auth()->id();
-        $reserve = Reserve::create($data);
+        
+        $dataToInsert = [
+            'buyer_id'       => auth()->id(),
+            'botiga_id'      => $data['botiga_id'],
+            'total_reserved' => $data['total_price'],
+            'deposit_amount' => $data['reservation_fee'],
+            'status'         => $data['status'],
+        ];
+        
+        $reserve = Reserve::create($dataToInsert);
+        
         return response()->json($reserve, 201);
     }
+
 
     // Actualitza una reserva existent (per exemple, actualitzar el pagament)
     public function update(Request $request, $id)
@@ -54,13 +63,24 @@ class ReserveController extends Controller
         }
 
         $data = $request->validate([
-            'total_price' => 'sometimes|numeric',
-            'reservation_fee' => 'sometimes|numeric',
-            'paid_amount' => 'sometimes|numeric',
-            'status' => 'sometimes|string',
+            'vendor_id'      => 'required|exists:vendors,id',
+            'botiga_id'      => 'required|exists:botigues,id',
+            'total_price'    => 'required|numeric',
+            'reservation_fee'=> 'required|numeric',
+            'paid_amount'    => 'nullable|numeric',
+            'status'         => 'required|string',
         ]);
-
-        $reserve->update($data);
+        
+        $dataToInsert = [
+            'buyer_id'       => auth()->id(),
+            'botiga_id'      => $data['botiga_id'],
+            'total_reserved' => $data['total_price'],
+            'deposit_amount' => $data['reservation_fee'],
+            'status'         => $data['status'],
+        ];
+        
+        $reserve->update($dataToInsert);
+        
         return response()->json($reserve);
     }
 

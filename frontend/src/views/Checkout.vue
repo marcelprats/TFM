@@ -196,13 +196,17 @@ async function handleCheckout() {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
+
+    // Suposant que l'API retorna la comanda dins de response.data.order
+    const order = response.data.order;
     alert(response.data.message);
-    router.push('/order-confirmation');
-  } catch (error: any) {
+    router.push(`/order-confirmation/${order.id}`);
+  } catch (error) {
     console.error('Error finalitzant la comanda:', error);
     alert('Error finalitzant la comanda. Si us plau, intenta-ho més tard.');
   }
 }
+
 
 // Funcions per obrir/tancar el modal i acceptar condicions
 function openModal() {
@@ -398,5 +402,18 @@ function acceptConditions() {
 
 .btn.modal-cancel-btn:hover {
   background-color: #c9302c;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .checkout-container {
+    padding: 15px;
+  }
+  .financial-summary, .progress-labels {
+    font-size: 14px;
+  }
+  .summary-table th, .summary-table td {
+    padding: 6px;
+  }
 }
 </style>
