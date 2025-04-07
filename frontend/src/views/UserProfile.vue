@@ -7,7 +7,7 @@
             Dades Usuari
           </li>
           <li :class="{ active: selectedMenu === 'orders' }" @click="selectedMenu = 'orders'">
-            Historial de Compres
+            Historial de Comandes
           </li>
         </ul>
       </nav>
@@ -61,8 +61,47 @@
           </div>
         </div>
         
+        <!-- Vista per dispositius mòbils: mode targeta -->
+        <div v-if="isMobile" class="mobile-list">
+          <div class="order-card" v-for="orderItem in paginatedOrders" :key="orderItem.id">
+            <div class="card-row">
+              <!-- Columna Resum de la comanda -->
+              <div class="order-summary-col">
+                <p><strong>Codi:</strong> {{ orderItem.order_number }}</p>
+                <p><strong>Total:</strong> {{ formatPrice(orderItem.total_amount) }}</p>
+                <p><strong>Data:</strong> {{ new Date(orderItem.created_at).toLocaleDateString() }}</p>
+              </div>
+              <!-- Columna Productes -->
+              <div class="order-products-col">
+                <div class="product-grid">
+                  <template v-if="getReserveItems(orderItem).length">
+                    <div
+                      class="product-card"
+                      v-for="(item, index) in getLimitedReserveItems(orderItem)"
+                      :key="index"
+                    >
+                      <p>{{ item.product.nom }}</p>
+                    </div>
+                    <div v-if="getReserveItems(orderItem).length > 2" class="more-products">
+                      <p>+{{ getReserveItems(orderItem).length - 2 }} més</p>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <p class="no-products">No hi ha productes.</p>
+                  </template>
+                </div>
+              </div>
+            </div>
+            <!-- Botons d'acció centrats a sota -->
+            <div class="order-actions">
+              <button class="action-btn large" @click="viewSummary(orderItem.id)">Resum</button>
+              <button class="action-btn large" @click="viewTicket(orderItem.id)">Tiquet</button>
+            </div>
+          </div>
+        </div>
+        
         <!-- Vista per pantalles amples: taula -->
-        <div v-if="!isMobile">
+        <div v-else>
           <table class="orders-table">
             <thead>
               <tr>
@@ -96,46 +135,12 @@
                 </td>
                 <td>{{ new Date(orderItem.created_at).toLocaleString() }}</td>
                 <td>
-                  <button class="action-btn" @click="viewDetails(orderItem.id)">Detalls</button>
-                  <button class="action-btn" @click="reorder(orderItem.id)">Recomanar</button>
+                  <button class="action-btn large" @click="viewSummary(orderItem.id)">Resum</button>
+                  <button class="action-btn large" @click="viewTicket(orderItem.id)">Tiquet</button>
                 </td>
               </tr>
             </tbody>
           </table>
-        </div>
-        
-        <!-- Vista per dispositius mòbils: mode targeta -->
-        <div v-else class="mobile-list">
-          <div
-            class="order-card"
-            v-for="orderItem in paginatedOrders"
-            :key="orderItem.id"
-            @click="viewDetails(orderItem.id)"
-          >
-            <div class="card-left">
-              <p><strong>Codi:</strong> {{ orderItem.order_number }}</p>
-              <p><strong>Total:</strong> {{ formatPrice(orderItem.total_amount) }}</p>
-              <p><strong>Data:</strong> {{ new Date(orderItem.created_at).toLocaleDateString() }}</p>
-            </div>
-            <div class="card-right">
-              <template v-if="getReserveItems(orderItem).length">
-                <div
-                  class="product-card"
-                  v-for="(item, i) in getReserveItems(orderItem)"
-                  :key="i"
-                  v-if="i < 3"
-                >
-                  <p>{{ item.product.nom }}</p>
-                </div>
-                <div v-if="getReserveItems(orderItem).length > 3" class="more-products">
-                  <p>+{{ getReserveItems(orderItem).length - 3 }} més</p>
-                </div>
-              </template>
-              <template v-else>
-                <p>No hi ha productes.</p>
-              </template>
-            </div>
-          </div>
         </div>
         
         <!-- Spinner de càrrega -->
@@ -180,7 +185,7 @@ const loadingOrders = ref(false);
 const errorMessage = ref('');
 const API_URL = 'http://127.0.0.1:8000/api';
 
-// Variable per detectar si és mòbil
+// Detectar si és mòbil
 const isMobile = ref(window.innerWidth < 768);
 window.addEventListener('resize', () => {
   isMobile.value = window.innerWidth < 768;
@@ -197,14 +202,12 @@ const sortDirection = ref<'asc' | 'desc'>('desc');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
 
-// Funció per formatar preus
 function formatPrice(price: number | string): string {
   const p = typeof price === 'number' ? price : parseFloat(price);
   if (isNaN(p)) return 'No disponible';
   return p.toFixed(2) + ' €';
 }
 
-// Funció per canviar l'ordenació clicant la capçalera
 function changeSort(field: string) {
   if (sortField.value === field) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
@@ -214,23 +217,26 @@ function changeSort(field: string) {
   }
 }
 
-// Funció auxiliar per obtenir els ítems de reserva
+// Funció per obtenir els ítems de reserva. Comprovem la clau "reserve_items" que retorna el backend.
 function getReserveItems(orderItem: any): any[] {
-  return orderItem.reserve && orderItem.reserve.reserveItems ? orderItem.reserve.reserveItems : [];
+  return orderItem.reserve && orderItem.reserve.reserve_items
+    ? orderItem.reserve.reserve_items
+    : [];
 }
 
-// Computed: Filtrar les comandes
+// Retorna els primers dos ítems per mostrar a la vista mòbil.
+function getLimitedReserveItems(orderItem: any): any[] {
+  return getReserveItems(orderItem).slice(0, 2);
+}
+
 const filteredOrders = computed(() => {
   return orders.value.filter(order => {
     const orderNumber = order.order_number.toLowerCase();
     const numericOrder = orderNumber.replace(/^ord-/, '');
     const query = searchQuery.value.toLowerCase();
-    const matchesSearch =
-      orderNumber.includes(query) || numericOrder.includes(query);
-      
+    const matchesSearch = orderNumber.includes(query) || numericOrder.includes(query);
     const matchesPayment = filterPaymentMethod.value ? order.payment_method === filterPaymentMethod.value : true;
     const matchesStatus = filterStatus.value ? order.status === filterStatus.value : true;
-    
     let matchesDate = true;
     if (startDate.value) {
       matchesDate = new Date(order.created_at) >= new Date(startDate.value);
@@ -238,17 +244,14 @@ const filteredOrders = computed(() => {
     if (matchesDate && endDate.value) {
       matchesDate = new Date(order.created_at) <= new Date(endDate.value);
     }
-    
     return matchesSearch && matchesPayment && matchesStatus && matchesDate;
   });
 });
 
-// Computed: Ordenar les comandes
 const sortedOrders = computed(() => {
   return [...filteredOrders.value].sort((a, b) => {
     let fieldA = a[sortField.value];
     let fieldB = b[sortField.value];
-    
     if (sortField.value === 'total_amount') {
       fieldA = parseFloat(fieldA);
       fieldB = parseFloat(fieldB);
@@ -257,14 +260,12 @@ const sortedOrders = computed(() => {
       fieldA = new Date(fieldA).getTime();
       fieldB = new Date(fieldB).getTime();
     }
-    
     if (fieldA < fieldB) return sortDirection.value === 'asc' ? -1 : 1;
     if (fieldA > fieldB) return sortDirection.value === 'asc' ? 1 : -1;
     return 0;
   });
 });
 
-// Computed: Paginació
 const totalPages = computed(() => {
   return Math.ceil(sortedOrders.value.length / itemsPerPage.value) || 1;
 });
@@ -274,7 +275,6 @@ const paginatedOrders = computed(() => {
   return sortedOrders.value.slice(start, start + itemsPerPage.value);
 });
 
-// Funcions de paginació
 function prevPage() {
   if (currentPage.value > 1) currentPage.value--;
 }
@@ -283,7 +283,6 @@ function nextPage() {
   if (currentPage.value < totalPages.value) currentPage.value++;
 }
 
-// Funció per assignar classes als badges
 function badgeClass(status: string): string {
   switch (status) {
     case 'pending': return 'badge-pending';
@@ -293,7 +292,6 @@ function badgeClass(status: string): string {
   }
 }
 
-// Carrega l'historial de comandes
 async function loadOrders() {
   loadingOrders.value = true;
   try {
@@ -314,8 +312,11 @@ onMounted(() => {
   loadOrders();
 });
 
-// Accions addicionals
-function viewDetails(orderId: number) {
+function viewSummary(orderId: number) {
+  router.push(`/order-summary/${orderId}`);
+}
+
+function viewTicket(orderId: number) {
   router.push(`/order-confirmation/${orderId}`);
 }
 
@@ -330,6 +331,7 @@ function reorder(orderId: number) {
   display: flex;
   max-width: 1200px;
   margin: 40px auto;
+  gap: 20px;
   border: 1px solid #ddd;
   border-radius: 8px;
   background-color: #fff;
@@ -370,6 +372,12 @@ function reorder(orderId: number) {
   padding: 20px;
 }
 
+.profile-page h1 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #444;
+}
+
 /* Filtres */
 .filters {
   margin-bottom: 20px;
@@ -387,7 +395,84 @@ function reorder(orderId: number) {
   border-radius: 4px;
 }
 
-/* Taula d'ordres */
+/* Vista per dispositius mòbils: Mode targeta per comandes */
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.order-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  transition: box-shadow 0.3s ease;
+}
+
+.order-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Divisió de la targeta en dues columnes */
+.card-row {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+/* Columna esquerra: Resum de la comanda */
+.order-summary-col {
+  flex: 1;
+}
+
+.order-summary-col p {
+  margin: 5px 0;
+}
+
+/* Columna dreta: Productes */
+.order-products-col {
+  flex: 2;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.product-card {
+  background-color: #e9ecef;
+  border-radius: 4px;
+  padding: 5px;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.more-products p {
+  font-size: 0.75em;
+  color: #555;
+  text-align: center;
+}
+
+/* Accions a sota centrades */
+.order-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.order-actions .action-btn {
+  padding: 8px 16px;
+  font-size: 1em;
+}
+
+/* Vista per pantalles amples: Taula d'ordres */
 .orders-table {
   width: 100%;
   border-collapse: collapse;
@@ -427,52 +512,6 @@ function reorder(orderId: number) {
   background-color: #0056b3;
 }
 
-/* Vista mòbil: Mode targeta per comandes */
-.mobile-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.order-card {
-  display: flex;
-  flex-wrap: wrap;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 15px;
-  background-color: #f9f9f9;
-  cursor: pointer;
-  transition: box-shadow 0.3s ease;
-}
-
-.order-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Divisió de columnes dins la targeta */
-.card-left, .card-right {
-  flex: 1;
-  min-width: 200px;
-  margin: 5px;
-}
-
-.card-left p {
-  margin: 5px 0;
-}
-
-.card-right {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.product-card {
-  background-color: #e9ecef;
-  border-radius: 4px;
-  padding: 5px 8px;
-  font-size: 0.85em;
-}
-
 /* Paginació */
 .pagination {
   margin-top: 20px;
@@ -497,11 +536,24 @@ function reorder(orderId: number) {
   cursor: not-allowed;
 }
 
-/* Missatges d'error */
-.error-message {
-  color: red;
-  font-weight: bold;
-  margin-top: 20px;
+/* Badges */
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #fff;
+}
+
+.badge-pending {
+  background-color: #ffc107;
+}
+
+.badge-paid {
+  background-color: #28a745;
+}
+
+.badge-cancelled {
+  background-color: #dc3545;
 }
 
 /* Spinner */
@@ -527,26 +579,6 @@ function reorder(orderId: number) {
   100% { transform: rotate(360deg); }
 }
 
-/* Badges */
-.badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.9em;
-  color: #fff;
-}
-
-.badge-pending {
-  background-color: #ffc107;
-}
-
-.badge-paid {
-  background-color: #28a745;
-}
-
-.badge-cancelled {
-  background-color: #dc3545;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .profile-page {
@@ -560,5 +592,6 @@ function reorder(orderId: number) {
   .content {
     padding: 10px;
   }
+  
 }
 </style>

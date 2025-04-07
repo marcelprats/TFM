@@ -86,6 +86,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     // Nova ruta per llistar totes les comandes de l'usuari (historial)
     Route::get('/orders', [OrderController::class, 'index']);
+    // Nova ruta per obtenir les comandes del venedor
+    Route::get('/vendor/orders', [OrderController::class, 'vendorOrders']);
 
 
 });

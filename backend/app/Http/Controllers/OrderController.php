@@ -49,27 +49,45 @@ class OrderController extends Controller
     }
 
     public function show($id)
-{
-    // Carrega la comanda amb la reserva, els seus ítems, els productes i la botiga associada
-    $order = Order::with([
-        'reserve.reserveItems.product',
-        'reserve.botiga'
-    ])->findOrFail($id);
-    if ($order->buyer_id !== auth()->id()) {
-        return response()->json(['message' => 'Accés no autoritzat.'], 403);
+    {
+        // Carrega la comanda amb la reserva, els seus ítems, els productes i la botiga associada
+        $order = Order::with([
+            'reserve.reserveItems.product',
+            'reserve.botiga'
+        ])->findOrFail($id);
+        if ($order->buyer_id !== auth()->id()) {
+            return response()->json(['message' => 'Accés no autoritzat.'], 403);
+        }
+        return response()->json($order);
     }
-    return response()->json($order);
-}
 
     public function index(Request $request)
-{
-    $buyerId = Auth::id();
-    $orders = Order::where('buyer_id', $buyerId)
-                   ->orderBy('created_at', 'desc')
-                   ->get();
+    {
+        $buyerId = Auth::id();
+        $orders = Order::with('reserve.reserveItems.product')
+                    ->where('buyer_id', $buyerId)
+                    ->orderBy('created_at', 'desc')
+                    ->get();
 
-    return response()->json($orders);
+        return response()->json($orders);
+    }
 
-}
+    public function vendorOrders()
+    {
+        $vendorId = auth()->id();
+        $orders = Order::with([
+            'reserve.reserveItems',
+            'reserve.botiga'
+        ])
+        ->whereHas('reserve.botiga', function($query) use ($vendorId) {
+            $query->where('vendor_id', $vendorId);
+        })
+        ->orderBy('created_at', 'desc')
+        ->get();
+    
+        return response()->json($orders);
+    }
+    
+    
 
 }
