@@ -139,6 +139,27 @@ class CartController extends Controller
     }
 
     /**
+     * Buidar o eliminar el carret de l'usuari.
+     *
+     * Aquest mètode s'executa quan es vol buidar el carret després del checkout.
+     */
+    public function destroy(Request $request)
+    {
+        $userId = auth()->id();
+        $cart = Cart::where('user_id', $userId)->first();
+        
+        if ($cart) {
+            // Esborrem tots els ítems del carret
+            $cart->cartItems()->delete();
+            // Opcional: posem el total a 0
+            $cart->total_price = 0;
+            $cart->save();
+        }
+        
+        return response()->json(['message' => 'Carret buidat correctament.'], 200);
+    }
+
+    /**
      * Simula el checkout del carret.
      *
      * En una implementació real, aquí es crearia una comanda i es processaria el pagament.

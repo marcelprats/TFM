@@ -77,11 +77,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/cart', [CartController::class, 'addItem']);
     Route::put('/cart/{itemId}', [CartController::class, 'updateItem']);
     Route::delete('/cart/{itemId}', [CartController::class, 'removeItem']);
+    Route::delete('/cart', [CartController::class, 'destroy']);
     Route::post('/cart/checkout', [CartController::class, 'checkout']);   
 
     // Ruta per crear una comanda (checkout)
     Route::post('/orders', [OrderController::class, 'store']);
+    // Ruta per obtenir una comanda específica
     Route::get('/orders/{id}', [OrderController::class, 'show']);
+    // Nova ruta per llistar totes les comandes de l'usuari (historial)
+    Route::get('/orders', [OrderController::class, 'index']);
 
 
 });

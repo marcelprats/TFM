@@ -16,7 +16,7 @@ class ReserveItem extends Model
         'product_id',
         'quantity',
         'price',
-        'subtotal',
+        'reserved_price',
     ];
 
     // Cada ReserveItem pertany a un Reserve
