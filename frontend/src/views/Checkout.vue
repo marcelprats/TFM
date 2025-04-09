@@ -9,6 +9,7 @@
       <p><strong>Resta a Pagar al Local:</strong> {{ formatPrice(remainder) }}</p>
     </div>
 
+    <!-- Resum dels items del carret -->
     <div v-if="cart && cart.cart_items && cart.cart_items.length > 0" class="order-summary">
       <h2>Resum de la Comanda</h2>
       <table class="summary-table">
@@ -43,8 +44,8 @@
         </div>
       </div>
       
+      <!-- Secció de condicions (la checkbox està deshabilitada per forçar a llegir el modal) -->
       <div class="terms">
-        <!-- La checkbox està deshabilitada per forçar a llegir el modal -->
         <input
           type="checkbox"
           id="acceptConditions"
@@ -104,10 +105,8 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const API_URL = 'http://127.0.0.1:8000/api';
 
-// Variable reactiva per emmagatzemar el carret
+// Variables reactives
 const cart = ref<any>(null);
-
-// Objecte de la reserva (s'omple amb la resposta de la creació)
 const reserve = ref({
   id: null,
   total_reserved: 0,
@@ -115,11 +114,13 @@ const reserve = ref({
   status: 'pending',
 });
 
-// Càlculs dinàmics basats en el total de la reserva
+// Càlculs basats en el total de la reserva
 const totalReserved = computed(() => reserve.value.total_reserved);
 const depositAmount = computed(() => +(totalReserved.value * 0.1).toFixed(2));
 const remainder = computed(() => totalReserved.value - depositAmount.value);
-const depositPercentage = computed(() => (totalReserved.value > 0 ? (depositAmount.value / totalReserved.value) * 100 : 0));
+const depositPercentage = computed(() =>
+  totalReserved.value > 0 ? (depositAmount.value / totalReserved.value) * 100 : 0
+);
 const remainderPercentage = computed(() => 100 - depositPercentage.value);
 
 // Variables per gestionar les condicions
@@ -144,7 +145,7 @@ async function loadCart() {
     const cartData = response.data;
     if (cartData) {
       cart.value = cartData;
-      // Utilitzem el total del carret per calcular la reserva
+      // Calcula el total de la comanda a partir del camp total_price del carret
       reserve.value.total_reserved = parseFloat(cartData.total_price) || 0;
       reserve.value.deposit_amount = +(reserve.value.total_reserved * 0.1).toFixed(2);
     }
@@ -155,14 +156,24 @@ async function loadCart() {
 
 onMounted(loadCart);
 
-// Flux de checkout: crea la reserva, la comanda i buida el carret
+// Funció de checkout amb validació d'inventari
 async function handleCheckout() {
+  // Primer, validem que cada ítem del carret no excedeixi el stock disponible
+  for (const item of cart.value.cart_items) {
+    if (item.quantity > item.product.stock) {
+      alert(
+        `No hi ha prou stock per al producte ${item.product.nom}. Disponibil: ${item.product.stock}.`
+      );
+      return;
+    }
+  }
+
   if (!acceptedConditions.value) {
     errorMessage.value = 'Has d’acceptar les condicions de reserva per poder continuar.';
     return;
   }
   errorMessage.value = '';
-  
+
   try {
     const token = localStorage.getItem('userToken');
     
@@ -170,7 +181,7 @@ async function handleCheckout() {
     const reserveResponse = await axios.post(
       `${API_URL}/reserves`,
       {
-        // Obtenim vendor_id i botiga_id a partir del primer ítem del carret.
+        // Obté vendor_id i botiga_id a partir del primer ítem del carret.
         vendor_id: cart.value.cart_items[0].product.vendor_id, 
         botiga_id: cart.value.botiga_id || cart.value.cart_items[0].product.botiga_id,
         total_price: totalReserved.value,
@@ -181,7 +192,7 @@ async function handleCheckout() {
     );
     
     const createdReserve = reserveResponse.data;
-    // Actualitzem l'objecte reserva amb la resposta
+    // Actualitza l'objecte reserva amb la resposta
     reserve.value = {
       id: createdReserve.id,
       total_reserved: createdReserve.total_reserved,
@@ -201,18 +212,26 @@ async function handleCheckout() {
       },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-
     const order = orderResponse.data.order;
     alert(orderResponse.data.message);
 
-    // 3. Buidar/eliminar el carret: es fa una petició DELETE a /api/cart
+    // 3. Actualitzar l'inventari per a cada producte del carret
+    for (const item of cart.value.cart_items) {
+      const newStock = item.product.stock - item.quantity;
+      await axios.patch(
+        `${API_URL}/productes/${item.product.id}`,
+        { stock: newStock },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    }
+
+    // 4. Eliminar el carret
     await axios.delete(`${API_URL}/cart`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    // Actualitzem la variable local del carret
     cart.value = null;
     
-    // Redirigim a la pàgina de confirmació de la comanda
+    // Redirigeix a la pàgina de confirmació de la comanda
     router.push(`/order-confirmation/${order.id}`);
   } catch (error) {
     console.error('Error finalitzant la comanda:', error);
@@ -415,14 +434,17 @@ function acceptConditions() {
   background-color: #c9302c;
 }
 
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .checkout-container {
     padding: 15px;
   }
-  .financial-summary, .progress-labels {
+  .financial-summary,
+  .progress-labels {
     font-size: 14px;
   }
-  .summary-table th, .summary-table td {
+  .summary-table th,
+  .summary-table td {
     padding: 6px;
   }
 }

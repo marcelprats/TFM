@@ -119,6 +119,29 @@ class ProducteController extends Controller
         return response()->json($producte->load('botiga:id,nom'));
     }
 
+    /**
+     * Actualitza el stock d'un producte.
+     */
+    public function updateStock(Request $request, $id)
+    {
+        // Valida que se li passa un "stock" numèric i no negatiu.
+        $validated = $request->validate([
+            'stock' => 'required|numeric|min:0',
+        ]);
+
+        // Recupera el producte (o retorna un 404 si no existeix).
+        $producte = Producte::findOrFail($id);
+
+        // Actualitza el stock.
+        $producte->stock = $validated['stock'];
+        $producte->save();
+
+        return response()->json([
+            'message' => 'Stock actualitzat correctament.',
+            'producte' => $producte
+        ]);
+    }
+
     public function destroy($id)
     {
         $user = Auth::user();

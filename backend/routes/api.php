@@ -96,6 +96,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // Altres rutes per a productes
 Route::get('/productes-tots', [ProducteController::class, 'getAllProducts']);
 Route::get('/productes/{id}', [ProducteController::class, 'show']);
+Route::patch('/productes/{id}', [ProducteController::class, 'updateStock']);
+
 
 // Rutes per a venedors amb les seves botigues i productes
 Route::get('/vendors/{id}', function ($id) {
