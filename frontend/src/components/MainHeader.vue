@@ -86,6 +86,7 @@ onBeforeUnmount(() => {
         <details v-if="loggedIn && role === 'vendor'" class="dropdown" ref="personalDropdownRef" :open="personalOpen">
           <summary @click.prevent="togglePersonal">Àrea Personal</summary>
           <div class="dropdown-content">
+            <router-link to="/vendor-orders" @click="menuOpen = false">Informació de vendes</router-link>
             <router-link to="/area-personal-botigues" @click="menuOpen = false">Les Meves Botigues</router-link>
             <router-link to="/area-personal-productes" @click="menuOpen = false">Els Meus Productes</router-link>
             <router-link to="/import-record" @click="menuOpen = false">Registre d'importació</router-link>
@@ -95,7 +96,7 @@ onBeforeUnmount(() => {
 
         <div class="auth">
           <template v-if="loggedIn">
-            <router-link to="/cart" class="auth-link">Carro</router-link>
+            <router-link to="/cart" @click="menuOpen = false">Carro</router-link>
             <router-link to="/perfil" class="btn btn-hello" @click="menuOpen = false">
               Hola, {{ user?.name }}
             </router-link>
