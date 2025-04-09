@@ -68,7 +68,7 @@ class ReserveController extends Controller
                     'reserved_price' => floatval($cartItem->reserved_price),
                 ]);
             }
-            
+                
         }
         
         return response()->json($reserve, 201);

@@ -76,7 +76,7 @@ class OrderController extends Controller
     {
         $vendorId = auth()->id();
         $orders = Order::with([
-            'reserve.reserveItems',
+            'reserve.reserveItems.product',
             'reserve.botiga'
         ])
         ->whereHas('reserve.botiga', function($query) use ($vendorId) {
@@ -87,7 +87,51 @@ class OrderController extends Controller
     
         return response()->json($orders);
     }
+
     
+        /**
+     * Actualitza l'estat d'una comanda.
+     *
+     * Aquest mètode processa les peticions PATCH per actualitzar l'estat d'una comanda.
+     *
+     * Els paràmetres esperats poden ser:
+     * - status: nou estat, obligatori (valors permesos: 'reserved', 'completed', 'cancelled')
+     * - cancellation_reason: opcional, quan es cancel·la
+     * - confirmed_product_ids: opcional, array d'IDs dels items confirmats per la reserva
+     */
+    public function update(Request $request, $id)
+    {
+        // Valida els camps rebuts
+        $validated = $request->validate([
+            'status' => 'required|in:reserved,completed,cancelled',
+            'cancellation_reason' => 'nullable|string',
+            'confirmed_product_ids' => 'nullable|array'
+        ]);
+
+        $order = Order::with('reserve')->findOrFail($id);
+
+        // Comprova que el venedor associat a la comanda estigui autoritzat
+        if (!$order->reserve || !$order->reserve->botiga || $order->reserve->botiga->vendor_id != auth()->id()) {
+            return response()->json(['message' => 'Accés no autoritzat.'], 403);
+        }
+
+        // Actualitza l'estat de la comanda
+        $order->status = $validated['status'];
+        if ($validated['status'] === 'cancelled' && isset($validated['cancellation_reason'])) {
+            // Assigna el motiu de cancel·lació, si s'ha enviat
+            $order->cancellation_reason = $validated['cancellation_reason'];
+        }
+        // En cas de reserva, es pot processar la lògica per confirmar els productes
+        if ($validated['status'] === 'reserved' && isset($validated['confirmed_product_ids'])) {
+            // Exemple: registre als logs els productes confirmats.
+            \Log::info('Productes confirmats per l’ordre ' . $order->id . ': ' . implode(',', $validated['confirmed_product_ids']));
+            // Aquí es podria modificar el model ReserveItem per marcar-los com a confirmats
+        }
+        $order->save();
+
+        return response()->json($order);
+    }
+
     
 
 }

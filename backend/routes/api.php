@@ -84,6 +84,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     // Ruta per obtenir una comanda específica
     Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::patch('/orders/{id}', [OrderController::class, 'update']);
     // Nova ruta per llistar totes les comandes de l'usuari (historial)
     Route::get('/orders', [OrderController::class, 'index']);
     // Nova ruta per obtenir les comandes del venedor

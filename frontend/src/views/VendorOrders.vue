@@ -1,8 +1,8 @@
 <template>
   <div class="vendor-orders">
-    <h1>Informació de Vendes</h1>
+    <h1>Informació de vendes</h1>
 
-    <!-- Control Superior: Botó per mostrar/ocultar filtres, camp de cerca i botó per escanejar QR -->
+    <!-- Control superior: Botó per mostrar/ocultar filtres, camp de cerca i botó QR -->
     <div class="header-controls">
       <button class="btn toggle-filters-btn" @click="toggleFilters">
         {{ showFilters ? 'Oculta Filtres' : 'Mostra Filtres' }}
@@ -18,12 +18,12 @@
       </button>
     </div>
 
-    <!-- Modal del Lector QR -->
+    <!-- Modal per el lector QR -->
     <div v-if="showScanner" class="scanner-modal">
       <div class="scanner-wrapper">
-        <!-- Component que obre la càmera i llegeix el QR -->
+        <!-- Component QR que obre la càmera i llegeix el codi -->
         <qrcode-stream @decode="onDecode" @init="onInit" class="qr-stream" />
-        <!-- Overlay: línies a les cantonades per delimitar la zona d’escaneig -->
+        <!-- Overlay amb les línies a les cantonades per delimitar l’àrea d’escaneig -->
         <div class="overlay">
           <div class="corner top-left"></div>
           <div class="corner top-right"></div>
@@ -34,7 +34,7 @@
       <button class="btn close-btn" @click="closeScanner">Tanca</button>
     </div>
 
-    <!-- Panell de Filtres Avançats -->
+    <!-- Panell de filtres avançats -->
     <div v-if="showFilters" class="advanced-filters">
       <div class="filter-field">
         <label for="selectedStore">Filtra per Botiga:</label>
@@ -50,8 +50,9 @@
         <select id="filterStatus" v-model="filterStatus">
           <option value="">Tots els estats</option>
           <option value="pending">Pendent</option>
-          <option value="paid">Pagat</option>
-          <option value="cancelled">Cancel·lat</option>
+          <option value="reserved">Reservada</option>
+          <option value="completed">Completada</option>
+          <option value="cancelled">Cancel·lada</option>
         </select>
       </div>
       <div class="filter-field">
@@ -67,90 +68,106 @@
       </div>
     </div>
 
-    <!-- Spinner de Càrrega -->
+    <!-- Spinner de càrrega -->
     <div v-if="loading" class="spinner">
       <div class="loader"></div>
       <p>Carregant comandes...</p>
     </div>
 
-    <!-- Missatge d'Error -->
+    <!-- Missatge d'error -->
     <div v-else-if="errorMessage" class="error-message">
       <p>{{ errorMessage }}</p>
     </div>
 
-    <!-- Mostra les comandes: Vista Desktop o Vista Mòbil -->
-    <div v-else>
-      <!-- Vista Desktop: Taula -->
-      <div v-if="!isMobile" class="desktop-view">
-        <table class="orders-table">
-          <thead>
-            <tr>
-              <th @click="changeSort('order_number')">
-                Codi de Comanda <span v-if="sortField==='order_number'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
-              </th>
-              <th @click="changeSort('total_amount')">
-                Total <span v-if="sortField==='total_amount'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
-              </th>
-              <th>Botiga</th>
-              <th @click="changeSort('status')">
-                Estat <span v-if="sortField==='status'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
-              </th>
-              <th @click="changeSort('created_at')">
-                Data Creació <span v-if="sortField==='created_at'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
-              </th>
-              <th>Accions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="order in paginatedOrders" :key="order.id">
-              <td>{{ order.order_number }}</td>
-              <td>{{ formatPrice(order.total_amount) }}</td>
-              <td>{{ order.reserve && order.reserve.botiga ? order.reserve.botiga.nom : 'N/A' }}</td>
-              <td>
-                <span class="badge" :class="badgeClass(order.status)">{{ order.status }}</span>
-              </td>
-              <td>{{ new Date(order.created_at).toLocaleString() }}</td>
-              <td>
-                <button class="action-btn large" @click="viewSummary(order.id)">Resum</button>
-                <button class="action-btn large" @click="viewTicket(order.id)">Tiquet</button>
-                <button class="action-btn extra" @click="openUpdateModal(order)">Actualitza Estat</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <!-- Vista Mòbil/Tableta: Targetes -->
-      <div v-else class="mobile-list">
-        <div class="order-card" v-for="order in paginatedOrders" :key="order.id">
-          <div class="card-row">
-            <div class="order-summary-col">
-              <p><strong>Codi:</strong> {{ order.order_number }}</p>
-              <p><strong>Total:</strong> {{ formatPrice(order.total_amount) }}</p>
-              <p><strong>Data:</strong> {{ new Date(order.created_at).toLocaleDateString() }}</p>
-            </div>
-            <div class="order-products-col">
-              <div class="product-grid">
-                <template v-if="getReserveItems(order).length">
-                  <div class="product-card" v-for="(item, index) in getLimitedReserveItems(order)" :key="index">
-                    <router-link :to="`/product/${item.product.id}`" class="product-link">
-                      <p>{{ item.product.nom }}</p>
-                    </router-link>
-                  </div>
-                  <div v-if="getReserveItems(order).length > 2" class="more-products">
-                    <p>+{{ getReserveItems(order).length - 2 }} més</p>
-                  </div>
-                </template>
-                <template v-else>
-                  <p class="no-products">No hi ha productes.</p>
-                </template>
-              </div>
+    <!-- Vista Desktop: Taula d'ordres -->
+    <div v-else-if="!isMobile" class="desktop-view">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th @click="changeSort('order_number')">
+              Codi de Comanda <span v-if="sortField==='order_number'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
+            </th>
+            <th @click="changeSort('total_amount')">
+              Total <span v-if="sortField==='total_amount'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
+            </th>
+            <th>Botiga</th>
+            <th @click="changeSort('status')">
+              Estat <span v-if="sortField==='status'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
+            </th>
+            <th @click="changeSort('created_at')">
+              Data Creació <span v-if="sortField==='created_at'">{{ sortDirection==='asc' ? '↑' : '↓' }}</span>
+            </th>
+            <th>Accions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="order in paginatedOrders" :key="order.id">
+            <td>{{ order.order_number }}</td>
+            <td>{{ formatPrice(order.total_amount) }}</td>
+            <td>
+              {{ order.reserve && order.reserve.botiga ? order.reserve.botiga.nom : 'N/A' }}
+            </td>
+            <td>
+              <span class="badge" :class="badgeClass(order.status)">
+                {{ order.status }}
+              </span>
+            </td>
+            <td>{{ new Date(order.created_at).toLocaleString() }}</td>
+            <td>
+              <button class="action-btn large" @click="viewSummary(order.id)">Resum</button>
+              <button class="action-btn large" @click="viewTicket(order.id)">Tiquet</button>
+              <!-- Si l'estat és pending, es mostrarà l'opció d'actualitzar estat (amb modal complet) -->
+              <button v-if="order.status === 'pending'" class="action-btn extra" @click="openUpdateModal(order)">
+                Actualitza Estat
+              </button>
+              <!-- Si l'estat és reserved, es mostrarà l'opció d'entregar la comanda -->
+              <button v-else-if="order.status === 'reserved'" class="action-btn extra" @click="openDeliverModal(order)">
+                Entregar Comanda
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Vista mòbil: Targetes d'ordres -->
+    <div v-else class="mobile-list">
+      <div class="order-card" v-for="order in paginatedOrders" :key="order.id">
+        <div class="card-row">
+          <div class="order-summary-col">
+            <p><strong>Codi:</strong> {{ order.order_number }}</p>
+            <p><strong>Total:</strong> {{ formatPrice(order.total_amount) }}</p>
+            <p><strong>Data:</strong> {{ new Date(order.created_at).toLocaleDateString() }}</p>
+            <p><strong>Total Productes:</strong> {{ order.reserve && order.reserve.reserve_items ? order.reserve.reserve_items.length : 0 }}</p>
+          </div>
+          <div class="order-products-col">
+            <div class="product-grid">
+              <template v-if="getReserveItems(order).length">
+                <div class="product-card" v-for="(item, idx) in getLimitedReserveItems(order)" :key="idx">
+                  <router-link v-if="item.product" :to="`/producte/${item.product.id}`" class="product-link">
+                    <p>{{ item.product.nom }}</p>
+                  </router-link>
+                  <span v-else>No Producte</span>
+                </div>
+                <div v-if="getReserveItems(order).length > 2" class="more-products">
+                  <p>+{{ getReserveItems(order).length - 2 }} més</p>
+                </div>
+              </template>
+              <template v-else>
+                <p class="no-products">No hi ha productes.</p>
+              </template>
             </div>
           </div>
-          <div class="order-actions">
-            <button class="action-btn large" @click="viewSummary(order.id)">Resum</button>
-            <button class="action-btn large" @click="viewTicket(order.id)">Tiquet</button>
-            <button class="action-btn extra" @click="openUpdateModal(order)">Actualitza Estat</button>
-          </div>
+        </div>
+        <div class="order-actions">
+          <button class="action-btn large" @click="viewSummary(order.id)">Resum</button>
+          <button class="action-btn large" @click="viewTicket(order.id)">Tiquet</button>
+          <button v-if="order.status === 'pending'" class="action-btn extra" @click="openUpdateModal(order)">
+            Actualitza Estat
+          </button>
+          <button v-else-if="order.status === 'reserved'" class="action-btn extra" @click="openDeliverModal(order)">
+            Entregar Comanda
+          </button>
         </div>
       </div>
     </div>
@@ -165,21 +182,84 @@
       <p>No hi ha comandes registrades.</p>
     </div>
 
-    <!-- Modal per Actualitzar l'Estat de la Comanda -->
-    <div v-if="showUpdateModal" class="modal-overlay">
+    <!-- Modal per actualitzar estat (per comandes pendents) -->
+    <div v-if="showUpdateModal" class="modal-overlay" @click.self="closeUpdateModal">
       <div class="modal-content">
         <h2>Actualitza Estat de la Comanda</h2>
+        <div class="order-info-modal">
+          <p><strong>Codi:</strong> {{ updateModalOrder.order_number }}</p>
+          <p><strong>Total:</strong> {{ formatPrice(updateModalOrder.total_amount) }}</p>
+          <p><strong>Data:</strong> {{ new Date(updateModalOrder.created_at).toLocaleString() }}</p>
+        </div>
         <div class="modal-field">
-          <label for="newStatus">Selecciona l'estat:</label>
-          <select id="newStatus" v-model="newOrderStatus">
-            <option value="pending">Pendent</option>
-            <option value="paid">Pagat</option>
-            <option value="cancelled">Cancel·lat</option>
+          <p>Acció:</p>
+          <div v-if="updateModalOrder.status === 'pending'">
+            <label>
+              <input type="radio" value="reserve" v-model="selectedAction" />
+              Confirmar Reserva
+            </label>
+            <label>
+              <input type="radio" value="cancel" v-model="selectedAction" />
+              Cancel·lar Comanda
+            </label>
+          </div>
+        </div>
+        <!-- Si s'ha seleccionat cancel·lació -->
+        <div class="modal-field" v-if="selectedAction === 'cancel'">
+          <label for="cancelReason">Motiu de cancel·lació:</label>
+          <select id="cancelReason" v-model="selectedCancelReason">
+            <option value="">Selecciona un motiu</option>
+            <option value="falta_de_stock">Falta de stock</option>
+            <option value="client_no_present">El client no s'ha presentat</option>
+            <option value="altres">Altres</option>
           </select>
+        </div>
+        <!-- Si s'ha seleccionat reserva, mostra la llista de productes amb checkbox -->
+        <div class="modal-field" v-if="updateModalOrder.status === 'pending' && selectedAction === 'reserve'">
+          <p>Marca els productes que es confirmen per la reserva:</p>
+          <div v-for="(item, idx) in updateModalOrder.reserve.reserve_items" :key="idx" class="checkbox-field">
+            <label>
+              <input type="checkbox" v-model="confirmedProducts" :value="item.id" />
+              {{ item.product ? item.product.nom : 'Producte no disponible' }} (Quantitat: {{ item.quantity }})
+            </label>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn primary-btn" @click="saveOrderStatus">Desa</button>
           <button class="btn close-btn" @click="closeUpdateModal">Cancel·la</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal per entregar comanda (per comandes reservades) -->
+    <div v-if="showDeliverModal" class="modal-overlay" @click.self="closeDeliverModal">
+      <div class="modal-content">
+        <h2>Entregar Comanda</h2>
+        <div class="order-info-modal">
+          <p><strong>Codi:</strong> {{ deliverModalOrder.order_number }}</p>
+          <p><strong>Total:</strong> {{ formatPrice(deliverModalOrder.total_amount) }}</p>
+          <p><strong>Data:</strong> {{ new Date(deliverModalOrder.created_at).toLocaleString() }}</p>
+        </div>
+
+        <div class="modal-field product-list">
+          <h4>Llista de Productes</h4>
+          <div v-if="deliverModalOrder.reserve && deliverModalOrder.reserve.reserve_items && deliverModalOrder.reserve.reserve_items.length">
+            <ul>
+              <li v-for="(item, idx) in deliverModalOrder.reserve.reserve_items" :key="idx">
+                {{ item.product ? item.product.nom : 'Producte no disponible' }}
+                (Quantitat: {{ item.quantity }})
+              </li>
+            </ul>
+          </div>
+          <div v-else>
+            <p>No hi ha productes.</p>
+          </div>
+        </div>
+
+        <p>Revisa aquesta informació i, si està correcte, prem "Entregar Comanda" per completar la comanda.</p>
+        <div class="modal-actions">
+          <button class="btn primary-btn" @click="deliverOrder">Entregar Comanda</button>
+          <button class="btn close-btn" @click="closeDeliverModal">Cancel·la</button>
         </div>
       </div>
     </div>
@@ -193,8 +273,6 @@ import { useRouter } from 'vue-router';
 import { QrcodeStream } from 'vue3-qrcode-reader';
 
 const router = useRouter();
-
-// Variables d'estat generals
 const errorMessage = ref('');
 const loading = ref(false);
 const API_URL = 'http://127.0.0.1:8000/api';
@@ -205,11 +283,12 @@ window.addEventListener('resize', () => {
   isMobile.value = window.innerWidth < 768;
 });
 
-// Variables per filtres i cerca
+// Variables per filtres, cerca i botigues
 const stores = ref<any[]>([]);
 const selectedStoreId = ref('');
 const searchOrderNumber = ref('');
 const showFilters = ref(false);
+// Filtres avançats
 const filterStatus = ref('');
 const startDate = ref('');
 const endDate = ref('');
@@ -230,7 +309,7 @@ async function loadStores() {
   }
 }
 
-// Variables i funcions per a les comandes
+// Carrega les comandes del venedor
 const orders = ref<any[]>([]);
 const sortField = ref('created_at');
 const sortDirection = ref<'asc' | 'desc'>('desc');
@@ -251,10 +330,10 @@ function changeSort(field: string) {
   }
 }
 
-// Funcions per obtenir els reserveItems de cada comanda (utilitzant la relació "reserveItems")
+// Funció per obtenir els reserve_items (el backend retorna "reserve_items")
 function getReserveItems(orderItem: any): any[] {
-  return orderItem.reserve && orderItem.reserve.reserveItems
-    ? orderItem.reserve.reserveItems
+  return orderItem.reserve && orderItem.reserve.reserve_items
+    ? orderItem.reserve.reserve_items
     : [];
 }
 
@@ -262,7 +341,6 @@ function getLimitedReserveItems(orderItem: any): any[] {
   return getReserveItems(orderItem).slice(0, 2);
 }
 
-// Computed per ordenar i filtrar les comandes
 const sortedOrders = computed(() => {
   let filtered = [...orders.value];
   if (selectedStoreId.value) {
@@ -318,6 +396,7 @@ const paginatedOrders = computed(() => {
 function prevPage() {
   if (currentPage.value > 1) currentPage.value--;
 }
+
 function nextPage() {
   if (currentPage.value < totalPages.value) currentPage.value++;
 }
@@ -326,8 +405,10 @@ const badgeClass = (status: string): string => {
   switch (status) {
     case 'pending':
       return 'badge-pending';
-    case 'paid':
-      return 'badge-paid';
+    case 'reserved':
+      return 'badge-reserved';
+    case 'completed':
+      return 'badge-completed';
     case 'cancelled':
       return 'badge-cancelled';
     default:
@@ -360,46 +441,110 @@ onMounted(() => {
 function viewSummary(orderId: number) {
   router.push(`/order-summary/${orderId}`);
 }
+
 function viewTicket(orderId: number) {
   router.push(`/order-confirmation/${orderId}`);
 }
+
 function reorder(orderId: number) {
   alert(`Recomanant els productes de la comanda ${orderId}`);
 }
 
-// Modal per actualitzar estat
+// Modal per Actualitzar Estat (per comandes pendents)
 const showUpdateModal = ref(false);
 const updateModalOrder = ref<any>(null);
+const selectedAction = ref(''); // 'reserve' o 'cancel'
 const newOrderStatus = ref('');
+const selectedCancelReason = ref('');
+const confirmedProducts = ref<number[]>([]);
 
 function openUpdateModal(order: any) {
   updateModalOrder.value = order;
-  newOrderStatus.value = order.status;
+  if (order.status === 'pending') {
+    selectedAction.value = 'reserve';
+    // Per reserva, obtenim els IDs dels items (backend retorna "reserve_items")
+    confirmedProducts.value =
+      order.reserve && order.reserve.reserve_items
+        ? order.reserve.reserve_items.map((item: any) => item.id)
+        : [];
+  }
   showUpdateModal.value = true;
 }
+
 function closeUpdateModal() {
   showUpdateModal.value = false;
 }
+
+// Modal per Entregar Comanda (per comandes reservades)
+const showDeliverModal = ref(false);
+const deliverModalOrder = ref<any>(null);
+
+function openDeliverModal(order: any) {
+  deliverModalOrder.value = order;
+  showDeliverModal.value = true;
+}
+
+function closeDeliverModal() {
+  showDeliverModal.value = false;
+}
+
 async function saveOrderStatus() {
-  if (newOrderStatus.value && ['pending', 'paid', 'cancelled'].includes(newOrderStatus.value)) {
-    try {
-      const token = localStorage.getItem('userToken');
-      await axios.patch(`${API_URL}/orders/${updateModalOrder.value.id}`, { status: newOrderStatus.value }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      updateModalOrder.value.status = newOrderStatus.value;
-      alert("Estat actualitzat correctament.");
-      closeUpdateModal();
-    } catch (err) {
-      console.error("Error actualitzant l'estat:", err);
-      alert("Error actualitzant l'estat. Intenta-ho més tard.");
-    }
-  } else {
-    alert("Estat invàlid.");
+  // Aquest mètode s'aplica per actualitzar estats des del modal d'actualització (per pendents)
+  if (selectedAction.value === 'cancel' && !selectedCancelReason.value) {
+    alert('Si us plau, selecciona un motiu per cancel·lar la comanda.');
+    return;
+  }
+  if (selectedAction.value === 'reserve' && confirmedProducts.value.length === 0) {
+    alert('Si us plau, selecciona almenys un producte per confirmar la reserva.');
+    return;
+  }
+  let updatedStatus = '';
+  if (selectedAction.value === 'reserve') {
+    updatedStatus = 'reserved';
+  } else if (selectedAction.value === 'cancel') {
+    updatedStatus = 'cancelled';
+  }
+  try {
+    const token = localStorage.getItem('userToken');
+    await axios.patch(
+      `${API_URL}/orders/${updateModalOrder.value.id}`,
+      {
+        status: updatedStatus,
+        cancellation_reason: selectedAction.value === 'cancel' ? selectedCancelReason.value : null,
+        confirmed_product_ids: selectedAction.value === 'reserve' ? confirmedProducts.value : null,
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    updateModalOrder.value.status = updatedStatus;
+    alert('Estat actualitzat correctament.');
+    closeUpdateModal();
+  } catch (err) {
+    console.error("Error actualitzant l’estat:", err);
+    alert("Error actualitzant l’estat. Intenta-ho més tard.");
   }
 }
 
-// Funcionalitat QR
+async function deliverOrder() {
+  // Aquesta funció actualitza directament el estat de la comanda a "completed" per les comandes reservades
+  try {
+    const token = localStorage.getItem('userToken');
+    await axios.patch(
+      `${API_URL}/orders/${deliverModalOrder.value.id}`,
+      {
+        status: 'completed'
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    deliverModalOrder.value.status = 'completed';
+    alert('Comanda entregada correctament.');
+    closeDeliverModal();
+  } catch (err) {
+    console.error("Error actualitzant l’estat de l’entrega:", err);
+    alert("Error actualitzant l’estat. Intenta-ho més tard.");
+  }
+}
+
+// Funcionalitat QR (lector)
 const showScanner = ref(false);
 function openScanner() {
   showScanner.value = true;
@@ -419,7 +564,7 @@ function onInit(promise: Promise<any>) {
   });
 }
 
-// Reinicia filtres
+// Funció per reiniciar filtres avançats
 function resetFilters() {
   selectedStoreId.value = '';
   filterStatus.value = '';
@@ -429,6 +574,7 @@ function resetFilters() {
 </script>
 
 <style scoped>
+/* Container principal */
 .vendor-orders {
   max-width: 1000px;
   margin: 40px auto;
@@ -460,14 +606,14 @@ function resetFilters() {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s;
 }
 .toggle-filters-btn:hover,
 .scan-btn:hover {
   background-color: #0056b3;
 }
 
-/* QR Scanner Modal */
+/* Modal QR */
 .scanner-modal {
   position: fixed;
   top: 0;
@@ -541,6 +687,7 @@ function resetFilters() {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 .close-btn:hover {
   background-color: #c82333;
@@ -574,7 +721,7 @@ function resetFilters() {
   border-radius: 4px;
 }
 
-/* Desktop Table */
+/* Desktop Orders Table */
 .orders-table {
   width: 100%;
   border-collapse: collapse;
@@ -595,7 +742,7 @@ function resetFilters() {
   margin-left: 5px;
 }
 
-/* Mobile / Tablet Cards */
+/* Mobile Order Cards */
 .mobile-list {
   display: flex;
   flex-direction: column;
@@ -608,14 +755,15 @@ function resetFilters() {
   border-radius: 8px;
   padding: 15px;
   background-color: #f9f9f9;
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s;
 }
 .order-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 .card-row {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
+  gap: 8px;
   border-bottom: 1px solid #dddddd;
   padding-bottom: 10px;
   margin-bottom: 10px;
@@ -660,7 +808,7 @@ function resetFilters() {
   cursor: pointer;
   border: none;
   border-radius: 4px;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s;
 }
 .action-btn.large {
   font-size: 1em;
@@ -695,21 +843,21 @@ function resetFilters() {
   color: #ffffff;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s;
 }
 .pagination button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
 }
 
-/* Modal per Actualitzar Estat */
+/* Modal per Actualitzar Estat (per comandes pendents) */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -726,6 +874,11 @@ function resetFilters() {
   margin-top: 0;
   text-align: center;
 }
+.order-info-modal {
+  margin-bottom: 15px;
+  border-bottom: 1px solid #dddddd;
+  padding-bottom: 10px;
+}
 .modal-field {
   margin-bottom: 15px;
   display: flex;
@@ -736,10 +889,15 @@ function resetFilters() {
   font-weight: 600;
   color: #333333;
 }
-.modal-field select {
+.modal-field select,
+.modal-field input[type="radio"],
+.modal-field input[type="checkbox"] {
   padding: 8px;
   border: 1px solid #cccccc;
   border-radius: 4px;
+}
+.checkbox-field {
+  margin: 5px 0;
 }
 .modal-actions {
   display: flex;
@@ -767,7 +925,13 @@ function resetFilters() {
   background-color: #c82333;
 }
 
-/* Responsive Adjustments */
+/* Modal per Entregar Comanda (per comandes reservades) */
+/* Es fa una modal similar però sense checkbox ni desplegable de cancel·lació */
+.modal-content.deliver-modal {
+  /* Si voleu diferenciar-la una mica, podeu afegir estils addicionals aquí */
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .vendor-orders {
     margin: 20px;
