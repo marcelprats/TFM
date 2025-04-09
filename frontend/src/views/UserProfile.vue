@@ -45,9 +45,10 @@
           </select>
           <select v-model="filterStatus" class="filter-select">
             <option value="">Tots els estats</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Paid</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="pending">Pendent</option>
+            <option value="reserved">Reservada</option>
+            <option value="completed">Completada</option>
+            <option value="cancelled">Cancel·lada</option>
           </select>
           <div class="date-filters">
             <label>
@@ -67,19 +68,20 @@
             <div class="card-row">
               <!-- Columna Resum de la comanda -->
               <div class="order-summary-col">
+                <span class="badge" :class="badgeClass(orderItem.status)">
+                  {{ orderItem.status }}
+                </span>
                 <p><strong>Codi:</strong> {{ orderItem.order_number }}</p>
                 <p><strong>Total:</strong> {{ formatPrice(orderItem.total_amount) }}</p>
                 <p><strong>Data:</strong> {{ new Date(orderItem.created_at).toLocaleDateString() }}</p>
+
               </div>
               <!-- Columna Productes -->
               <div class="order-products-col">
+
                 <div class="product-grid">
                   <template v-if="getReserveItems(orderItem).length">
-                    <div
-                      class="product-card"
-                      v-for="(item, index) in getLimitedReserveItems(orderItem)"
-                      :key="index"
-                    >
+                    <div class="product-card" v-for="(item, index) in getLimitedReserveItems(orderItem)" :key="index">
                       <p>{{ item.product.nom }}</p>
                     </div>
                     <div v-if="getReserveItems(orderItem).length > 2" class="more-products">
@@ -204,8 +206,7 @@ const itemsPerPage = ref(5);
 
 function formatPrice(price: number | string): string {
   const p = typeof price === 'number' ? price : parseFloat(price);
-  if (isNaN(p)) return 'No disponible';
-  return p.toFixed(2) + ' €';
+  return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €';
 }
 
 function changeSort(field: string) {
@@ -217,14 +218,13 @@ function changeSort(field: string) {
   }
 }
 
-// Funció per obtenir els ítems de reserva. Comprovem la clau "reserve_items" que retorna el backend.
+// Funció per obtenir els ítems de reserva (comprovem la clau "reserve_items" que retorna el backend)
 function getReserveItems(orderItem: any): any[] {
   return orderItem.reserve && orderItem.reserve.reserve_items
     ? orderItem.reserve.reserve_items
     : [];
 }
 
-// Retorna els primers dos ítems per mostrar a la vista mòbil.
 function getLimitedReserveItems(orderItem: any): any[] {
   return getReserveItems(orderItem).slice(0, 2);
 }
@@ -285,10 +285,16 @@ function nextPage() {
 
 function badgeClass(status: string): string {
   switch (status) {
-    case 'pending': return 'badge-pending';
-    case 'paid': return 'badge-paid';
-    case 'cancelled': return 'badge-cancelled';
-    default: return '';
+    case 'pending':
+      return 'badge-pending';
+    case 'reserved':
+      return 'badge-reserved';
+    case 'completed':
+      return 'badge-completed';
+    case 'cancelled':
+      return 'badge-cancelled';
+    default:
+      return '';
   }
 }
 
@@ -548,7 +554,11 @@ function reorder(orderId: number) {
   background-color: #ffc107;
 }
 
-.badge-paid {
+.badge-reserved {
+  background-color: #17a2b8;
+}
+
+.badge-completed {
   background-color: #28a745;
 }
 
@@ -592,6 +602,5 @@ function reorder(orderId: number) {
   .content {
     padding: 10px;
   }
-  
 }
 </style>
