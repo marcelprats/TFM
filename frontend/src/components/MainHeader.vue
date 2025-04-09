@@ -71,7 +71,9 @@ const handleLogout = async () => {
   router.push('/');
 };
 
-// Carreguem l'usuari i el carro a l'inici
+// Polling: variable per l'interval
+let cartInterval: number;
+
 onMounted(async () => {
   document.addEventListener('click', handleOutsideClick);
   loggedIn.value = isLoggedIn();
@@ -81,26 +83,46 @@ onMounted(async () => {
     user.value = await fetchUser();
   }
   await loadCart();
+  // Actualitza el carro cada 10 segons
+  cartInterval = window.setInterval(async () => {
+    await loadCart();
+  }, 10000);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleOutsideClick);
+  clearInterval(cartInterval);
 });
 </script>
 
 <template>
   <header class="main-header" v-bind="attrs">
     <div class="container">
+      <!-- LOGO A L'ESQUERRA -->
       <router-link to="/" class="logo">TOTAKI</router-link>
 
-      <button class="menu-toggle" @click="toggleMenu" :class="{ open: menuOpen }" aria-label="Obrir menú">
-        <span></span><span></span><span></span>
-      </button>
+      <!-- TOP BAR PER A MÒBIL (carro + botó hamburguesa) -->
+      <!-- Visible només en dispositius <= 768px o quan vulguis -->
+      <div class="mobile-controls">
+        <!-- Carro en mòbil (icona en blanc) -->
+        <router-link to="/cart" class="mobile-cart">
+          <div class="cart-icon-wrapper">
+            <i class="fa-solid fa-cart-shopping" style="color: white;"></i>
+            <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
+          </div>
+        </router-link>
+        <!-- Botó hamburguesa -->
+        <button class="menu-toggle" @click="toggleMenu" :class="{ open: menuOpen }" aria-label="Obrir menú">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
 
+      <!-- MENÚ principal -->
       <nav :class="['nav-links', { open: menuOpen }]">
+        <!-- Enllaços principals -->
         <router-link to="/" @click="menuOpen = false">Inici</router-link>
         <router-link to="/botiga" @click="menuOpen = false">Botiga</router-link>
-
+        
         <details class="dropdown" ref="infoDropdownRef" :open="infoOpen">
           <summary @click.prevent="toggleInfo">Informació</summary>
           <div class="dropdown-content">
@@ -119,13 +141,15 @@ onBeforeUnmount(() => {
             <router-link to="/import-record" @click="menuOpen = false">Registre d'importació</router-link>
           </div>
         </details>
-
+        
+        <!-- Secció d'autenticació / Carro (ESCRIPTORI) -->
+        <!-- Carro al costat del "Hola, X" en mode escriptori -->
         <div class="auth">
           <template v-if="loggedIn">
-            <!-- Icona del carro amb badge -->
-            <router-link to="/cart" @click="menuOpen = false">
+            <!-- En mode escriptori, posem el carro aquí amb la icona en blanc -->
+            <router-link to="/cart" class="desktop-cart" @click="menuOpen = false">
               <div class="cart-icon-wrapper">
-                <i class="fa-solid fa-cart-shopping"></i>
+                <i class="fa-solid fa-cart-shopping" style="color: white;"></i>
                 <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
               </div>
             </router-link>
@@ -135,9 +159,10 @@ onBeforeUnmount(() => {
             <button @click="handleLogout" class="btn btn-logout">Tancar Sessió</button>
           </template>
           <template v-else>
-            <router-link to="/cart" class="auth-link">
+            <!-- Si no està loguejat, carro i enllaços de login/registre -->
+            <router-link to="/cart" class="desktop-cart">
               <div class="cart-icon-wrapper">
-                <i class="fa-solid fa-cart-shopping"></i>
+                <i class="fa-solid fa-cart-shopping" style="color: white;"></i>
                 <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
               </div>
             </router-link>
@@ -149,6 +174,7 @@ onBeforeUnmount(() => {
     </div>
   </header>
 </template>
+
 
 <style scoped>
 .main-header {
@@ -245,6 +271,12 @@ onBeforeUnmount(() => {
 
 .nav-links a:hover {
   text-decoration: underline;
+}
+
+.nav-links.desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .auth {
@@ -349,16 +381,14 @@ onBeforeUnmount(() => {
   display: inline-block;
 }
 
-/* Amplifica la icona del carro */
 .cart-icon-wrapper i {
   font-size: 1.6rem;
 }
 
-/* Badge amb font més petita i reposicionada a més amunt a la dreta */
 .cart-badge {
   position: absolute;
-  top: -8px;      /* Més amunt */
-  right: -8px;    /* Més a la dreta */
+  top: -8px;
+  right: -8px;
   background-color: red;
   color: white;
   font-size: 0.7rem;
@@ -366,6 +396,16 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   min-width: 16px;
   text-align: center;
+}
+
+.mobile-controls {
+  display: none; /* Per defecte amagat en escriptori */
+}
+
+.desktop-cart {
+  display: inline-block; /* Visible en escriptori */
+  margin-right: 1rem;
+  margin-left: 2rem;
 }
 
 @media (max-width: 768px) {
@@ -441,6 +481,21 @@ onBeforeUnmount(() => {
 
   .auth a:hover {
     text-decoration: underline;
+  }
+
+    .mobile-controls {
+    display: flex;
+    /* Si vols el carro a l’esquerra i el botó a la dreta, pots fer: */
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+  
+  .desktop-cart {
+    display: none; /* Per no duplicar el carro en mòbil */
+  }
+  
+  .menu-toggle {
+    display: block;
   }
 }
 
