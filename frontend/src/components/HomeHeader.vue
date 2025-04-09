@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAttrs } from 'vue';
+import axios from 'axios';
 import { isLoggedIn, getUser, fetchUser, logout, getUserType } from '../services/authService';
 
+const API_URL = 'http://127.0.0.1:8000/api'; // Ajusta la URL de l'API si cal
+
+// Variables reactives i utilitats
 const router = useRouter();
 const attrs = useAttrs();
-
 const loggedIn = ref(false);
 const user = ref(null);
 const menuOpen = ref(false);
@@ -14,9 +17,31 @@ const infoOpen = ref(false);
 const personalOpen = ref(false);
 const role = ref("user");
 
+// Variables per gestionar el menú desplegable i el carro
 const infoDropdownRef = ref<HTMLElement | null>(null);
 const personalDropdownRef = ref<HTMLElement | null>(null);
+const cart = ref<any>(null); // Aquí s'emmagatzema la resposta de l'API del carro
 
+// Funció per carregar el carro a través de l'API
+async function loadCart() {
+  try {
+    const token = localStorage.getItem('userToken');
+    const response = await axios.get(`${API_URL}/cart`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    cart.value = response.data;
+  } catch (error) {
+    console.error('Error carregant el carret:', error);
+  }
+}
+
+// Computed que retorna el nombre total d'articles sumant les quantitats de cada ítem del carro
+const cartItemCount = computed(() => {
+  if (!cart.value || !cart.value.cart_items) return 0;
+  return cart.value.cart_items.reduce((acc: number, item: any) => acc + item.quantity, 0);
+});
+
+// Funcions per gestionar el menú i els desplegables
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value;
 };
@@ -46,6 +71,7 @@ const handleLogout = async () => {
   router.push('/');
 };
 
+// Carreguem l'usuari i el carro a l'inici
 onMounted(async () => {
   document.addEventListener('click', handleOutsideClick);
   loggedIn.value = isLoggedIn();
@@ -54,6 +80,7 @@ onMounted(async () => {
   if (loggedIn.value && !user.value) {
     user.value = await fetchUser();
   }
+  await loadCart();
 });
 
 onBeforeUnmount(() => {
@@ -94,14 +121,25 @@ onBeforeUnmount(() => {
 
         <div class="auth">
           <template v-if="loggedIn">
-            <router-link to="/cart" @click="menuOpen = false">Carro</router-link>
+            <!-- Icona del carro amb badge -->
+            <router-link to="/cart" @click="menuOpen = false">
+              <div class="cart-icon-wrapper">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
+              </div>
+            </router-link>
             <router-link to="/perfil" class="btn btn-hello" @click="menuOpen = false">
               Hola, {{ user?.name }}
             </router-link>
             <button @click="handleLogout" class="btn btn-logout">Tancar Sessió</button>
           </template>
           <template v-else>
-            <router-link to="/cart" class="auth-link">Carro</router-link>
+            <router-link to="/cart" class="auth-link">
+              <div class="cart-icon-wrapper">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
+              </div>
+            </router-link>
             <router-link to="/login" class="auth-link">Login</router-link>
             <router-link to="/register" class="auth-link">Registrar-se</router-link>
           </template>
@@ -164,7 +202,6 @@ onBeforeUnmount(() => {
   transition: 0.3s ease;
 }
 
-/* Posicions inicials */
 .menu-toggle span:nth-child(1) {
   top: 6px;
 }
@@ -177,7 +214,6 @@ onBeforeUnmount(() => {
   top: 20px;
 }
 
-/* Quan s'obre el menú: es converteix en creu */
 .menu-toggle.open span:nth-child(1) {
   transform: rotate(45deg);
   top: 13px;
@@ -255,7 +291,7 @@ onBeforeUnmount(() => {
 }
 
 .user-name {
-  color: #42b983;
+  color:rgb(0, 0, 0);
 }
 
 .dropdown {
@@ -304,6 +340,31 @@ onBeforeUnmount(() => {
 
 .dropdown-content a:hover {
   background-color: #f1f1f1;
+}
+
+/* Estils per a la icona i badge del carro */
+.cart-icon-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* Amplifica la icona del carro */
+.cart-icon-wrapper i {
+  font-size: 1.6rem;
+}
+
+/* Badge amb font més petita i reposicionada a més amunt a la dreta */
+.cart-badge {
+  position: absolute;
+  top: -8px;      /* Més amunt */
+  right: -8px;    /* Més a la dreta */
+  background-color: red;
+  color: white;
+  font-size: 0.7rem;
+  padding: 1px 3px;
+  border-radius: 50%;
+  min-width: 16px;
+  text-align: center;
 }
 
 @media (max-width: 768px) {

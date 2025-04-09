@@ -22,6 +22,8 @@ import InfoVenedor from "../views/InfoVenedor.vue";
 import InfoVenedors from "../views/InfoVenedors.vue";
 import InfoBotigues from "../views/InfoBotigues.vue";
 import { isLoggedIn, getUserType } from "../services/authService";
+import '@fortawesome/fontawesome-free/css/all.min.css';
+
 
 const routes = [
   { path: "/", name: "Home", component: Home },

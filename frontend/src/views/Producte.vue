@@ -80,7 +80,7 @@
               </p>
 
               <p class="related-store">
-                <strong>Botiga:</strong> 
+                <strong>Botiga: </strong> 
                 <span v-if="related.store">
                   {{ related.store.name }}
                 </span>
