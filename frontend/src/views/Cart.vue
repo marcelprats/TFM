@@ -39,9 +39,6 @@
           <button class="btn clear-group-btn" @click="openClearModal(shopId)">
             Buidar carro de {{ getStoreName(shopId) }}
           </button>
-          <button class="btn checkout-all-btn" @click="openCheckoutModal(shopId)">
-            Finalitzar Comanda
-          </button>
         </div>
         <!-- Taula amb els ítems del grup -->
         <table>

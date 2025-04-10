@@ -13,7 +13,6 @@
     <div v-if="hasSelectedItems" class="order-summary">
       <h2>Resum de la Comanda</h2>
       <div v-for="(items, shopId) in groupedSelectedItems" :key="shopId" class="shop-group">
-        <!-- Capçalera del grup: mostra el nom (com a enllaç) i els totals: Total i Deposit -->
         <div class="shop-header">
           <span class="shop-name">
             Botiga:
@@ -72,7 +71,7 @@
       </div>
     </div>
     
-    <!-- Secció de condicions -->
+    <!-- Secció de condicions amb missatge obligatori -->
     <div class="terms">
       <input
         type="checkbox"
@@ -83,6 +82,7 @@
       />
       <label for="acceptConditions">
         Accepto les <a href="#" @click.prevent="openModal">condicions de reserva</a>
+        <span class="obligatory-msg">* (Obligatori)</span>
       </label>
       <div v-if="errorMessage" class="error-message">
         {{ errorMessage }}
@@ -98,9 +98,7 @@
       <div class="modal-content">
         <h2>Condicions de Reserva</h2>
         <div class="modal-body">
-          <p>
-            Benvolgut client, abans de confirmar la teva reserva, si us plau, llegeix atentament les condicions:
-          </p>
+          <p>Benvolgut client, abans de confirmar la teva reserva, si us plau, llegeix atentament les condicions:</p>
           <p>1. El pagament en línia correspon al 10% del total reservat. Aquest import es pagarà a través del sistema en línia.</p>
           <p>2. La resta del pagament haurà de ser efectuat al local en el moment de la recollida o consum dels productes.</p>
           <p>3. La reserva és vàlida durant 48 hores. Després d'aquest període, la reserva es cancel·larà automàticament sense reemborsament.</p>
@@ -233,6 +231,7 @@ function acceptConditions() {
   closeModal();
 }
 
+/** Funció per gestionar el checkout */
 async function handleCheckout() {
   const selectedCount = cart.value?.cart_items.filter((item: any) => item.selected).length;
   if (!selectedCount) {
@@ -251,18 +250,31 @@ async function handleCheckout() {
       { groups: groupedSelectedItems.value },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    alert(checkoutResponse.data.message);
-    // Si només s'ha creat una ordre, redirigeix a la pàgina de confirmació individual.
+    // Redirigeix segons la resposta del backend:
     if (checkoutResponse.data.orderId) {
       router.push(`/order-confirmation/${checkoutResponse.data.orderId}`);
     } else if (checkoutResponse.data.orders) {
-      // Si s'han creat diverses ordres, redirigeix passant el baseOrderNumber com a query parameter:
       router.push({ name: 'OrdersOverview', query: { base: checkoutResponse.data.baseOrderNumber } });
     }
   } catch (error) {
     console.error('Error finalitzant la comanda:', error);
     alert('Error finalitzant la comanda. Si us plau, intenta-ho més tard.');
   }
+}
+
+/** Funció per obtenir la imatge del producte */
+const getImageSrc = (imagePath: string | null): string => {
+  if (!imagePath) return '/img/no-imatge.jpg';
+  if (imagePath.startsWith('/uploads/')) {
+    return `${API_URL.replace('/api', '')}${imagePath}`;
+  }
+  if (imagePath.startsWith('http')) return imagePath;
+  return `${API_URL.replace('/api', '')}/uploads/${imagePath}`;
+};
+
+/** Navegar al detall del producte */
+function goToProduct(id: number) {
+  router.push(`/producte/${id}`);
 }
 </script>
 
@@ -302,19 +314,19 @@ async function handleCheckout() {
   margin-bottom: 10px;
 }
 .shop-header .shop-name {
-  color: #000; /* El text "Botiga:" apareix en negre */
+  color: #000; /* "Botiga:" en negre */
   font-size: 16px;
 }
 .shop-header .shop-totals {
   text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .shop-header .shop-total,
 .shop-header .shop-deposit {
   font-size: 16px;
   color: #333;
-}
-.shop-header .shop-deposit {
-  margin-left: 10px;
 }
 
 .summary-table {
@@ -333,7 +345,7 @@ async function handleCheckout() {
   color: #fff;
 }
 
-/* Botons globals i per botiga (els botons de buidar i eliminar són en vermell) */
+/* Botons globals */
 .global-actions {
   display: flex;
   justify-content: flex-end;
@@ -371,7 +383,7 @@ async function handleCheckout() {
   background-color: #218838;
 }
 
-/* Barra de progress sota les taules */
+/* Barra de progress */
 .progress-container {
   margin: 20px 0;
 }
@@ -415,33 +427,13 @@ async function handleCheckout() {
   margin-top: 5px;
   text-align: left;
 }
-.note {
+.obligatory-msg {
   font-size: 12px;
-  color: #555;
+  color: red;
   margin-left: 5px;
 }
 
-/* Botó de checkout */
-.btn.checkout-btn {
-  background-color: #28a745;
-  color: #fff;
-  padding: 12px 20px;
-  font-size: 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  margin-top: 10px;
-}
-.btn.checkout-btn:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.btn.checkout-btn:hover:enabled {
-  background-color: #218838;
-}
-
-/* Modal */
+/* Modal de Condicions */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -463,6 +455,11 @@ async function handleCheckout() {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  animation: modalFadeIn 0.3s ease;
+}
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .modal-content h2 {
   margin-top: 0;
