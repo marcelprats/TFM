@@ -483,7 +483,7 @@ onBeforeUnmount(() => {
     text-decoration: underline;
   }
 
-    .mobile-controls {
+  .mobile-controls {
     display: flex;
     /* Si vols el carro a l’esquerra i el botó a la dreta, pots fer: */
     justify-content: flex-end;

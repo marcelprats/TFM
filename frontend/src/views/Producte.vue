@@ -35,20 +35,45 @@
             </router-link>
             <span v-else>No disponible</span>
           </p>
+          <!-- Mostrem el stock real -->
+          <p class="stock">
+            <strong>Stock disponible:</strong> {{ product.stock || "No disponible" }}
+          </p>
         </div>
 
         <!-- Columna per afegir al carro -->
         <div class="column reserve-col">
           <div class="reserve-section">
-            <label for="quantity" class="reserve-label"><strong>Quantitat a reservar:</strong></label>
+            <label for="quantity" class="reserve-label">
+              <strong>Quantitat a reservar:</strong>
+            </label>
             <div class="quantity-selector">
               <button class="quantity-btn" @click="decreaseQuantity">−</button>
-              <input id="quantity" type="number" v-model.number="quantity" min="1" />
+              <input
+                id="quantity"
+                type="number"
+                v-model.number="quantity"
+                min="1"
+                :max="product.stock"
+              />
               <button class="quantity-btn" @click="increaseQuantity">+</button>
             </div>
-            <button class="btn reserve-btn" @click="handleAddItem">
-              Afegir al Carro
-            </button>
+            <template v-if="!inCart">
+              <button class="btn reserve-btn" @click="handleAddItem">
+                Afegir al Carro
+              </button>
+            </template>
+            <template v-else>
+              <button class="btn view-cart-btn" @click="goToCart">
+                Veure Carro
+              </button>
+              <button class="btn trash-btn" @click="removeCartItem">
+                <i class="fa-solid fa-trash" style="color: white;"></i>
+              </button>
+            </template>
+            <div v-if="addSuccessMessage" class="add-message">
+              {{ addSuccessMessage }}
+            </div>
           </div>
         </div>
       </div>
@@ -59,7 +84,7 @@
         <p>{{ product.descripcio }}</p>
       </div>
 
-      <!-- 🛍️ CONTENIDOR DE PRODUCTES RELACIONATS -->
+      <!-- Contenidor de productes relacionats -->
       <div class="related-products-container" v-if="relatedProducts.length > 0">
         <div class="related-products">
           <h2>Productes que et poden interessar</h2>
@@ -110,6 +135,7 @@ interface Product {
   descripcio: string;
   preu: number | string;
   imatge: string | null;
+  stock?: number; // Stock real del producte
   botiga?: { id: number; nom: string };
   vendor?: { id: number; name: string };
 }
@@ -120,21 +146,25 @@ const product = ref<Product | null>(null);
 const allProducts = ref<Product[]>([]);
 const relatedProducts = ref<Product[]>([]);
 const quantity = ref<number>(1);
+const addSuccessMessage = ref('');
+const inCart = ref(false);
+const cartItemId = ref<number | null>(null);
 
 const API_URL = 'http://127.0.0.1:8000/api';
 const BACKEND_URL = 'http://127.0.0.1:8000';
 
-// Funció per barrejar una llista aleatòriament
 function shuffleArray<T>(array: T[]): T[] {
   return array.sort(() => Math.random() - 0.5);
 }
 
 async function loadProduct() {
   try {
+    addSuccessMessage.value = '';
     const productId = route.params.id;
     product.value = await fetchProductById(productId);
     await loadAllProducts();
     updateRelatedProducts();
+    await loadCartQuantity();
   } catch (error) {
     console.error('Error carregant el producte:', error);
   }
@@ -160,6 +190,10 @@ function updateRelatedProducts() {
   others = shuffleArray(others).slice(0, 4 - sameStore.length);
   relatedProducts.value = shuffleArray([...sameStore, ...others]).slice(0, 4);
 }
+
+const filteredRelatedProducts = computed(() => {
+  return relatedProducts.value;
+});
 
 function formatPrice(price: number | string): string {
   const p = typeof price === 'number' ? price : parseFloat(price);
@@ -187,30 +221,111 @@ function goToProduct(id: number) {
   router.push(`/producte/${id}`);
 }
 
+function goToCart() {
+  router.push('/cart');
+}
+
 function decreaseQuantity() {
-  if (quantity.value > 1) quantity.value--;
+  if (quantity.value > 0) {
+    quantity.value--;
+    if (inCart.value) {
+      // Si la quantitat arriba a 0, eliminem l'ítem i reiniciem a 1
+      if (quantity.value === 0) {
+        removeCartItem();
+        quantity.value = 1;
+      } else {
+        updateCartQuantity();
+      }
+    }
+  }
 }
 
 function increaseQuantity() {
-  quantity.value++;
+  if (product.value && product.value.stock && quantity.value < product.value.stock) {
+    quantity.value++;
+    if (inCart.value) {
+      updateCartQuantity();
+    }
+  }
+}
+
+// Carrega la quantitat actual del producte al carro
+async function loadCartQuantity() {
+  try {
+    const token = localStorage.getItem('userToken');
+    const response = await axios.get(`${API_URL}/cart`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const cartData = response.data;
+    const found = cartData.cart_items.find((item: any) =>
+      product.value && item.product.id === product.value.id
+    );
+    if (found) {
+      quantity.value = found.quantity;
+      inCart.value = true;
+      cartItemId.value = found.id;
+    } else {
+      quantity.value = 1;
+      inCart.value = false;
+      cartItemId.value = null;
+    }
+  } catch (error) {
+    console.error('Error carregant la quantitat del carro:', error);
+  }
+}
+
+// Actualitza la quantitat del producte al carro
+async function updateCartQuantity() {
+  try {
+    if (!product.value || !cartItemId.value) return;
+    const token = localStorage.getItem('userToken');
+    await axios.put(`${API_URL}/cart/${cartItemId.value}`, {
+      quantity: quantity.value,
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('Error actualitzant la quantitat del carro:', error);
+  }
+}
+
+// Elimina l'ítem del carro
+async function removeCartItem() {
+  try {
+    if (!cartItemId.value) return;
+    const token = localStorage.getItem('userToken');
+    await axios.delete(`${API_URL}/cart/${cartItemId.value}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    inCart.value = false;
+    cartItemId.value = null;
+  } catch (error) {
+    console.error('Error eliminant el producte del carro:', error);
+  }
 }
 
 async function handleAddItem() {
   if (!product.value) return;
   const token = localStorage.getItem('userToken');
   try {
-    // Enviem la petició amb el producte i la quantitat
     const response = await axios.post(`${API_URL}/cart`, {
       product_id: product.value.id,
       quantity: quantity.value,
     }, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    alert('Producte afegit al carro!');
-    console.log('Resposta del carro:', response.data);
+    addSuccessMessage.value = 'Producte afegit al carro!';
+    // Sincronitza la quantitat segons el que hi ha al carro
+    await loadCartQuantity();
+    setTimeout(() => {
+      addSuccessMessage.value = '';
+    }, 3000);
   } catch (error) {
     console.error('Error afegint al carro:', error);
-    alert('Error afegint al carro');
+    addSuccessMessage.value = 'Error afegint al carro';
+    setTimeout(() => {
+      addSuccessMessage.value = '';
+    }, 3000);
   }
 }
 
@@ -291,6 +406,14 @@ watch(() => route.params.id, loadProduct);
   text-decoration: underline;
 }
 
+/* Stock disponible */
+.stock {
+  font-size: 16px;
+  color: #333;
+  margin-top: 8px;
+}
+
+/* Estils per a la secció d'afegir al carro */
 .reserve-col {
   display: flex;
   align-items: center;
@@ -361,6 +484,45 @@ watch(() => route.params.id, loadProduct);
 
 .reserve-btn:hover {
   background-color: #218838;
+}
+
+.add-message {
+  margin-top: 10px;
+  font-size: 16px;
+  color: #28a745;
+}
+
+.view-cart-btn {
+  margin-top: 10px;
+  background-color: #42b983;
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-right: 8px;
+}
+
+.view-cart-btn:hover {
+  background-color: #368c6e;
+}
+
+.trash-btn {
+  margin-top: 10px;
+  background-color: #e63946;
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.trash-btn:hover {
+  background-color: #c5303b;
 }
 
 .description-section {
