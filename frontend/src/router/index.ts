@@ -15,6 +15,7 @@ import Cart from "../views/Cart.vue";
 import Checkout from "../views/Checkout.vue";
 import OrderConfirmation from "../views/OrderConfirmation.vue";
 import OrderSummary from "../views/OrderSummary.vue";
+import OrdersOverview from "../views/OrdersOverview.vue";
 import VendorOrders from "../views/VendorOrders.vue";
 import Producte from "../views/Producte.vue";
 import InfoBotiga from "../views/InfoBotiga.vue";
@@ -41,7 +42,8 @@ const routes = [
   { path: "/cart", name: "Cart", component: Cart },
   { path: "/checkout", name: "Checkout", component: Checkout, meta: { requiresAuth: true } },
   { path: "/order-confirmation/:id", name: "OrderConfirmation", component: OrderConfirmation, meta: { requiresAuth: true } },
-  { path: "/order-summary/:id", name: "OrderSummary", component: OrderSummary, meta: { requiresAuth: true } }, 
+  { path: "/order-summary/:id", name: "OrderSummary", component: OrderSummary, meta: { requiresAuth: true } },
+  { path: "/orders-overview", name: "OrdersOverview", component: OrdersOverview, meta: { requiresAuth: true } },  
   { path: '/vendor-orders',  name: 'VendorOrders',  component: VendorOrders,  meta: { requiresAuth: true, role: 'vendor' } },
   { path: "/producte/:id", component: Producte, name: "Producte" },
   { path: "/info-venedor", name: "InfoVenedors", component: InfoVenedors },

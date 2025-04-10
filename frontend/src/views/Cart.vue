@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <!-- Si el carro està buit -->
+    <!-- Missatge si el carro està buit -->
     <div v-if="!hasItems">
       <p>El teu carro està buit.</p>
     </div>
@@ -20,7 +20,7 @@
     <!-- Ítems agrupats per botiga -->
     <div v-else>
       <div v-for="(items, shopId) in groupedCartItems" :key="shopId" class="shop-group">
-        <!-- Capçalera del grup (tot en una sola línia) -->
+        <!-- Capçalera del grup -->
         <div class="shop-header">
           <span class="shop-name">
             Botiga:
@@ -39,6 +39,9 @@
           <button class="btn clear-group-btn" @click="openClearModal(shopId)">
             Buidar carro de {{ getStoreName(shopId) }}
           </button>
+          <button class="btn checkout-all-btn" @click="openCheckoutModal(shopId)">
+            Finalitzar Comanda
+          </button>
         </div>
         <!-- Taula amb els ítems del grup -->
         <table>
@@ -52,7 +55,7 @@
                 />
               </th>
               <th>Producte</th>
-              <th>Preu Unitari</th>
+              <th>Preu Unitar</th>
               <th>Quantitat</th>
               <th>Total</th>
               <th>Accions</th>
@@ -61,11 +64,8 @@
           <tbody>
             <tr v-for="item in items" :key="item.id">
               <td>
-                <!-- Checkbox vinculada directament a item.selected -->
-                <input type="checkbox"
-                  v-model="item.selected"
-                  @change="updateItemSelected(item)"
-                />
+                <!-- Checkbox lligada a item.selected -->
+                <input type="checkbox" v-model="item.selected" @change="updateItemSelected(item)" />
               </td>
               <td class="product-cell" @click="goToProduct(item.product.id)" style="cursor:pointer;">
                 <img :src="getImageSrc(item.product.imatge)" alt="producte" class="product-image" />
@@ -111,7 +111,7 @@
       <div class="modal" @click.stop>
         <h2>Confirmar Buidatge</h2>
         <p>
-          Estàs segur que vols buidar tots els ítems de la botiga
+          Estàs segur que vols buidar tots els ítems de la botiga 
           <strong>{{ getStoreName(modalShopId) }}</strong>?
         </p>
         <ul>
@@ -152,7 +152,7 @@
       <div class="modal" @click.stop>
         <h2>Confirmar Checkout</h2>
         <p>
-          Es crearà una ordre per la botiga
+          Es crearà una ordre per la botiga 
           <strong>{{ getStoreName(modalShopId) }}</strong> amb els següents ítems seleccionats:
         </p>
         <ul>
@@ -184,7 +184,7 @@
         </div>
       </div>
     </div>
-
+    
   </div>
 </template>
 
@@ -197,7 +197,7 @@ const API_URL = 'http://127.0.0.1:8000/api';
 const router = useRouter();
 const cart = ref<any>(null);
 
-/** Variables de selecció: es gestionen a través de la propietat "selected" de cada ítem */
+/** Variables per gestió de selecció (són gestionades via el camp "selected" de cada ítem) */
 const selectedItems = ref<number[]>([]);
 const selectedShopIds = ref<string[]>([]);
 
@@ -209,7 +209,7 @@ const showClearAllModal = ref(false);
 const showSingleDeleteModal = ref(false);
 const itemToDelete = ref<number | null>(null);
 
-/** Carrega el carro i inicialitza la selecció segons el camp "selected" */
+/** Carrega el carro i inicialitza la selecció basant-se en el camp "selected" */
 async function loadCart() {
   try {
     const token = localStorage.getItem('userToken');
@@ -218,10 +218,11 @@ async function loadCart() {
     });
     cart.value = res.data;
     if (cart.value && cart.value.cart_items) {
-      // Seleccionem només els ítems amb selected true
+      // Afegim els IDs dels ítems seleccionats actualment
       selectedItems.value = cart.value.cart_items
         .filter((item: any) => item.selected)
         .map((item: any) => item.id);
+      // Afegim també les botigues corresponents
       selectedShopIds.value = [
         ...new Set(cart.value.cart_items
           .filter((item: any) => item.selected)
@@ -236,12 +237,12 @@ async function loadCart() {
 }
 onMounted(loadCart);
 
-/** Computed per saber si hi ha ítems */
+/** Computed per saber si hi ha ítems al carro */
 const hasItems = computed(() => {
   return cart.value && cart.value.cart_items && cart.value.cart_items.length > 0;
 });
 
-/** Agrupar ítems per botiga */
+/** Agrupa els ítems del carro per botiga */
 const groupedCartItems = computed(() => {
   if (!cart.value || !cart.value.cart_items) return {};
   return cart.value.cart_items.reduce((groups: any, item: any) => {
@@ -252,7 +253,7 @@ const groupedCartItems = computed(() => {
   }, {});
 });
 
-/** Obtenir el nom de la botiga (si no hi ha botiga, retorna "Sense Botiga") */
+/** Obté el nom de la botiga */
 const getStoreName = (shopId: string): string => {
   if (shopId === 'sense_botiga') return 'Sense Botiga';
   const group = groupedCartItems.value[shopId];
@@ -261,14 +262,14 @@ const getStoreName = (shopId: string): string => {
     : 'No definida';
 };
 
-/** Calcula el total per grup (només amb ítems seleccionats) */
+/** Calcula el total per botiga només amb ítems seleccionats */
 const calcSelectedShopTotal = (items: any[]): number => {
   return items
     .filter((item: any) => item.selected)
     .reduce((sum, item) => sum + item.quantity * parseFloat(item.reserved_price), 0);
 };
 
-/** Botó "Select All" per grup */
+/** Funció per alternar la selecció de tots els ítems d'un grup */
 function toggleSelectGroup(shopId: string, items: any[]) {
   const groupIds = items.map((i: any) => i.id);
   const allAreSelected = groupIds.every((id: number) => selectedItems.value.includes(id));
@@ -296,13 +297,8 @@ function allSelected(shopId: string): boolean {
   if (!group) return false;
   return group.every((item: any) => item.selected);
 }
-function groupHasSelection(shopId: string): boolean {
-  const group = groupedCartItems.value[shopId];
-  if (!group) return false;
-  return group.some((item: any) => item.selected);
-}
 
-/** Quan canvia la checkbox d'un ítem, actualitza el camp "selected" al servidor, enviant també la quantitat per passar la validació */
+/** Quan es canvia la checkbox d'un ítem, actualitza el camp "selected" al servidor */
 async function updateItemSelected(item: any) {
   try {
     const token = localStorage.getItem('userToken');
@@ -318,7 +314,7 @@ async function updateItemSelected(item: any) {
   }
 }
 
-/** Modal per buidar el grup de botiga */
+/** Funcions per buidar el grup de botiga */
 function openClearModal(shopId: string) {
   modalShopId.value = shopId;
   showClearModal.value = true;
@@ -348,7 +344,7 @@ async function clearCartGroup(shopId: string) {
   }
 }
 
-/** Botó global per buidar tot el carro */
+/** Funcions globals per buidar tot el carro */
 function openClearAllModal() {
   showClearAllModal.value = true;
 }
@@ -387,6 +383,12 @@ function closeCheckoutModal() {
   showCheckoutModal.value = false;
   modalShopId.value = '';
 }
+function groupHasSelection(shopId: string): boolean {
+  const group = groupedCartItems.value[shopId];
+  if (!group) return false;
+  return group.some((item: any) => item.selected);
+}
+/** Quan es confirma el checkout d'un grup, redirigeix a la pàgina /checkout amb el paràmetre shopId */
 function confirmCheckout(shopId: string) {
   router.push(`/checkout?shopId=${shopId}`);
 }
@@ -398,14 +400,13 @@ function checkoutTotal() {
     return;
   }
   if (selectedShopIds.value.length > 1) {
-    // Es permet el checkout global; el backend processarà les ordres per botiga
     router.push('/checkout?all=true');
   } else {
     router.push(`/checkout?shopId=${selectedShopIds.value[0]}`);
   }
 }
 
-/** Actualització de la quantitat d'un ítem */
+/** Funcions per actualitzar la quantitat d'un ítem */
 async function updateCartItem(item: any) {
   try {
     const token = localStorage.getItem('userToken');
@@ -447,11 +448,6 @@ function closeSingleDeleteModal() {
   showSingleDeleteModal.value = false;
   itemToDelete.value = null;
 }
-const singleDeleteItemName = computed((): string => {
-  if (!cart.value || !cart.value.cart_items) return '';
-  const item = cart.value.cart_items.find((i: any) => i.id === itemToDelete.value);
-  return item ? item.product.nom : '';
-});
 async function removeItem(itemId: number) {
   try {
     const token = localStorage.getItem('userToken');
@@ -465,14 +461,13 @@ async function removeItem(itemId: number) {
   }
 }
 
-/** Format del preu */
+/** Funció per formatar preus */
 const formatPrice = (price: number | string): string => {
   const p = typeof price === 'number' ? price : parseFloat(price);
-  if (isNaN(p)) return 'No disponible';
-  return p.toFixed(2) + ' €';
+  return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €';
 };
 
-/** Obtenir la imatge del producte */
+/** Funció per obtenir la imatge del producte */
 const getImageSrc = (imagePath: string | null): string => {
   if (!imagePath) return '/img/no-imatge.jpg';
   if (imagePath.startsWith('/uploads/')) {
@@ -549,10 +544,10 @@ h1 {
   font-size: 16px;
   color: #333;
 }
-.shop-controls {
+.shop-header .shop-totals {
+  text-align: right;
   display: flex;
   gap: 10px;
-  align-items: center;
 }
 
 /* Taula */
