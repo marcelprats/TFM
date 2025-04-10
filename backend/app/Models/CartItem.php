@@ -13,9 +13,13 @@ class CartItem extends Model
         'cart_id',
         'product_id',
         'quantity',
-        'reserved_price'
+        'reserved_price',
+        'selected',
     ];
 
+    protected $casts = [
+        'selected' => 'boolean',
+    ];
     /**
      * Relació: Cada ítem pertany a un carret.
      */

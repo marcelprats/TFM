@@ -19,7 +19,7 @@ class CartController extends Controller
         Log::debug("Fetching cart for user id: {$userId}");
         
         // Obtenim el carret amb els ítems i els productes associats
-        $cart = Cart::with('cartItems.product')->firstOrCreate(
+        $cart = Cart::with('cartItems.product.botiga')->firstOrCreate(
             ['user_id' => $userId],
             ['total_price' => 0.00]
         );
@@ -92,6 +92,7 @@ class CartController extends Controller
         $userId = auth()->id();
         $validatedData = $request->validate([
             'quantity' => 'required|integer|min:1',
+            'selected' => 'sometimes|boolean',
         ]);
 
         $cartItem = CartItem::findOrFail($itemId);
@@ -102,6 +103,9 @@ class CartController extends Controller
         }
 
         $cartItem->quantity = $validatedData['quantity'];
+        if (array_key_exists('selected', $validatedData)) {
+            $cartItem->selected = $validatedData['selected'];
+        }
         $cartItem->save();
 
         // Actualitzem el total del carret.
