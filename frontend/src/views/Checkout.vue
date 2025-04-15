@@ -138,6 +138,15 @@ const reserve = ref({
   status: 'pending',
 });
 
+/** Variable per emmagatzemar el buyer_type.
+ * Es pot obtenir des de, per exemple, localStorage o un store centralitzat.
+ * Aquí suposem que s'ha emmagatzemat a 'user_role' al fer login.
+ */
+const buyerType = ref('user'); // valor per defecte
+onMounted(() => {
+  buyerType.value = localStorage.getItem('user_role') || 'user';
+});
+
 /** Variables per gestionar condicions */
 const acceptedConditions = ref(false);
 const showModal = ref(false);
@@ -231,7 +240,9 @@ function acceptConditions() {
   closeModal();
 }
 
-/** Funció per gestionar el checkout */
+/** Funció per gestionar el checkout.
+ * Ara s'afegeix el camp buyer_type al payload.
+ */
 async function handleCheckout() {
   const selectedCount = cart.value?.cart_items.filter((item: any) => item.selected).length;
   if (!selectedCount) {
@@ -245,9 +256,14 @@ async function handleCheckout() {
   errorMessage.value = '';
   try {
     const token = localStorage.getItem('userToken');
+    // Afegim el buyer_type al payload
+    const payload = {
+      groups: groupedSelectedItems.value,
+      buyer_type: buyerType.value
+    };
     const checkoutResponse = await axios.post(
       `${API_URL}/cart/checkout`,
-      { groups: groupedSelectedItems.value },
+      payload,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     // Redirigeix segons la resposta del backend:
@@ -279,6 +295,7 @@ function goToProduct(id: number) {
 </script>
 
 <style scoped>
+/* (Els teus estils es mantenen sense canvis) */
 .checkout-container {
   max-width: 600px;
   margin: 30px auto;

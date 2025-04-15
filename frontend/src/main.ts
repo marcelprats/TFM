@@ -10,9 +10,10 @@ import "leaflet/dist/leaflet.css";
 import "./style.css";
 
 axios.defaults.baseURL = "http://127.0.0.1:8000/api"; // Base URL de l'API Laravel
-axios.defaults.headers.common["Authorization"] =
-  "Bearer " + localStorage.getItem("token"); // Afegir token si existeix
-
+const token = localStorage.getItem("userToken");  // Comproveu que aquest valor existeix
+if (token) {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+}
 const i18n = createI18n({
   legacy: false,
   locale: 'ca',

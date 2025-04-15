@@ -32,16 +32,33 @@ export const registerVendor = async (name: string, email: string, password: stri
   
 
 // Funció comuna per fer login, diferenciant si és comprador o venedor
-export const loginUser = async (email: string, password: string, isVendor: boolean) => {
-  const response = await axios.post(`${API_URL}/login`, { email, password, is_vendor: isVendor });
+export const loginUser = async (email: string, password: string, isVendor: boolean): Promise<any> => {
+  try {
+    const response = await axios.post(`${API_URL}/login`, {
+      email,
+      password,
+      is_vendor: isVendor,
+    });
 
-  if (response.data.token) {
-    localStorage.setItem("userToken", response.data.token);
-    localStorage.setItem("user", JSON.stringify(response.data.user));
-    localStorage.setItem("userType", isVendor ? "vendor" : "user"); // Guardem el tipus d'usuari
+    if (response.data && response.data.token) {
+      const token = response.data.token;
+      // Desa el token al localStorage
+      localStorage.setItem("userToken", token);
+      // Desa les dades de l'usuari (serializejant-les com a JSON)
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      // Desa el tipus d'usuari: "vendor" o "user"
+      localStorage.setItem("userType", response.data.role || (isVendor ? "vendor" : "user"));
+
+      // Configura Axios globalment perquè cada petició enviï aquest token
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    }
+
+    // Retorna les dades de l'usuari (o tot el que necessitis)
+    return response.data.user;
+  } catch (error: any) {
+    console.error("Error en loginUser:", error.response?.data || error.message);
+    throw error;
   }
-
-  return response.data.user;
 };
 
 // Comprova si l'usuari està autenticat

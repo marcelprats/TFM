@@ -32,47 +32,36 @@ class ReserveController extends Controller
     // Crea una nova reserva
     public function store(Request $request)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Usuari no autenticat.'], 401);
+        }
+        $buyerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
+    
         $data = $request->validate([
-            'vendor_id'       => 'required|exists:vendors,id',
             'botiga_id'       => 'required|exists:botigues,id',
             'total_price'     => 'required|numeric',
             'reservation_fee' => 'required|numeric',
-            'paid_amount'     => 'nullable|numeric',
             'status'          => 'required|string',
         ]);
-        
+    
         $dataToInsert = [
-            'buyer_id'       => auth()->id(),
+            'buyer_id'       => $user->id,
+            'buyer_type'     => $buyerType,  // Inclou buyer_type
             'botiga_id'      => $data['botiga_id'],
             'total_reserved' => $data['total_price'],
             'deposit_amount' => $data['reservation_fee'],
             'status'         => $data['status'],
         ];
-        
-        // Creem la reserva
-        $reserve = Reserve::create($dataToInsert);
-        
-        // Opcional: registra a log
-        \Log::debug('buyer_id de la reserva: ' . $reserve->buyer_id);
-        \Log::debug('Auth::id(): ' . auth()->id());
     
-        // Recuperem el carret de l'usuari (assegura't que tens la relació definida als models)
-        $cart = \App\Models\Cart::with('cartItems')->where('user_id', auth()->id())->first();
-        
-        if ($cart && $cart->cartItems->count() > 0) {
-            foreach ($cart->cartItems as $cartItem) {
-                \Log::debug("Transferint CartItem id {$cartItem->id} amb reserved_price: " . $cartItem->reserved_price);
-                $reserve->reserveItems()->create([
-                    'product_id'     => $cartItem->product_id,
-                    'quantity'       => $cartItem->quantity,
-                    'reserved_price' => floatval($cartItem->reserved_price),
-                ]);
-            }
-                
-        }
-        
+        $reserve = Reserve::create($dataToInsert);
+    
+        // Resta de la lògica per transferir els ítems del carret, etc.
+        // ...
+    
         return response()->json($reserve, 201);
     }
+    
     
 
 

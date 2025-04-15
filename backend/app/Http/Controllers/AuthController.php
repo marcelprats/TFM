@@ -64,25 +64,32 @@ class AuthController extends Controller
             'password' => 'required',
             'is_vendor' => 'required|boolean', // Indica si és venedor o no
         ]);
-
+    
         if ($request->is_vendor) {
-            $user = Vendor::where('email', $request->email)->first();
+            // Utilitza el guard 'vendor' per buscar el venedor
+            $user = \Auth::guard('vendor')->getProvider()->retrieveByCredentials(['email' => $request->email]);
         } else {
-            $user = User::where('email', $request->email)->first();
+            $user = \Auth::guard('web')->getProvider()->retrieveByCredentials(['email' => $request->email]);
         }
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
+    
+        if (!$user || !\Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Credencials incorrectes'], 401);
         }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
+    
+        // Ara creem el token amb el guard corresponent
+        if ($request->is_vendor) {
+            $token = $user->createToken('auth_token')->plainTextToken;
+        } else {
+            $token = $user->createToken('auth_token')->plainTextToken;
+        }
+    
         return response()->json([
             'token' => $token,
             'user' => $user,
             'role' => $request->is_vendor ? 'vendor' : 'user',
         ], 200);
     }
+    
 
     /**
      * Logout de l'usuari

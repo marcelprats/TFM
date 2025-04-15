@@ -14,11 +14,12 @@ class Reserve extends Model
     protected $fillable = [
         'vendor_id',
         'buyer_id',
+        'buyer_type',
         'botiga_id',
         'total_reserved',
         'deposit_amount',
         'paid_amount',
-        'status', // Ex.: 'pending', 'confirmed', 'cancelled', 'completed'
+        'status',
     ];
 
     // Un Reserve té molts ReserveItems
