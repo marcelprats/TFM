@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Vendor;
 
 class Botiga extends Model
 {
@@ -12,6 +13,9 @@ class Botiga extends Model
     protected $table = 'botigues';
 
     protected $fillable = ['nom', 'descripcio', 'vendor_id', 'latitude', 'longitude'];
+
+    // Amaguem la relació vendor per evitar recursió en la serialització
+    protected $hidden = ['vendor'];
 
     /**
      * Una botiga pot tenir molts productes (relació one-to-many).
@@ -27,5 +31,13 @@ class Botiga extends Model
     public function horaris()
     {
         return $this->hasMany(HorariBotiga::class, 'botiga_id');
+    }
+
+    /**
+     * Cada botiga pertany a un venedor.
+     */
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
     }
 }

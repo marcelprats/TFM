@@ -1,19 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick } from "vue";
+import { useToast } from 'vue-toastification';
 import axios from "axios";
 import { useRouter } from "vue-router";
 import L from "leaflet";
 import HorarisEditor from "../components/HorarisEditor.vue";
 
-// 📌 API
-const API_URL = "http://127.0.0.1:8000/api";
 
-// 📌 Reactius
+const toast = useToast();
+
+const API_URL = "http://127.0.0.1:8000/api/vendor";
+
+const axiosInstance = axios.create({ baseURL: API_URL });
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem("userToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 const botigues = ref([]);
 const searchQuery = ref("");
 const router = useRouter();
 
-// 📌 Horaris per defecte
 const getDefaultHoraris = () => [
   { dia: "dilluns", tancat: true, franjes: [] },
   { dia: "dimarts", tancat: true, franjes: [] },
@@ -24,12 +32,10 @@ const getDefaultHoraris = () => [
   { dia: "diumenge", tancat: true, franjes: [] },
 ];
 
-// 📌 Estat modal
 const showAddModal = ref(false);
 const showEditModal = ref(false);
 const errorMessage = ref("");
 
-// 📌 Botiga nova / editada
 const newBotiga = ref({
   nom: "",
   descripcio: "",
@@ -40,7 +46,6 @@ const newBotiga = ref({
 
 const editBotiga = ref(null);
 
-// 📌 Format horaris rebuts
 const formatHoraris = (horarisDB) => {
   const horaris = getDefaultHoraris();
   const formatHora = (hora) => hora.slice(0, 5);
@@ -57,71 +62,54 @@ const formatHoraris = (horarisDB) => {
   return horaris;
 };
 
-const hores = Array.from({ length: 24 * 4 }, (_, i) => {
-  const h = Math.floor(i / 4).toString().padStart(2, "0");
-  const m = (i % 4 * 15).toString().padStart(2, "0");
+const hores = Array.from({ length: 96 }, (_, i) => {
+  const h = String(Math.floor(i / 4)).padStart(2, "0");
+  const m = String((i % 4) * 15).padStart(2, "0");
   return `${h}:${m}`;
 });
 
-// 📌 Carregar botigues
 const fetchBotigues = async () => {
-  const token = localStorage.getItem("userToken");
-  if (!token) return;
-
-  const res = await axios.get(`${API_URL}/botigues-mes`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await axiosInstance.get("/botigues-mes");
   botigues.value = res.data;
 };
 
-// 📌 Filtrar
 const filteredBotigues = computed(() =>
   botigues.value.filter((b) =>
     b.nom.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 );
 
-// 📌 Mapa
 const maps = new Map();
-
 const initMap = (mapId, botiga) => {
   nextTick(() => {
     const el = document.getElementById(mapId);
     if (!el) return;
-
-    // 🔄 Si ja hi ha mapa, eliminar-lo
     if (maps.has(mapId)) {
       maps.get(mapId).remove();
       maps.delete(mapId);
       el.innerHTML = "";
     }
-
     const map = L.map(el).setView(
       [botiga.latitude ?? 41.40945, botiga.longitude ?? 2.17812],
       14
     );
-
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
-
     const marker = L.marker(
       [botiga.latitude ?? 41.40945, botiga.longitude ?? 2.17812],
       { draggable: true }
     ).addTo(map);
-
     marker.on("dragend", () => {
       const pos = marker.getLatLng();
       botiga.latitude = parseFloat(pos.lat.toFixed(8));
       botiga.longitude = parseFloat(pos.lng.toFixed(8));
     });
-
     setTimeout(() => map.invalidateSize(), 200);
     maps.set(mapId, map);
   });
 };
 
-// 📌 Obrir modal edició
 const openEditBotiga = async (botiga) => {
   editBotiga.value = {
     ...botiga,
@@ -134,7 +122,6 @@ const openEditBotiga = async (botiga) => {
   initMap("mapEdit", editBotiga.value);
 };
 
-// 📌 Obrir modal nova
 const openAddBotiga = async () => {
   newBotiga.value = {
     nom: "",
@@ -148,46 +135,85 @@ const openAddBotiga = async () => {
   initMap("mapAdd", newBotiga.value);
 };
 
-// 📌 Actualitzar
 const updateBotiga = async () => {
-  const token = localStorage.getItem("userToken");
-  await axios.put(`${API_URL}/botigues/${editBotiga.value.id}`, editBotiga.value, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  showEditModal.value = false;
-  fetchBotigues();
+  try {
+    const horarisNets = editBotiga.value.horaris
+      .filter(h => !h.tancat || (h.tancat && h.franjes.length > 0)) // només incloem dies vàlids
+      .map(h => ({
+        dia: h.dia,
+        franjes: h.tancat
+          ? [] // tancat = sense franjes
+          : h.franjes.map(f => ({
+              obertura: f.obertura,
+              tancament: f.tancament,
+            }))
+      }));
+
+    const payload = {
+      nom: editBotiga.value.nom,
+      descripcio: editBotiga.value.descripcio,
+      latitude: editBotiga.value.latitude,
+      longitude: editBotiga.value.longitude,
+      horaris: horarisNets
+    };
+
+    await axios.put(`/vendor/botigues/${editBotiga.value.id}`, payload);
+    toast.success('Botiga actualitzada correctament ✅');
+    await fetchBotigues(); // tornar a carregar la llista
+    showEditModal.value = false;
+  } catch (error) {
+    console.error('Error en updateBotiga:', error);
+    toast.error('Error al desar la botiga ❌');
+  }
 };
 
-// 📌 Afegir
+
+
 const addBotiga = async () => {
-  const token = localStorage.getItem("userToken");
-  await axios.post(`${API_URL}/botigues`, newBotiga.value, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  showAddModal.value = false;
-  fetchBotigues();
+  try {
+    const horarisNets = newBotiga.value.horaris
+      .filter(h => h.franjes.length > 0) // només dies amb franges
+      .map(h => ({
+        dia: h.dia,
+        franjes: h.franjes.map(f => ({
+          obertura: f.obertura,
+          tancament: f.tancament
+        }))
+      }));
+
+    const payload = {
+      nom: newBotiga.value.nom,
+      descripcio: newBotiga.value.descripcio,
+      latitude: newBotiga.value.latitude,
+      longitude: newBotiga.value.longitude,
+      horaris: horarisNets,
+    };
+
+    await axiosInstance.post("/botigues", payload);
+    toast.success("Botiga afegida correctament ✅");
+    showAddModal.value = false;
+    await fetchBotigues();
+  } catch (error) {
+    console.error("Error en addBotiga:", error.response?.data || error);
+    toast.error("Error afegint botiga ❌");
+  }
 };
+
+
 
 const deleteBotigaId = ref(null);
 const showDeleteModal = ref(false);
-
-// ❌ Confirmar eliminació i obrir modal
 const confirmDeleteBotiga = (id) => {
   deleteBotigaId.value = id;
   showDeleteModal.value = true;
 };
 
-// ❌ Eliminar botiga
 const deleteBotiga = async () => {
   if (deleteBotigaId.value !== null) {
     try {
-      const token = localStorage.getItem("userToken");
-      await axios.delete(`${API_URL}/botigues/${deleteBotigaId.value}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      await axiosInstance.delete(`/botigues/${deleteBotigaId.value}`);
       showDeleteModal.value = false;
-      fetchBotigues(); // Actualitzar la llista
+      fetchBotigues();
     } catch (error) {
       errorMessage.value = "Error eliminant botiga.";
     }
@@ -198,10 +224,9 @@ const goToProductes = () => {
   router.push("/area-personal-productes");
 };
 
-
-
 onMounted(fetchBotigues);
 </script>
+
 
 <template>
   <div class="container">

@@ -1,3 +1,4 @@
+// main.ts
 import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
@@ -6,14 +7,16 @@ import { createPinia } from 'pinia';
 import ca from './locales/ca.json';
 import es from './locales/es.json';
 import axios from "axios";
+import Toast from 'vue-toastification';
+import 'vue-toastification/dist/index.css';
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 
-axios.defaults.baseURL = "http://127.0.0.1:8000/api"; // Base URL de l'API Laravel
-const token = localStorage.getItem("userToken");  // Comproveu que aquest valor existeix
-if (token) {
-  axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-}
+// Configura la baseURL i el header d'autorització utilitzant "userToken"
+axios.defaults.baseURL = "http://127.0.0.1:8000/api";
+axios.defaults.headers.common["Authorization"] =
+  "Bearer " + localStorage.getItem("userToken");
+
 const i18n = createI18n({
   legacy: false,
   locale: 'ca',
@@ -25,5 +28,6 @@ const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
 app.use(router);
+app.use(Toast)
 app.use(i18n);
 app.mount("#app");

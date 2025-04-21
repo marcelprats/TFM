@@ -506,7 +506,7 @@ async function saveOrderStatus() {
   }
   try {
     const token = localStorage.getItem('userToken');
-    await axios.patch(
+    await axios.put(
       `${API_URL}/orders/${updateModalOrder.value.id}`,
       {
         status: updatedStatus,
@@ -528,7 +528,7 @@ async function deliverOrder() {
   // Aquesta funció actualitza directament el estat de la comanda a "completed" per les comandes reservades
   try {
     const token = localStorage.getItem('userToken');
-    await axios.patch(
+    await axios.put(
       `${API_URL}/orders/${deliverModalOrder.value.id}`,
       {
         status: 'completed'

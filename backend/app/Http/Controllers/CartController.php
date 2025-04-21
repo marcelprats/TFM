@@ -2,311 +2,216 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Cart;
-use App\Models\CartItem;
-use App\Models\Producte;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\{AddCartItemRequest, UpdateCartItemRequest, CheckoutCartRequest};
+use App\Models\{Cart, CartItem, Order, Producte, Reserve, ReserveItem};
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class CartController extends Controller
 {
-    /**
-     * Retorna el carret del propietari autenticat, creant-lo si no existeix.
-     */
-    public function index(Request $request)
+    public function __construct()
     {
-        // Obtenim l'usuari autenticat directament des del request
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-        $ownerId = $user->id;
-        $ownerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
-
-        Log::debug("Fetching cart for owner id: {$ownerId} and type: {$ownerType}");
-
-        // Recuperem o creem el carret amb la relació polimòrfica
-        $cart = Cart::with('cartItems.product.botiga')->firstOrCreate(
-            ['owner_id' => $ownerId, 'owner_type' => $ownerType],
-            ['total_price' => 0.00]
-        );
-
-        Log::debug("Cart found: " . json_encode($cart));
-        return response()->json($cart);
+        $this->middleware('auth:sanctum');
     }
 
-    /**
-     * Afegeix un producte al carret.
-     * Requereix:
-     * - product_id: ID del producte a afegir.
-     * - quantity: Quantitat a afegir (mínim 1).
-     */
-    public function addItem(Request $request)
+    public function index(): JsonResponse
     {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
+        $user = auth()->user();
+        $this->authorize('viewAny', Cart::class);
+
+        $cart = Cart::where('owner_id', $user->id)
+                    ->where('owner_type', get_class($user))
+                    ->first();
+
+        if (!$cart) {
+            $cart = $user->cart()->create(['total_price' => 0.00]);
         }
-        $ownerId = $user->id;
-        $ownerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
 
-        $validatedData = $request->validate([
-            'product_id' => 'required|exists:productes,id',
-            'quantity'   => 'required|integer|min:1',
+        $cart->load('cartItems.product.botiga');
+
+        return response()->json([
+            'id'           => $cart->id,
+            'total_price'  => $cart->total_price,
+            'cart_items'   => $cart->cartItems->map(function ($item) {
+                return [
+                    'id'             => $item->id,
+                    'product_id'     => $item->product_id,
+                    'quantity'       => $item->quantity,
+                    'reserved_price' => $item->reserved_price,
+                    'selected'       => $item->selected,
+                    'product'        => [
+                        'id'     => $item->product->id,
+                        'nom'    => $item->product->nom,
+                        'preu'   => $item->product->preu,
+                        'botiga' => optional($item->product->botiga)->only(['id', 'nom']),
+                    ],
+                ];
+            }),
         ]);
+    }
 
-        // Obtenim el producte per extreure el seu preu actual
-        $product = Producte::findOrFail($validatedData['product_id']);
-        $price = $product->preu;
+    public function addItem(AddCartItemRequest $request): JsonResponse
+    {
+        $user = auth()->user();
+        $this->authorize('addItem', Cart::class);
+        $data = $request->validated();
 
-        // Recuperem o creem el carret del propietari
-        $cart = Cart::firstOrCreate(
-            ['owner_id' => $ownerId, 'owner_type' => $ownerType],
-            ['total_price' => 0.00]
-        );
+        $cart = Cart::where('owner_id', $user->id)
+                    ->where('owner_type', get_class($user))
+                    ->first();
 
-        // Comprovem si l'ítem ja existeix al carret
-        $cartItem = $cart->cartItems()->where('product_id', $validatedData['product_id'])->first();
+        if (!$cart) {
+            $cart = $user->cart()->create(['total_price' => 0.00]);
+        }
+
+        $product = Producte::findOrFail($data['product_id']);
+        $price   = $product->preu;
+
+        $cartItem = $cart->cartItems()->where('product_id', $data['product_id'])->first();
         if ($cartItem) {
-            // Incrementem la quantitat de l'ítem existent
-            $cartItem->quantity += $validatedData['quantity'];
-            $cartItem->save();
+            $cartItem->increment('quantity', $data['quantity']);
         } else {
-            // Creem un nou ítem al carret
-            $cartItem = $cart->cartItems()->create([
-                'product_id'     => $validatedData['product_id'],
-                'quantity'       => $validatedData['quantity'],
+            $cart->cartItems()->create([
+                'product_id'     => $data['product_id'],
+                'quantity'       => $data['quantity'],
                 'reserved_price' => $price,
             ]);
         }
 
-        // Recalculem el total del carret
-        $cart->total_price = $cart->cartItems->sum(function ($item) {
-            return $item->quantity * $item->reserved_price;
-        });
-        $cart->save();
-
-        Log::debug("Product added to cart", ['cart' => $cart]);
-
-        return response()->json($cart);
-    }
-
-    /**
-     * Actualitza la quantitat d'un ítem del carret.
-     * Requereix:
-     * - quantity: La nova quantitat.
-     */
-    public function updateItem(Request $request, $itemId)
-    {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-        $ownerId = $user->id;
-        $ownerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
-
-        $validatedData = $request->validate([
-            'quantity' => 'required|integer|min:1',
-            'selected' => 'sometimes|boolean',
+        $cart->update([
+            'total_price' => $cart->cartItems->sum(fn($i) => $i->quantity * $i->reserved_price),
         ]);
 
-        $cartItem = CartItem::findOrFail($itemId);
+        return response()->json($cart, 201);
+    }
 
-        // Comprovem que l'ítem pertany al carret del propietari autenticat
-        if ($cartItem->cart->owner_id != $ownerId || $cartItem->cart->owner_type != $ownerType) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+    public function updateItem(UpdateCartItemRequest $request, CartItem $cartItem): JsonResponse
+    {
+        $this->authorize('update', $cartItem);
 
-        $cartItem->quantity = $validatedData['quantity'];
-        if (array_key_exists('selected', $validatedData)) {
-            $cartItem->selected = $validatedData['selected'];
-        }
-        $cartItem->save();
+        $data = $request->validated();
+        $cartItem->update([
+            'quantity' => $data['quantity'],
+            'selected' => $data['selected'] ?? $cartItem->selected,
+        ]);
 
-        // Recalculem el total del carret
         $cart = $cartItem->cart;
-        $cart->total_price = $cart->cartItems->sum(fn($item) => $item->quantity * $item->reserved_price);
-        $cart->save();
+        $cart->update([
+            'total_price' => $cart->cartItems->sum(fn($i) => $i->quantity * $i->reserved_price),
+        ]);
 
         return response()->json($cart);
     }
 
-    /**
-     * Elimina un ítem del carret.
-     */
-    public function removeItem(Request $request, $itemId)
+    public function removeItem(CartItem $cartItem): JsonResponse
     {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-        $ownerId = $user->id;
-        $ownerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
-
-        $cartItem = CartItem::findOrFail($itemId);
-        if ($cartItem->cart->owner_id != $ownerId || $cartItem->cart->owner_type != $ownerType) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorize('delete', $cartItem);
 
         $cart = $cartItem->cart;
         $cartItem->delete();
 
-        // Actualitzem el total del carret
-        $cart->total_price = $cart->cartItems->sum(fn($item) => $item->quantity * $item->reserved_price);
-        $cart->save();
+        $cart->update([
+            'total_price' => $cart->cartItems->sum(fn($i) => $i->quantity * $i->reserved_price),
+        ]);
 
         return response()->json($cart);
     }
 
-    /**
-     * Buida el carret del propietari.
-     */
-    public function destroy(Request $request)
+    public function destroy(): JsonResponse
     {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-        $ownerId = $user->id;
-        $ownerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
+        $user = auth()->user();
+        $this->authorize('deleteAny', Cart::class);
 
-        $cart = Cart::where('owner_id', $ownerId)
-            ->where('owner_type', $ownerType)
-            ->first();
+        $cart = Cart::where('owner_id', $user->id)
+                    ->where('owner_type', get_class($user))
+                    ->first();
 
         if ($cart) {
             $cart->cartItems()->delete();
-            $cart->total_price = 0;
-            $cart->save();
+            $cart->update(['total_price' => 0]);
         }
-        
-        return response()->json(['message' => 'Carret buidat correctament.'], 200);
+
+        return response()->json(['message' => 'Carret buidat correctament.']);
     }
 
-    /**
-     * Processa el checkout del carret.
-     *
-     * En una implementació real, aquí es crearia una comanda i es processaria el pagament.
-     */
-    public function checkout(Request $request)
+    public function checkout(CheckoutCartRequest $request): JsonResponse
     {
-        // Recupera l'usuari autenticat
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-        $ownerId = $user->id;
-        $buyerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
+        $user = auth()->user();
+        $cart = Cart::where('owner_id', $user->id)
+                    ->where('owner_type', get_class($user))
+                    ->with('cartItems.product.botiga')
+                    ->firstOrFail();
     
-        // Carrega el carret amb les relacions
-        $cart = Cart::with('cartItems.product.botiga')
-            ->where('owner_id', $ownerId)
-            ->where('owner_type', $buyerType)
-            ->first();
+        $this->authorize('checkout', $cart);
     
-        if (!$cart || $cart->cartItems->isEmpty()) {
-            return response()->json(['message' => 'El carret està buit.'], 400);
-        }
-    
-        // Filtra els ítems seleccionats (on selected == true)
-        $selectedItems = $cart->cartItems->filter(function ($item) {
-            return $item->selected;
-        });
+        $selectedItems = $cart->cartItems->where('selected', true);
         if ($selectedItems->isEmpty()) {
             return response()->json(['message' => 'No hi ha ítems seleccionats per fer checkout.'], 400);
         }
     
-        // Agrupa els ítems seleccionats per botiga (si no hi ha botiga, assigna 'sense_botiga')
-        $groups = $selectedItems->groupBy(function ($item) {
-            return $item->product->botiga ? $item->product->botiga->id : 'sense_botiga';
-        });
+        $groups = $selectedItems->groupBy(fn($item) => $item->product->botiga?->id ?? 'sense_botiga');
     
-        // Genera el número d'ordre base
-        $lastOrder = \App\Models\Order::orderBy('id', 'desc')->first();
-        if ($lastOrder && preg_match('/^ORD-(\d{10})/', $lastOrder->order_number, $matches)) {
-            $baseNumber = intval($matches[1]) + 1;
-        } else {
-            $baseNumber = 1;
-        }
-        $baseOrderNumber = 'ORD-' . str_pad($baseNumber, 10, '0', STR_PAD_LEFT);
+        $lastOrder   = Order::latest('id')->first();
+        $baseNumber  = ($lastOrder && preg_match('/^ORD-(\d{10})/', $lastOrder->order_number, $m)) ? intval($m[1]) + 1 : 1;
+        $baseOrderNo = 'ORD-' . str_pad($baseNumber, 10, '0', STR_PAD_LEFT);
     
         $orders = [];
-        $groupIndex = 1;
-        foreach ($groups as $shopId => $items) {
-            $total = $items->sum(function ($item) {
-                return $item->quantity * $item->reserved_price;
-            });
-            $deposit = round($total * 0.1, 2);
-            $orderNumber = (count($groups) === 1)
-                ? $baseOrderNumber
-                : $baseOrderNumber . '-' . $groupIndex;
+        $i = 1;
     
-            // Aquí creem la reserva. Ara s'inclou el camp 'buyer_type'
-            $reserve = \App\Models\Reserve::create([
-                'buyer_id'       => $ownerId,
-                'buyer_type'     => $buyerType, // Afegim aquest camp
-                'botiga_id'      => ($shopId === 'sense_botiga') ? null : $shopId,
+        $morphType = array_search(get_class($user), Relation::morphMap()) ?? get_class($user);
+    
+        foreach ($groups as $botigaId => $items) {
+            $total   = $items->sum(fn($i) => $i->quantity * $i->reserved_price);
+            $deposit = round($total * 0.1, 2);
+    
+            $reserve = Reserve::create([
+                'buyer_id'       => $user->id,
+                'buyer_type'     => $morphType,
+                'botiga_id'      => $botigaId === 'sense_botiga' ? null : $botigaId,
                 'total_reserved' => $total,
                 'deposit_amount' => $deposit,
                 'status'         => 'pending',
             ]);
     
             foreach ($items as $item) {
-                \App\Models\ReserveItem::create([
+                ReserveItem::create([
                     'reserve_id'     => $reserve->id,
-                    'product_id'     => $item->product->id,
+                    'product_id'     => $item->product_id,
                     'quantity'       => $item->quantity,
                     'reserved_price' => $item->reserved_price,
                 ]);
-    
-                // Actualitza el stock del producte
-                $product = $item->product;
-                $newStock = max(0, $product->stock - $item->quantity);
-                $product->update(['stock' => $newStock]);
+                $item->product->decrement('stock', $item->quantity);
             }
     
-            $order = \App\Models\Order::create([
+            $order = Order::create([
                 'reserve_id'     => $reserve->id,
-                'order_number'   => $orderNumber,
+                'order_number'   => count($groups) === 1 ? $baseOrderNo : $baseOrderNo . '-' . $i,
                 'total_amount'   => $total,
                 'payment_method' => 'online',
                 'transaction_id' => null,
                 'status'         => 'pending',
-                'buyer_id'       => $ownerId,
-                'buyer_type'     => $buyerType,
+                'buyer_id'       => $user->id,
+                'buyer_type'     => $morphType,
                 'payment_date'   => now(),
             ]);
     
             $orders[] = $order;
-            $groupIndex++;
+            $i++;
         }
     
-        // Esborra els ítems processats (selected == true)
         $cart->cartItems()->where('selected', true)->delete();
-    
-        // Recalcula el total amb els ítems restants
-        $remainingTotal = $cart->cartItems->sum(function ($item) {
-            return $item->quantity * $item->reserved_price;
-        });
-        $cart->total_price = $remainingTotal;
-        $cart->save();
-    
-        // Marca els ítems restants com a seleccionats per defecte
+        $cart->update([
+            'total_price' => $cart->cartItems->sum(fn($i) => $i->quantity * $i->reserved_price),
+        ]);
         $cart->cartItems()->update(['selected' => true]);
     
-        if (count($orders) === 1) {
-            return response()->json([
-                'message' => 'Checkout realitzat correctament.',
-                'orderId' => $orders[0]->id,
-                'baseOrderNumber' => $baseOrderNumber,
-            ]);
-        } else {
-            return response()->json([
-                'message' => 'Checkout realitzat correctament. S\'han creat diverses ordres per botiga.',
-                'orders' => $orders,
-                'baseOrderNumber' => $baseOrderNumber,
-            ]);
-        }
+        return response()->json([
+            'message'         => 'Checkout realitzat correctament.',
+            'orders'          => $orders,
+            'baseOrderNumber' => $baseOrderNo,
+        ]);
     }
     
 }

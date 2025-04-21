@@ -56,7 +56,7 @@ const sortDirection = ref<string>('asc');
 onMounted(async () => {
   try {
     const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/importacions`, {
+    const response = await axios.get(`${API_URL}/vendor/importacions`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     importRecords.value = response.data;

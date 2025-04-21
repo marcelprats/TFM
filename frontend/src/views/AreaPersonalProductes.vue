@@ -429,7 +429,20 @@ import ProductImportWizard from "../components/ProductImportWizard.vue";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-const API_URL = "http://127.0.0.1:8000/api";
+const API_URL = "http://127.0.0.1:8000/api/vendor";
+
+// Instància d'axios amb token automàtic
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+});
+
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem("userToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Interfaces
 interface Botiga {
@@ -538,7 +551,7 @@ async function fetchProductes() {
   try {
     const token = localStorage.getItem("userToken");
     if (!token) return;
-    const response = await axios.get(`${API_URL}/productes`, {
+    const response = await axiosInstance.get(`${API_URL}/productes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     productes.value = response.data.map((prod: any) => ({
@@ -559,7 +572,7 @@ async function fetchProductes() {
 async function fetchBotigues() {
   try {
     const token = localStorage.getItem("userToken");
-    const response = await axios.get(`${API_URL}/botigues-mes`, {
+    const response = await axiosInstance.get(`${API_URL}/botigues-mes`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     botigues.value = response.data;
@@ -572,7 +585,7 @@ async function fetchCategories() {
   try {
     const token = localStorage.getItem("userToken");
     if (!token) return;
-    const response = await axios.get(`${API_URL}/categories`, {
+    const response = await axiosInstance.get(`${API_URL}/categories`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     categories.value = response.data;
@@ -741,7 +754,7 @@ async function addProducte() {
     } else if (newProduct.value.imatge) {
       formData.append("imatge", newProduct.value.imatge);
     }
-    await axios.post(`${API_URL}/productes`, formData, {
+    await axiosInstance.post(`${API_URL}/productes`, formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "multipart/form-data",
@@ -787,10 +800,8 @@ function openEditProduct(prod: any) {
 async function updateProducte() {
   if (editProduct.value) {
     try {
-      const token = localStorage.getItem("userToken");
-      if (!token) return;
       const formData = new FormData();
-      formData.append("_method", "PUT");
+      formData.append("_method", "PATCH");
       formData.append("nom", editProduct.value.nom);
       formData.append("descripcio", editProduct.value.descripcio);
       formData.append("preu", editProduct.value.preu.toString());
@@ -803,9 +814,8 @@ async function updateProducte() {
       } else if (editProduct.value.imatge) {
         formData.append("imatge", editProduct.value.imatge);
       }
-      await axios.post(`${API_URL}/productes/${editProduct.value.id}`, formData, {
+      await axiosInstance.post(`/productes/${editProduct.value.id}`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -818,12 +828,11 @@ async function updateProducte() {
     }
   }
 }
-
 // Eliminar producte
 async function deleteProducte(id: number) {
   try {
     const token = localStorage.getItem("userToken");
-    await axios.delete(`${API_URL}/productes/${id}`, {
+    await axiosInstance.delete(`${API_URL}/productes/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchProductes();
@@ -839,7 +848,7 @@ async function deleteConfirmedProduct() {
   if (deleteProductId.value !== null) {
     try {
       const token = localStorage.getItem("userToken");
-      await axios.delete(`${API_URL}/productes/${deleteProductId.value}`, {
+      await axiosInstance.delete(`${API_URL}/productes/${deleteProductId.value}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       showDeleteModal.value = false;
@@ -887,7 +896,7 @@ async function bulkDelete() {
   const token = localStorage.getItem("userToken");
   for (const id of selectedProducts.value) {
     try {
-      await axios.delete(`${API_URL}/productes/${id}`, {
+      await axiosInstance.delete(`${API_URL}/productes/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (error) {
@@ -940,7 +949,7 @@ async function bulkUpdateConfirm() {
       // Si no hi ha cap camp a actualitzar (per exemple, si tot és null en el bulk), podem saltar-lo
       if (Object.keys(updateData).length === 0) continue;
 
-      await axios.patch(`${API_URL}/productes/${id}`, updateData, {
+      await axiosInstance.patch(`${API_URL}/productes/${id}`, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (error: any) {

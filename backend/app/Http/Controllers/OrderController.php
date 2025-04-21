@@ -2,168 +2,181 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UpdateOrderRequest;
 use App\Models\Order;
 use App\Models\Reserve;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class OrderController extends Controller
 {
-    /**
-     * Emmagatzema una nova comanda.
-     */
-    public function store(Request $request)
+    use AuthorizesRequests;
+
+    public function __construct()
     {
-        // Validació de les dades rebudes
-        $validated = $request->validate([
-            'reserve_id'     => 'required|exists:reserves,id',
-            'total_amount'   => 'required|numeric',
-            'payment_method' => 'required|string',
-            'transaction_id' => 'nullable|string',
-            'status'         => 'required|in:pending,paid,cancelled'
+        $this->middleware('auth:sanctum');
+    }
+
+    /**
+     * Retorna l'àlies curt (vendor/user) pel model donat.
+     */
+    protected function getMorphAlias($model): string
+    {
+        return array_search(get_class($model), Relation::morphMap()) ?? get_class($model);
+    }
+
+    /**
+     * Llistat general amb filtre de tipus (?type=buyer/vendor/all)
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $this->authorize('viewAny', Order::class);
+
+        $type = $request->query('type', 'buyer');
+        $morph = $this->getMorphAlias($user);
+
+        $query = Order::with(['reserve.reserveItems.product', 'reserve.botiga']);
+
+        if ($type === 'buyer') {
+            $query->where('buyer_id', $user->id)
+                  ->where('buyer_type', $morph);
+        } elseif ($type === 'vendor') {
+            $query->whereHas('reserve.botiga', function ($q) use ($user) {
+                $q->where('vendor_id', $user->id);
+            });
+        } else {
+            $query->where(function ($q) use ($user, $morph) {
+                $q->where('buyer_id', $user->id)
+                  ->where('buyer_type', $morph);
+            })->orWhereHas('reserve.botiga', function ($q) use ($user) {
+                $q->where('vendor_id', $user->id);
+            });
+        }
+
+        return response()->json($query->orderByDesc('created_at')->get());
+    }
+
+    /**
+     * Comandes del comprador autenticat
+     */
+    public function myOrders(): JsonResponse
+    {
+        $user = Auth::user();
+        $this->authorize('viewAny', Order::class);
+
+        $morph = $this->getMorphAlias($user);
+
+        $orders = Order::with(['reserve.reserveItems.product', 'reserve.botiga'])
+            ->where('buyer_id', $user->id)
+            ->where('buyer_type', $morph)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($orders);
+    }
+
+    /**
+     * Crear nova comanda
+     */
+    public function store(StoreOrderRequest $request): JsonResponse
+    {
+        $this->authorize('create', Order::class);
+    
+        $data = $request->validated();
+        $user = Auth::user();
+    
+        // 🔍 Comprovem el que realment retorna el morphMap
+        $userClass = get_class($user);
+        $morphAlias = array_search($userClass, \Illuminate\Database\Eloquent\Relations\Relation::morphMap());
+    
+        \Log::info('ORDER MORPH INFO', [
+            'user_class' => get_class($user),
+            'morph_alias' => $morphAlias,
+            'morphMap' => \Illuminate\Database\Eloquent\Relations\Relation::morphMap(),
         ]);
-
-        // Obtenim l'usuari autenticat usant $request->user()
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
+        
+    
+        $reserve = Reserve::findOrFail($data['reserve_id']);
+    
+        if ($reserve->buyer_id !== $user->id || $reserve->buyer_type !== $morphAlias) {
+            abort(403, 'Reserva no vàlida per a aquest usuari.');
         }
-
-        // Comprovar que la reserva pertany a l'usuari
-        $reserve = Reserve::findOrFail($validated['reserve_id']);
-        if ($reserve->buyer_id !== $user->id) {
-            return response()->json(['message' => 'Accés no autoritzat.'], 403);
-        }
-
-        // Determina el tipus de comprador basant-se en el model de l'usuari
-        $buyerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
-
-        // Creem la comanda amb el buyer_type assignat
+    
+        $orderNumber = 'ORD-' . now()->format('YmdHis') . '-' . $user->id;
+    
         $order = Order::create([
-            'reserve_id'     => $validated['reserve_id'],
-            'order_number'   => 'ORD-' . time(),  // Genera un número d'ordre únic
-            'total_amount'   => $validated['total_amount'],
-            'payment_method' => $validated['payment_method'],
-            'transaction_id' => $validated['transaction_id'] ?? null,
-            'status'         => $validated['status'],
+            'reserve_id'     => $data['reserve_id'],
+            'order_number'   => $orderNumber,
+            'total_amount'   => $data['total_amount'],
+            'payment_method' => $data['payment_method'],
+            'transaction_id' => $data['transaction_id'] ?? null,
+            'status'         => $data['status'],
             'buyer_id'       => $user->id,
-            'buyer_type'     => $buyerType,
+            'buyer_type'     => $morphAlias,
             'payment_date'   => now(),
         ]);
-
-        return response()->json([
-            'message' => 'Comanda creada amb èxit.',
-            'order'   => $order,
-        ], 201);
+    
+        return response()->json($order, 201);
     }
-
-    /**
-     * Mostra una comanda concreta.
-     */
-    public function show(Request $request, $id)
+    
+    
+    public function show(Order $order): JsonResponse
     {
-        // Carrega l'ordre amb les relacions
-        $order = Order::with([
+        $order->loadMissing('reserve.botiga');
+    
+        $this->authorize('view', $order);
+    
+        $order->load([
             'reserve.reserveItems.product',
-            'reserve.botiga'
-        ])->findOrFail($id);
-    
-        // Obtenim l'usuari autenticat
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-    
-        // Determina el buyerType segons el model de l'usuari
-        $buyerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
-    
-        // Comprova que l'ordre pertany al usuari autenticat
-        if ($order->buyer_id !== $user->id || $order->buyer_type !== $buyerType) {
-            return response()->json(['message' => 'Accés no autoritzat.'], 403);
-        }
-    
-        return response()->json($order);
-    }
-    
-    /**
-     * Llista totes les comandes de l'usuari autenticat.
-     */
-    public function index(Request $request)
-    {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-        $buyerType = ($user instanceof \App\Models\Vendor) ? 'vendor' : 'user';
-
-        $orders = Order::with('reserve.reserveItems.product')
-                    ->where('buyer_id', $user->id)
-                    ->where('buyer_type', $buyerType)
-                    ->orderBy('created_at', 'desc')
-                    ->get();
-
-        return response()->json($orders);
-    }
-
-    /**
-     * Llista les comandes associades a la botiga del venedor autenticat.
-     */
-    public function vendorOrders(Request $request)
-    {
-        $user = $request->user();
-        if (!$user || !($user instanceof \App\Models\Vendor)) {
-            return response()->json(['message' => 'Accés no autoritzat.'], 403);
-        }
-
-        $orders = Order::with([
-            'reserve.reserveItems.product',
-            'reserve.botiga'
-        ])
-        ->whereHas('reserve.botiga', function($query) use ($user) {
-            $query->where('vendor_id', $user->id);
-        })
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-        return response()->json($orders);
-    }
-
-    /**
-     * Actualitza l'estat d'una comanda.
-     *
-     * Paràmetres esperats:
-     *  - status: 'reserved', 'completed' o 'cancelled' (obligatori)
-     *  - cancellation_reason: opció per a cancel·lació
-     *  - confirmed_product_ids: opcional, array d'IDs dels ítems confirmats
-     */
-    public function update(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'status'                => 'required|in:reserved,completed,cancelled',
-            'cancellation_reason'   => 'nullable|string',
-            'confirmed_product_ids' => 'nullable|array'
+            'reserve.botiga.vendor'
         ]);
-
-        $order = Order::with('reserve')->findOrFail($id);
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Usuari no autenticat.'], 401);
-        }
-
-        // Comprova que l'ordre pertany a la botiga del venedor autenticat
-        if (!$order->reserve || !$order->reserve->botiga || $order->reserve->botiga->vendor_id != $user->id) {
-            return response()->json(['message' => 'Accés no autoritzat.'], 403);
-        }
-
-        $order->status = $validated['status'];
-        if ($validated['status'] === 'cancelled' && isset($validated['cancellation_reason'])) {
-            $order->cancellation_reason = $validated['cancellation_reason'];
-        }
-        if ($validated['status'] === 'reserved' && isset($validated['confirmed_product_ids'])) {
-            \Log::info('Productes confirmats per l’ordre ' . $order->id . ': ' . implode(',', $validated['confirmed_product_ids']));
-            // Aquí es podria actualitzar la confirmació d'ítems, si s'ho desitja.
-        }
-        $order->save();
-
+    
         return response()->json($order);
+    }
+    
+    
+
+    public function update(UpdateOrderRequest $request, Order $order)
+    {
+        $validated = $request->validated();
+    
+        $order->status = $validated['status'];
+        $order->cancellation_reason = $validated['cancellation_reason'] ?? null;
+    
+        $order->save();
+    
+        return response()->json([
+            'message' => 'Estat actualitzat correctament',
+            'order' => $order,
+        ]);
+    }
+
+    public function destroy(Order $order): JsonResponse
+    {
+        $order->load(['reserve.botiga']);
+        $this->authorize('delete', $order);
+
+        $order->delete();
+
+        return response()->json(['message' => 'Comanda eliminada correctament.']);
+    }
+
+    public function vendorOrders(): JsonResponse
+    {
+        $vendor = Auth::user();
+        $this->authorize('viewAny', Order::class);
+
+        $orders = Order::with(['reserve.reserveItems.product', 'reserve.botiga'])
+            ->whereHas('reserve.botiga', fn($q) => $q->where('vendor_id', $vendor->id))
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($orders);
     }
 }

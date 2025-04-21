@@ -52,7 +52,7 @@ const API_URL = 'http://127.0.0.1:8000/api';
 onMounted(async () => {
   try {
     const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/importacions/${id}`, {
+    const response = await axios.get(`${API_URL}/vendor/importacions/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // Suposem que el controlador API retorna un JSON amb:

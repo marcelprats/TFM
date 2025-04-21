@@ -302,7 +302,7 @@ async function loadOrders() {
   loadingOrders.value = true;
   try {
     const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/orders`, {
+    const response = await axios.get(`${API_URL}/my-orders`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     orders.value = response.data;

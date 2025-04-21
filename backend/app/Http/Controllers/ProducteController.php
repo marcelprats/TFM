@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Auth;
 
 class ProducteController extends Controller
 {
+    /**
+     * Retorna la llista de productes del venedor autenticat.
+     * (Endpoints per ús de venedors)
+     */
     public function index()
     {
         $user = Auth::user();
@@ -23,6 +27,9 @@ class ProducteController extends Controller
         return response()->json($productes);
     }
 
+    /**
+     * Crea un nou producte associat al venedor autenticat.
+     */
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -31,9 +38,11 @@ class ProducteController extends Controller
             return response()->json(['message' => 'No autoritzat'], 403);
         }
 
+        // Valida les dades rebudes
         $request->validate([
             'nom'         => 'required|string|max:255',
             'descripcio'  => 'nullable|string',
+            // Decideix un tipus coherent per a categoria i subcategoria (en aquest cas, string)
             'categoria'   => 'required|string',
             'subcategoria'=> 'nullable|string',
             'preu'        => 'required|numeric|min:0',
@@ -42,7 +51,7 @@ class ProducteController extends Controller
             'imatge'      => 'nullable|file|image',
         ]);
 
-        // Processar la imatge: si s'ha pujat un fitxer, el desa; sinó, es fa servir la URL enviada
+        // Processa la imatge: si s'ha pujat un fitxer, el desa; en cas contrari, s'utilitza la URL enviada
         if ($request->hasFile('imatge')) {
             $file = $request->file('imatge');
             $filename = time() . '.' . $file->getClientOriginalExtension();
@@ -67,6 +76,9 @@ class ProducteController extends Controller
         return response()->json($producte->load('botiga:id,nom'), 201);
     }
 
+    /**
+     * Actualitza un producte si pertany al venedor autenticat.
+     */
     public function update(Request $request, $id)
     {
         $user = Auth::user();
@@ -80,22 +92,25 @@ class ProducteController extends Controller
         if (!$producte) {
             return response()->json(['message' => 'Producte no trobat'], 404);
         }
-        
+
+        // Si la subcategoria no es proporciona, la defineix com a null
         $request->merge([
             'subcategoria' => $request->subcategoria ?: null,
         ]);
 
+        // Validació: assegura't que els tipus per a categoria i subcategoria siguin coherents (string)
         $request->validate([
             'nom'         => 'required|string|max:255',
             'descripcio'  => 'nullable|string',
-            'categoria'   => 'required|integer',
-            'subcategoria'=> 'nullable|integer',
+            'categoria'   => 'required|string',
+            'subcategoria'=> 'nullable|string',
             'preu'        => 'required|numeric|min:0',
             'stock'       => 'required|integer|min:0',
             'botiga_id'   => 'required|exists:botigues,id',
             'imatge'      => 'nullable|file|image',
         ]);
 
+        // Processa la imatge, si s'ha pujat
         if ($request->hasFile('imatge')) {
             $file = $request->file('imatge');
             $filename = time() . '.' . $file->getClientOriginalExtension();
@@ -120,19 +135,15 @@ class ProducteController extends Controller
     }
 
     /**
-     * Actualitza el stock d'un producte.
+     * Actualitza el stock d’un producte.
      */
     public function updateStock(Request $request, $id)
     {
-        // Valida que se li passa un "stock" numèric i no negatiu.
         $validated = $request->validate([
             'stock' => 'required|numeric|min:0',
         ]);
 
-        // Recupera el producte (o retorna un 404 si no existeix).
         $producte = Producte::findOrFail($id);
-
-        // Actualitza el stock.
         $producte->stock = $validated['stock'];
         $producte->save();
 
@@ -142,6 +153,9 @@ class ProducteController extends Controller
         ]);
     }
 
+    /**
+     * Elimina un producte si pertany al venedor autenticat.
+     */
     public function destroy($id)
     {
         $user = Auth::user();
@@ -161,6 +175,10 @@ class ProducteController extends Controller
         return response()->json(['message' => 'Producte eliminat correctament']);
     }
 
+    /**
+     * Retorna tots els productes públics amb informació bàsica.
+     * (Endpoint per a consultes públiques)
+     */
     public function getAllProducts()
     {
         $productes = Producte::with(['botiga:id,nom', 'vendor:id,name'])->get();
@@ -168,6 +186,10 @@ class ProducteController extends Controller
         return response()->json($productes);
     }
 
+    /**
+     * Retorna els detalls d’un producte per ID amb les seves relacions.
+     * (Endpoint públic)
+     */
     public function show($id)
     {
         $producte = Producte::with(['botiga', 'vendor'])->find($id);

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Vendor extends Authenticatable
 {
@@ -17,18 +17,17 @@ class Vendor extends Authenticatable
         'password',
     ];
 
+    // Amaguem camps que poden generar cicles
     protected $hidden = [
         'password',
         'remember_token',
+        'tokens',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password'          => 'hashed',
+    ];
 
     public function botigues()
     {
@@ -36,10 +35,26 @@ class Vendor extends Authenticatable
     }
 
     /**
-     * Relació polimòrfica per accedir al carret del venedor.
+     * Relació polimòrfica: un Vendor té un únic Cart.
      */
     public function cart()
     {
         return $this->morphOne(Cart::class, 'owner');
     }
+
+    public function orders()
+    {
+        return $this->morphMany(Order::class, 'buyer');
+    }
+    
+    public function reserves()
+    {
+        return $this->morphMany(Reserve::class, 'buyer');
+    }
+
+    public function getMorphAlias()
+    {
+        return 'vendor';
+    }
+
 }

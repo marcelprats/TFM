@@ -2,233 +2,114 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreBotigaRequest;
+use App\Http\Requests\UpdateBotigaRequest;
 use App\Models\Botiga;
 use App\Models\HorariBotiga;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class BotigaController extends Controller
 {
-    /**
-     * Retorna totes les botigues.
-     */
-    public function indexPublic()
+    public function __construct()
     {
-        return response()->json(Botiga::with('horaris')->get());
+        \Auth::shouldUse('vendor');
     }
-    
 
-    /**
-     * Retorna totes les botigues del venedor autenticat.
-     */
-    public function getBotiguesByAuthVendor()
+    /** GET /botigues (públic) */
+    public function indexPublic(): JsonResponse
     {
-        $user = Auth::user();
-    
-        if (!$user || $user->getTable() !== 'vendors') {
-            return response()->json(['message' => 'No autoritzat'], 403);
-        }
-    
-        $botigues = Botiga::where('vendor_id', $user->id)
-            ->with('horaris')
-            ->get();
-        
+        $botigues = Botiga::with('horaris')->get();
         return response()->json($botigues);
     }
-    
 
-    /**
-     * Guarda una nova botiga associada al venedor autenticat.
-     */
-    public function store(Request $request)
+    /** GET /botigues-mes (públic) */
+    public function botiguesMesPublic(): JsonResponse
     {
-        $user = Auth::user();
-    
-        if (!$user || $user->getTable() !== 'vendors') {
-            return response()->json(['message' => 'No autoritzat'], 403);
-        }
-    
-        \Log::info("📥 Dades rebudes per crear botiga:", $request->all()); // 🔥 LOG
-    
-        $request->validate([
-            'nom' => 'required|string|max:255',
-            'descripcio' => 'nullable|string',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'horaris' => 'nullable|array',
-        ]);
-    
-        $botiga = Botiga::create([
-            'vendor_id' => $user->id,
-            'nom' => $request->nom,
-            'descripcio' => $request->descripcio,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-        ]);
-
-        if ($request->has('horaris')) {
-            foreach ($request->horaris as $horari) {
-                // Evita errors si falta alguna clau
-                if (!is_array($horari) || !isset($horari['dia']) || !isset($horari['franjes'])) continue;
-                if (!is_array($horari['franjes'])) continue;
-                if (isset($horari['tancat']) && $horari['tancat']) continue;
-            
-                foreach ($horari['franjes'] as $franja) {
-                    // 🔒 Validació extra per evitar errors
-                    $obertura = strlen($franja['obertura']) === 5
-                        ? $franja['obertura'] . ':00'
-                        : $franja['obertura'];
-
-                    $tancament = strlen($franja['tancament']) === 5
-                        ? $franja['tancament'] . ':00'
-                        : $franja['tancament'];
-
-                    HorariBotiga::create([
-                        'botiga_id' => $botiga->id,
-                        'dia' => $horari['dia'],
-                        'obertura' => $franja['obertura'],
-                        'tancament' => $franja['tancament'],
-                    ]);
-                }
-                
-            }
-            
-        }       
-    
-        return response()->json($botiga, 201);
-    }
-    
-
-    /**
-     * Actualitza una botiga només si pertany al venedor autenticat.
-     */
-    public function update(Request $request, $id)
-{
-    Log::info("📥 Dades rebudes en update():", $request->all());
-
-    $user = Auth::user();
-    if (!$user || $user->getTable() !== 'vendors') {
-        return response()->json(['message' => 'No autoritzat'], 403);
+        return $this->indexPublic();
     }
 
-    $botiga = Botiga::where('vendor_id', $user->id)->where('id', $id)->first();
-    if (!$botiga) {
-        return response()->json(['message' => 'Botiga no trobada'], 404);
-    }
-
-    $request->validate([
-        'nom' => 'required|string|max:255',
-        'descripcio' => 'nullable|string',
-        'latitude' => 'nullable|numeric',
-        'longitude' => 'nullable|numeric',
-        'horaris' => 'nullable|array',
-    ]);
-
-    Log::info("🔄 Actualitzant botiga:", [
-        'latitude' => $request->latitude,
-        'longitude' => $request->longitude
-    ]);
-
-    $botiga->update([
-        'nom' => $request->nom,
-        'descripcio' => $request->descripcio,
-        'latitude' => $request->latitude,
-        'longitude' => $request->longitude,
-    ]);
-
-    // 🔥 Debug: Comprovem si hi ha horaris
-    if ($request->has('horaris')) {
-        Log::info("🕒 Nous horaris rebuts:", $request->horaris);
-    } else {
-        Log::warning("⚠️ No s'han rebut horaris.");
-    }
-
-    // 🔄 Esborrem els horaris antics
-    HorariBotiga::where('botiga_id', $botiga->id)->delete();
-
-    if ($request->has('horaris')) {
-        try {
-            foreach ($request->horaris as $horari) {
-                // Evita errors si falta alguna clau
-                if (!is_array($horari) || !isset($horari['dia']) || !isset($horari['franjes'])) continue;
-                if (!is_array($horari['franjes'])) continue;
-                if (isset($horari['tancat']) && $horari['tancat']) continue;
-            
-                foreach ($horari['franjes'] as $franja) {
-                    if (!isset($franja['obertura']) || !isset($franja['tancament'])) continue;
-                
-                    $obertura = strlen($franja['obertura']) === 5 ? $franja['obertura'] . ':00' : $franja['obertura'];
-                    $tancament = strlen($franja['tancament']) === 5 ? $franja['tancament'] . ':00' : $franja['tancament'];
-                
-                    Log::debug('🔍 Franja a guardar:', [
-                        'botiga_id' => $botiga->id,
-                        'dia' => $horari['dia'],
-                        'obertura' => $obertura,
-                        'tancament' => $tancament,
-                    ]);
-                
-                    HorariBotiga::create([
-                        'botiga_id' => $botiga->id,
-                        'dia' => $horari['dia'],
-                        'obertura' => $obertura,
-                        'tancament' => $tancament,
-                    ]);
-                }
-                
-                
-            }
-            
-        } catch (\Exception $e) {
-            Log::error("❌ Error guardant horaris:", [
-                'message' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'stack' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json(['error' => 'Error actualitzant els horaris']);
-        }
-    }
-
-    return response()->json(['message' => 'Botiga actualitzada amb èxit', 'botiga' => $botiga->load('horaris')], 200);
-}
-
-    
-
-    /**
-     * Elimina una botiga només si pertany al venedor autenticat.
-     */
-    public function destroy($id)
+    /** GET /vendor/botigues */
+    public function getBotiguesByAuthVendor(): JsonResponse
     {
-        $user = Auth::user();
+        $vendor = auth()->user();
+        $botigues = Botiga::where('vendor_id', $vendor->id)
+            ->with('horaris')
+            ->get();
 
-        if (!$user || $user->getTable() !== 'vendors') {
-            return response()->json(['message' => 'No autoritzat'], 403);
-        }
+        return response()->json($botigues);
+    }
 
-        $botiga = Botiga::where('vendor_id', $user->id)->where('id', $id)->first();
+    /** POST /vendor/botigues */
+    public function store(StoreBotigaRequest $request): JsonResponse
+    {
+        $vendor = $request->user();
+        $data = $request->validated();
 
-        if (!$botiga) {
-            return response()->json(['message' => 'Botiga no trobada'], 404);
-        }
+        $botiga = $vendor->botigues()->create([
+            'nom' => $data['nom'],
+            'descripcio' => $data['descripcio'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+        ]);
 
+        $this->syncHoraris($botiga, $data['horaris'] ?? []);
+
+        return response()->json($botiga->load('horaris'), 201);
+    }
+
+    /** PUT /vendor/botigues/{botiga} */
+    public function update(UpdateBotigaRequest $request, Botiga $botiga): JsonResponse
+    {
+        $this->authorize('update', $botiga);
+
+        $data = $request->validated();
+
+        $botiga->update([
+            'nom' => $data['nom'],
+            'descripcio' => $data['descripcio'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+        ]);
+
+        HorariBotiga::where('botiga_id', $botiga->id)->delete();
+        $this->syncHoraris($botiga, $data['horaris'] ?? []);
+
+        return response()->json($botiga->load('horaris'));
+    }
+
+    /** DELETE /vendor/botigues/{botiga} */
+    public function destroy(Botiga $botiga): JsonResponse
+    {
+        $this->authorize('delete', $botiga);
+        
         $botiga->delete();
-
         return response()->json(['message' => 'Botiga eliminada correctament']);
     }
 
-    /**
-     * Retorna una botiga per ID amb els seus productes associats
-     */ 
-    public function show($id)
+    /** GET /botigues/{id} */
+    public function show(Botiga $botiga): JsonResponse
     {
-        $botiga = Botiga::with('productes', 'horaris')->find($id);
-    
-        if (!$botiga) {
-            return response()->json(['error' => 'Botiga no trobada'], 404);
-        }
-    
+        $botiga->load(['productes', 'horaris']);
         return response()->json($botiga);
+    }
+
+    /**
+     * Helpers
+     */
+    protected function syncHoraris(Botiga $botiga, array $horaris): void
+    {
+        foreach ($horaris as $h) {
+            if (empty($h['dia']) || empty($h['franjes']) || ! is_array($h['franjes'])) {
+                continue;
+            }
+            foreach ($h['franjes'] as $f) {
+                HorariBotiga::create([
+                    'botiga_id'  => $botiga->id,
+                    'dia'        => $h['dia'],
+                    'obertura'   => strlen($f['obertura']) === 5 ? $f['obertura'].':00' : $f['obertura'],
+                    'tancament'  => strlen($f['tancament']) === 5 ? $f['tancament'].':00' : $f['tancament'],
+                ]);
+            }
+        }
     }
 }

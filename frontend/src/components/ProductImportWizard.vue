@@ -396,7 +396,7 @@ function handleUpload() {
     console.log(key, value);
   }
   const token = localStorage.getItem('userToken');
-  axios.post(`${API_URL}/import-productes`, formData, {
+  axios.post(`${API_URL}/vendor/import-productes`, formData, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => {

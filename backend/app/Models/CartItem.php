@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CartItem extends Model
 {
@@ -19,19 +20,22 @@ class CartItem extends Model
 
     protected $casts = [
         'selected' => 'boolean',
+        'reserved_price' => 'float',
+        'quantity' => 'integer',
     ];
+
     /**
-     * Relació: Cada ítem pertany a un carret.
+     * Relació amb el carret.
      */
-    public function cart()
+    public function cart(): BelongsTo
     {
         return $this->belongsTo(Cart::class);
     }
 
     /**
-     * Relació: Cada ítem fa referència a un producte.
+     * Relació amb el producte.
      */
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Producte::class, 'product_id');
     }

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
@@ -22,19 +22,22 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-        ];
-    }
+    // Ara sí és propietat, no mètode
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password'          => 'hashed',
+    ];
 
     /**
-     * Relació polimòrfica per accedir al carret de l'usuari.
+     * Relació polimòrfica: un User té un únic Cart.
      */
     public function cart()
     {
         return $this->morphOne(Cart::class, 'owner');
+    }
+
+    public function getMorphAlias()
+    {
+        return 'user';
     }
 }
