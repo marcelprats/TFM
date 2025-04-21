@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 
 // Models
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\Reserve;
 use App\Models\Producte;
@@ -17,6 +18,7 @@ use App\Models\ImportRecord;
 
 // Policies
 use App\Policies\CartPolicy;
+use App\Policies\CartItemPolicy;
 use App\Policies\OrderPolicy;
 use App\Policies\ReservePolicy;
 use App\Policies\ProductePolicy;
@@ -40,6 +42,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Cart::class         => CartPolicy::class,
+        CartItem::class     => CartItemPolicy::class,
         Order::class        => OrderPolicy::class,
         Reserve::class      => ReservePolicy::class,
         Producte::class     => ProductePolicy::class,

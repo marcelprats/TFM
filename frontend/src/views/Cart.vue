@@ -194,6 +194,8 @@ const API_URL = 'http://127.0.0.1:8000/api';
 const router = useRouter();
 const cart = ref<any>(null);
 
+const singleDeleteItemName = ref('');
+
 /** Variables per gestió de selecció (són gestionades via el camp "selected" de cada ítem) */
 const selectedItems = ref<number[]>([]);
 const selectedShopIds = ref<string[]>([]);
@@ -433,9 +435,12 @@ function decreaseQuantity(item: any) {
 
 /** Eliminació individual */
 function confirmSingleDelete(itemId: number) {
+  const item = cart.value?.cart_items?.find((i: any) => i.id === itemId);
   itemToDelete.value = itemId;
+  singleDeleteItemName.value = item ? item.product.nom : 'Ítem desconegut';
   showSingleDeleteModal.value = true;
 }
+
 async function deleteSingleItem() {
   if (itemToDelete.value === null) return;
   await removeItem(itemToDelete.value);

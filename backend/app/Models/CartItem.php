@@ -11,7 +11,6 @@ class CartItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'cart_id',
         'product_id',
         'quantity',
         'reserved_price',
@@ -24,13 +23,19 @@ class CartItem extends Model
         'quantity' => 'integer',
     ];
 
+    protected $with = [
+        'cart'
+    ];
+
+
     /**
      * Relació amb el carret.
      */
-    public function cart(): BelongsTo
+    public function cart()
     {
         return $this->belongsTo(Cart::class);
     }
+    
 
     /**
      * Relació amb el producte.

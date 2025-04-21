@@ -20,17 +20,22 @@ class CartController extends Controller
     {
         $user = auth()->user();
         $this->authorize('viewAny', Cart::class);
-
+    
+        $morphType = array_search(get_class($user), Relation::morphMap()) ?? get_class($user);
+    
         $cart = Cart::where('owner_id', $user->id)
-                    ->where('owner_type', get_class($user))
+                    ->where('owner_type', $morphType)
                     ->first();
-
+    
         if (!$cart) {
-            $cart = $user->cart()->create(['total_price' => 0.00]);
+            $cart = $user->cart()->create([
+                'total_price' => 0.00,
+                'owner_type'  => $morphType, // ← important!
+            ]);
         }
-
+    
         $cart->load('cartItems.product.botiga');
-
+    
         return response()->json([
             'id'           => $cart->id,
             'total_price'  => $cart->total_price,
@@ -51,24 +56,30 @@ class CartController extends Controller
             }),
         ]);
     }
+    
 
     public function addItem(AddCartItemRequest $request): JsonResponse
     {
         $user = auth()->user();
         $this->authorize('addItem', Cart::class);
         $data = $request->validated();
-
+    
+        $morphType = array_search(get_class($user), Relation::morphMap()) ?? get_class($user);
+    
         $cart = Cart::where('owner_id', $user->id)
-                    ->where('owner_type', get_class($user))
+                    ->where('owner_type', $morphType)
                     ->first();
-
+    
         if (!$cart) {
-            $cart = $user->cart()->create(['total_price' => 0.00]);
+            $cart = $user->cart()->create([
+                'total_price' => 0.00,
+                'owner_type'  => $morphType, // ← assegura't que es guarda correctament
+            ]);
         }
-
+    
         $product = Producte::findOrFail($data['product_id']);
         $price   = $product->preu;
-
+    
         $cartItem = $cart->cartItems()->where('product_id', $data['product_id'])->first();
         if ($cartItem) {
             $cartItem->increment('quantity', $data['quantity']);
@@ -79,34 +90,43 @@ class CartController extends Controller
                 'reserved_price' => $price,
             ]);
         }
-
+    
         $cart->update([
             'total_price' => $cart->cartItems->sum(fn($i) => $i->quantity * $i->reserved_price),
         ]);
-
+    
         return response()->json($cart, 201);
     }
+    
 
     public function updateItem(UpdateCartItemRequest $request, CartItem $cartItem): JsonResponse
     {
+        // Primer carrega el cart
+        $cartItem->loadMissing('cart');
+    
+        // Ara ja pot passar la política
         $this->authorize('update', $cartItem);
-
+    
         $data = $request->validated();
         $cartItem->update([
             'quantity' => $data['quantity'],
             'selected' => $data['selected'] ?? $cartItem->selected,
         ]);
-
+    
         $cart = $cartItem->cart;
         $cart->update([
             'total_price' => $cart->cartItems->sum(fn($i) => $i->quantity * $i->reserved_price),
         ]);
-
+    
         return response()->json($cart);
     }
+    
+    
+    
 
     public function removeItem(CartItem $cartItem): JsonResponse
     {
+        $cartItem->loadMissing('cart');
         $this->authorize('delete', $cartItem);
 
         $cart = $cartItem->cart;
@@ -119,22 +139,16 @@ class CartController extends Controller
         return response()->json($cart);
     }
 
-    public function destroy(): JsonResponse
+    public function destroy(CartItem $cartItem)
     {
-        $user = auth()->user();
-        $this->authorize('deleteAny', Cart::class);
-
-        $cart = Cart::where('owner_id', $user->id)
-                    ->where('owner_type', get_class($user))
-                    ->first();
-
-        if ($cart) {
-            $cart->cartItems()->delete();
-            $cart->update(['total_price' => 0]);
-        }
-
-        return response()->json(['message' => 'Carret buidat correctament.']);
+        $this->authorize('delete', $cartItem); // Aquesta línia és clau
+    
+        $cartItem->delete();
+    
+        return response()->json(['message' => 'Ítem eliminat correctament']);
     }
+    
+    
 
     public function checkout(CheckoutCartRequest $request): JsonResponse
     {
