@@ -24,21 +24,42 @@ const cart = ref<any>(null); // Aquí s'emmagatzema la resposta de l'API del car
 
 // Funció per carregar el carro a través de l'API
 async function loadCart() {
-  try {
-    const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/cart`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    cart.value = response.data;
-  } catch (error) {
-    console.error('Error carregant el carret:', error);
+  const token = localStorage.getItem('userToken');
+
+  if (token) {
+    try {
+      const response = await axios.get(`${API_URL}/cart`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      cart.value = response.data;
+    } catch (error) {
+      console.error('Error carregant el carret loguejat:', error);
+    }
+  } else {
+    // Si no està loguejat, carrega el carret des del localStorage
+    const localCart = JSON.parse(localStorage.getItem('guestCart') || '[]');
+    cart.value = {
+      cart_items: localCart.map(item => ({
+        ...item,
+        quantity: item.quantity || 1,
+        reserved_price: item.reserved_price || item.product?.preu || 0,
+      }))
+    };
   }
 }
 
 // Computed que retorna el nombre total d'articles sumant les quantitats de cada ítem del carro
 const cartItemCount = computed(() => {
   if (!cart.value || !cart.value.cart_items) return 0;
-  return cart.value.cart_items.reduce((acc: number, item: any) => acc + item.quantity, 0);
+  return cart.value.cart_items
+    .filter(Boolean)
+    .reduce((acc: number, item: any) => acc + (item.quantity || 0), 0);
+});
+
+window.addEventListener('storage', (event) => {
+  if (event.key === 'guestCart') {
+    loadCart(); // Recarrega el carret
+  }
 });
 
 // Funcions per gestionar el menú i els desplegables
@@ -120,7 +141,6 @@ onBeforeUnmount(() => {
       <!-- MENÚ principal -->
       <nav :class="['nav-links', { open: menuOpen }]">
         <!-- Enllaços principals -->
-        <router-link to="/" @click="menuOpen = false">Inici</router-link>
         <router-link to="/botiga" @click="menuOpen = false">Botiga</router-link>
         
         <details class="dropdown" ref="infoDropdownRef" :open="infoOpen">
@@ -483,7 +503,7 @@ onBeforeUnmount(() => {
     text-decoration: underline;
   }
 
-  .mobile-controls {
+    .mobile-controls {
     display: flex;
     /* Si vols el carro a l’esquerra i el botó a la dreta, pots fer: */
     justify-content: flex-end;

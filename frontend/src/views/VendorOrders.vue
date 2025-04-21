@@ -21,9 +21,13 @@
     <!-- Modal per el lector QR -->
     <div v-if="showScanner" class="scanner-modal">
       <div class="scanner-wrapper">
-        <!-- Component QR que obre la càmera i llegeix el codi -->
-        <qrcode-stream @decode="onDecode" @init="onInit" class="qr-stream" />
-        <!-- Overlay amb les línies a les cantonades per delimitar l’àrea d’escaneig -->
+        <qrcode-stream
+          v-if="scannerReady"
+          @decode="onDecode"
+          @init="onInit"
+          class="qr-stream"
+        />
+        <div v-else class="qr-loader">Activant càmera...</div>
         <div class="overlay">
           <div class="corner top-left"></div>
           <div class="corner top-right"></div>
@@ -273,9 +277,9 @@ import { useRouter } from 'vue-router';
 import { QrcodeStream } from 'vue3-qrcode-reader';
 
 const router = useRouter();
+const API_URL = 'http://127.0.0.1:8000/api';
 const errorMessage = ref('');
 const loading = ref(false);
-const API_URL = 'http://127.0.0.1:8000/api';
 
 // Responsivitat
 const isMobile = ref(window.innerWidth < 768);
@@ -283,12 +287,11 @@ window.addEventListener('resize', () => {
   isMobile.value = window.innerWidth < 768;
 });
 
-// Variables per filtres, cerca i botigues
+// Filtres
 const stores = ref<any[]>([]);
 const selectedStoreId = ref('');
 const searchOrderNumber = ref('');
 const showFilters = ref(false);
-// Filtres avançats
 const filterStatus = ref('');
 const startDate = ref('');
 const endDate = ref('');
@@ -309,7 +312,7 @@ async function loadStores() {
   }
 }
 
-// Carrega les comandes del venedor
+// Comandes
 const orders = ref<any[]>([]);
 const sortField = ref('created_at');
 const sortDirection = ref<'asc' | 'desc'>('desc');
@@ -330,90 +333,52 @@ function changeSort(field: string) {
   }
 }
 
-// Funció per obtenir els reserve_items (el backend retorna "reserve_items")
 function getReserveItems(orderItem: any): any[] {
-  return orderItem.reserve && orderItem.reserve.reserve_items
-    ? orderItem.reserve.reserve_items
-    : [];
+  return orderItem.reserve?.reserve_items || [];
 }
-
 function getLimitedReserveItems(orderItem: any): any[] {
   return getReserveItems(orderItem).slice(0, 2);
 }
 
 const sortedOrders = computed(() => {
   let filtered = [...orders.value];
-  if (selectedStoreId.value) {
-    filtered = filtered.filter(order =>
-      order.reserve && order.reserve.botiga && order.reserve.botiga.id == selectedStoreId.value
-    );
-  }
-  if (searchOrderNumber.value) {
-    const query = searchOrderNumber.value.toLowerCase();
-    filtered = filtered.filter(order =>
-      order.order_number.toLowerCase().includes(query)
-    );
-  }
-  if (filterStatus.value) {
-    filtered = filtered.filter(order => order.status === filterStatus.value);
-  }
-  if (startDate.value) {
-    filtered = filtered.filter(order =>
-      new Date(order.created_at) >= new Date(startDate.value)
-    );
-  }
-  if (endDate.value) {
-    filtered = filtered.filter(order =>
-      new Date(order.created_at) <= new Date(endDate.value)
-    );
-  }
+  if (selectedStoreId.value)
+    filtered = filtered.filter(o => o.reserve?.botiga?.id == selectedStoreId.value);
+  if (searchOrderNumber.value)
+    filtered = filtered.filter(o => o.order_number.toLowerCase().includes(searchOrderNumber.value.toLowerCase()));
+  if (filterStatus.value)
+    filtered = filtered.filter(o => o.status === filterStatus.value);
+  if (startDate.value)
+    filtered = filtered.filter(o => new Date(o.created_at) >= new Date(startDate.value));
+  if (endDate.value)
+    filtered = filtered.filter(o => new Date(o.created_at) <= new Date(endDate.value));
+
   return filtered.sort((a, b) => {
-    let fieldA = a[sortField.value];
-    let fieldB = b[sortField.value];
-    if (sortField.value === 'total_amount') {
-      fieldA = parseFloat(fieldA);
-      fieldB = parseFloat(fieldB);
-    }
+    let aVal = a[sortField.value];
+    let bVal = b[sortField.value];
     if (sortField.value === 'created_at') {
-      fieldA = new Date(fieldA).getTime();
-      fieldB = new Date(fieldB).getTime();
+      aVal = new Date(aVal).getTime();
+      bVal = new Date(bVal).getTime();
     }
-    if (fieldA < fieldB) return sortDirection.value === 'asc' ? -1 : 1;
-    if (fieldA > fieldB) return sortDirection.value === 'asc' ? 1 : -1;
-    return 0;
+    return sortDirection.value === 'asc' ? aVal - bVal : bVal - aVal;
   });
 });
 
-const totalPages = computed(() => {
-  return Math.ceil(sortedOrders.value.length / itemsPerPage.value) || 1;
-});
-
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedOrders.value.length / itemsPerPage.value)));
 const paginatedOrders = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value;
   return sortedOrders.value.slice(start, start + itemsPerPage.value);
 });
-
-function prevPage() {
-  if (currentPage.value > 1) currentPage.value--;
-}
-
-function nextPage() {
-  if (currentPage.value < totalPages.value) currentPage.value++;
-}
+function prevPage() { if (currentPage.value > 1) currentPage.value--; }
+function nextPage() { if (currentPage.value < totalPages.value) currentPage.value++; }
 
 const badgeClass = (status: string): string => {
-  switch (status) {
-    case 'pending':
-      return 'badge-pending';
-    case 'reserved':
-      return 'badge-reserved';
-    case 'completed':
-      return 'badge-completed';
-    case 'cancelled':
-      return 'badge-cancelled';
-    default:
-      return '';
-  }
+  return {
+    pending: 'badge-pending',
+    reserved: 'badge-reserved',
+    completed: 'badge-completed',
+    cancelled: 'badge-cancelled'
+  }[status] || '';
 };
 
 async function loadOrders() {
@@ -426,7 +391,7 @@ async function loadOrders() {
     orders.value = response.data;
   } catch (error) {
     console.error('Error carregant les comandes:', error);
-    errorMessage.value = 'Error carregant les comandes. Si us plau, intenta-ho més tard.';
+    errorMessage.value = 'Error carregant les comandes. Intenta-ho més tard.';
   } finally {
     loading.value = false;
   }
@@ -437,134 +402,122 @@ onMounted(() => {
   loadOrders();
 });
 
-// Funcions d'acció per comandes
+// Accions de comandes
 function viewSummary(orderId: number) {
   router.push(`/order-summary/${orderId}`);
 }
-
 function viewTicket(orderId: number) {
   router.push(`/order-confirmation/${orderId}`);
 }
 
-function reorder(orderId: number) {
-  alert(`Recomanant els productes de la comanda ${orderId}`);
+// QR
+const showScanner = ref(false);
+const scannerReady = ref(false);
+
+async function openScanner() {
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true });
+    scannerReady.value = true;
+    showScanner.value = true;
+  } catch (err) {
+    console.error('Permís denegat o càmera no disponible:', err);
+    alert('⚠️ No s’ha pogut accedir a la càmera. Revisa els permisos del navegador.');
+  }
+}
+function closeScanner() {
+  showScanner.value = false;
+  scannerReady.value = false;
+}
+function onDecode(result: string) {
+  console.log('QR decoded:', result);
+  searchOrderNumber.value = result;
+  closeScanner();
+}
+function onInit(promise: Promise<any>) {
+  promise.catch(error => {
+    console.error('Error iniciant el lector QR:', error);
+    alert('⚠️ Error iniciant el lector QR. Potser la càmera no està disponible.');
+    closeScanner();
+  });
 }
 
-// Modal per Actualitzar Estat (per comandes pendents)
+// Modals
 const showUpdateModal = ref(false);
 const updateModalOrder = ref<any>(null);
-const selectedAction = ref(''); // 'reserve' o 'cancel'
+const selectedAction = ref('');
 const newOrderStatus = ref('');
 const selectedCancelReason = ref('');
 const confirmedProducts = ref<number[]>([]);
 
 function openUpdateModal(order: any) {
   updateModalOrder.value = order;
-  if (order.status === 'pending') {
-    selectedAction.value = 'reserve';
-    // Per reserva, obtenim els IDs dels items (backend retorna "reserve_items")
-    confirmedProducts.value =
-      order.reserve && order.reserve.reserve_items
-        ? order.reserve.reserve_items.map((item: any) => item.id)
-        : [];
-  }
+  selectedAction.value = 'reserve';
+  confirmedProducts.value = order.reserve?.reserve_items.map((i: any) => i.id) || [];
   showUpdateModal.value = true;
 }
-
 function closeUpdateModal() {
   showUpdateModal.value = false;
 }
 
-// Modal per Entregar Comanda (per comandes reservades)
 const showDeliverModal = ref(false);
 const deliverModalOrder = ref<any>(null);
-
 function openDeliverModal(order: any) {
   deliverModalOrder.value = order;
   showDeliverModal.value = true;
 }
-
 function closeDeliverModal() {
   showDeliverModal.value = false;
 }
 
 async function saveOrderStatus() {
-  // Aquest mètode s'aplica per actualitzar estats des del modal d'actualització (per pendents)
   if (selectedAction.value === 'cancel' && !selectedCancelReason.value) {
-    alert('Si us plau, selecciona un motiu per cancel·lar la comanda.');
+    alert('Selecciona un motiu de cancel·lació.');
     return;
   }
   if (selectedAction.value === 'reserve' && confirmedProducts.value.length === 0) {
-    alert('Si us plau, selecciona almenys un producte per confirmar la reserva.');
+    alert('Selecciona almenys un producte per reservar.');
     return;
   }
-  let updatedStatus = '';
-  if (selectedAction.value === 'reserve') {
-    updatedStatus = 'reserved';
-  } else if (selectedAction.value === 'cancel') {
-    updatedStatus = 'cancelled';
-  }
+
+  const status = selectedAction.value === 'cancel' ? 'cancelled' : 'reserved';
+
   try {
     const token = localStorage.getItem('userToken');
-    await axios.put(
-      `${API_URL}/orders/${updateModalOrder.value.id}`,
-      {
-        status: updatedStatus,
-        cancellation_reason: selectedAction.value === 'cancel' ? selectedCancelReason.value : null,
-        confirmed_product_ids: selectedAction.value === 'reserve' ? confirmedProducts.value : null,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    updateModalOrder.value.status = updatedStatus;
+    await axios.put(`${API_URL}/orders/${updateModalOrder.value.id}`, {
+      status,
+      cancellation_reason: selectedCancelReason.value || null,
+      confirmed_product_ids: selectedAction.value === 'reserve' ? confirmedProducts.value : null,
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    updateModalOrder.value.status = status;
     alert('Estat actualitzat correctament.');
     closeUpdateModal();
   } catch (err) {
-    console.error("Error actualitzant l’estat:", err);
-    alert("Error actualitzant l’estat. Intenta-ho més tard.");
+    console.error('Error actualitzant l’estat:', err);
+    alert('Error. Intenta-ho més tard.');
   }
 }
 
 async function deliverOrder() {
-  // Aquesta funció actualitza directament el estat de la comanda a "completed" per les comandes reservades
   try {
     const token = localStorage.getItem('userToken');
-    await axios.put(
-      `${API_URL}/orders/${deliverModalOrder.value.id}`,
-      {
-        status: 'completed'
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    await axios.put(`${API_URL}/orders/${deliverModalOrder.value.id}`, {
+      status: 'completed'
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
     deliverModalOrder.value.status = 'completed';
     alert('Comanda entregada correctament.');
     closeDeliverModal();
   } catch (err) {
-    console.error("Error actualitzant l’estat de l’entrega:", err);
-    alert("Error actualitzant l’estat. Intenta-ho més tard.");
+    console.error('Error completant la comanda:', err);
+    alert('Error. Intenta-ho més tard.');
   }
 }
 
-// Funcionalitat QR (lector)
-const showScanner = ref(false);
-function openScanner() {
-  showScanner.value = true;
-}
-function closeScanner() {
-  showScanner.value = false;
-}
-function onDecode(result: string) {
-  console.log('QR decoded:', result);
-  searchOrderNumber.value = result;
-  showScanner.value = false;
-}
-function onInit(promise: Promise<any>) {
-  promise.catch(error => {
-    console.error('Error iniciant el lector QR:', error);
-    alert('Error iniciant el lector QR');
-  });
-}
-
-// Funció per reiniciar filtres avançats
 function resetFilters() {
   selectedStoreId.value = '';
   filterStatus.value = '';
@@ -572,6 +525,7 @@ function resetFilters() {
   endDate.value = '';
 }
 </script>
+
 
 <style scoped>
 /* Container principal */
