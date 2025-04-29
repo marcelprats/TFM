@@ -3,23 +3,36 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class UpdateCartItemRequest extends FormRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
-        $item = $this->route('item'); // via Route Model Binding
-        return $this->user() !== null
-            && $item
-            && $item->cart->owner_id === $this->user()->id
-            && $item->cart->owner_type === \get_class($this->user());
+        $item = $this->route('cartItem');
+        return $this->user()?->can('update', $item);
     }
 
-    public function rules()
+    public function rules(): array
+    {
+        $item     = $this->route('cartItem');
+        $stock    = optional($item->product)->stock ?: 0;
+        $morphMap = Relation::morphMap();
+        $alias    = array_search(get_class($this->user()), $morphMap) ?: get_class($this->user());
+
+        return [
+            'quantity' => [
+                'required','integer','min:1',
+                "max:{$stock}"
+            ],
+            'selected' => ['sometimes','boolean'],
+        ];
+    }
+
+    public function messages(): array
     {
         return [
-            'quantity' => 'required|integer|min:1',
-            'selected' => 'sometimes|boolean',
+            'quantity.max' => 'Només queden :max unitats disponibles.',
         ];
     }
 }

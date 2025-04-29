@@ -244,8 +244,9 @@ function acceptConditions() {
  * Ara s'afegeix el camp buyer_type al payload.
  */
 async function handleCheckout() {
-  const selectedCount = cart.value?.cart_items.filter((item: any) => item.selected).length;
-  if (!selectedCount) {
+  // 1) Validacions prèvies
+  const selectedItems = cart.value?.cart_items.filter((i: any) => i.selected) || [];
+  if (!selectedItems.length) {
     alert('No hi ha ítems seleccionats per fer checkout.');
     return;
   }
@@ -254,29 +255,36 @@ async function handleCheckout() {
     return;
   }
   errorMessage.value = '';
+
   try {
-    const token = localStorage.getItem('userToken');
-    // Afegim el buyer_type al payload
-    const payload = {
-      groups: groupedSelectedItems.value,
-      buyer_type: buyerType.value
-    };
-    const checkoutResponse = await axios.post(
+    const token       = localStorage.getItem('userToken');
+    const selectedIds = selectedItems.map((i: any) => i.id);
+
+    // 2) Crida al backend, enviant només els IDs i buyer_type
+    const res = await axios.post(
       `${API_URL}/cart/checkout`,
-      payload,
+      { selectedIds, buyer_type: buyerType.value },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    // Redirigeix segons la resposta del backend:
-    if (checkoutResponse.data.orderId) {
-      router.push(`/order-confirmation/${checkoutResponse.data.orderId}`);
-    } else if (checkoutResponse.data.orders) {
-      router.push({ name: 'OrdersOverview', query: { base: checkoutResponse.data.baseOrderNumber } });
+
+    // 3) Destructura la resposta
+    const { baseOrderNumber: base, orderIds: ids } = res.data;
+
+    // 4) Redirigeix segons quantes ordres s'han creat
+    if (ids.length === 1) {
+      // només una ordre → pàgina de confirmació individual
+      router.push(`/order-confirmation/${ids[0]}`);
+    } else {
+      // vàries ordres → overview amb el baseOrderNumber com a query
+      router.push(`/orders-overview?base=${encodeURIComponent(base)}`);
     }
-  } catch (error) {
-    console.error('Error finalitzant la comanda:', error);
+
+  } catch (err) {
+    console.error('Error finalitzant la comanda:', err);
     alert('Error finalitzant la comanda. Si us plau, intenta-ho més tard.');
   }
 }
+
 
 /** Funció per obtenir la imatge del producte */
 const getImageSrc = (imagePath: string | null): string => {
