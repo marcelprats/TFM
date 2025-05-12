@@ -9,6 +9,7 @@ import es from './locales/es.json';
 import axios from "axios";
 import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
+import "vue-multiselect/dist/vue-multiselect.css";
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 
