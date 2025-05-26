@@ -14,25 +14,26 @@ export const registerUser = async (name: string, email: string, password: string
 
 // Registra un nou venedor
 export const registerVendor = async (name: string, email: string, password: string) => {
-    console.log("Dades enviades a /register-vendor:", { name, email, password }); // 👈 Afegit per depuració
-  
-    try {
-      const response = await axios.post(`${API_URL}/register-vendor`, {
-        name: String(name),  // 👈 Assegura't que són strings
-        email: String(email),
-        password: String(password),
-      });
-      return response.data;
-    } catch (error: any) {
-      console.error("Error en el registre:", error.response?.data || error.message);
-      return { success: false, message: error.response?.data?.message || "Error desconegut" };
-    }
-  };
-  
-  
+  console.log("Dades enviades a /register-vendor:", { name, email, password });
+  try {
+    const response = await axios.post(`${API_URL}/register-vendor`, {
+      name: String(name),
+      email: String(email),
+      password: String(password),
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error("Error en el registre:", error.response?.data || error.message);
+    return { success: false, message: error.response?.data?.message || "Error desconegut" };
+  }
+};
 
 // Funció comuna per fer login, diferenciant si és comprador o venedor
-export const loginUser = async (email: string, password: string, isVendor: boolean): Promise<any> => {
+export const loginUser = async (
+  email: string,
+  password: string,
+  isVendor: boolean
+): Promise<any> => {
   try {
     const response = await axios.post(`${API_URL}/login`, {
       email,
@@ -44,16 +45,21 @@ export const loginUser = async (email: string, password: string, isVendor: boole
       const token = response.data.token;
       // Desa el token al localStorage
       localStorage.setItem("userToken", token);
-      // Desa les dades de l'usuari (serializejant-les com a JSON)
+      // Desa les dades de l'usuari
       localStorage.setItem("user", JSON.stringify(response.data.user));
       // Desa el tipus d'usuari: "vendor" o "user"
-      localStorage.setItem("userType", response.data.role || (isVendor ? "vendor" : "user"));
+      localStorage.setItem(
+        "userType",
+        response.data.role || (isVendor ? "vendor" : "user")
+      );
 
-      // Configura Axios globalment perquè cada petició enviï aquest token
+      // Configura Axios perquè enviï el token
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      // Emetem l'event per notificar els listeners (footer, etc.)
+      window.dispatchEvent(new Event("authChange"));
     }
 
-    // Retorna les dades de l'usuari (o tot el que necessitis)
     return response.data.user;
   } catch (error: any) {
     console.error("Error en loginUser:", error.response?.data || error.message);
@@ -83,7 +89,7 @@ export const fetchUser = async () => {
   }
 };
 
-// Retorna l'usuari si està guardat en `localStorage`
+// Retorna l'usuari si està guardat en localStorage
 export const getUser = () => {
   const user = localStorage.getItem("user");
   return user ? JSON.parse(user) : null;
@@ -91,14 +97,17 @@ export const getUser = () => {
 
 // Retorna quin tipus d'usuari és
 export const getUserType = () => {
-  return localStorage.getItem("userType") || "user"; // Per defecte, "user"
+  return localStorage.getItem("userType") || "user";
 };
 
 // Tanca sessió i elimina el token
 export const logout = () => {
   localStorage.removeItem("userToken");
   localStorage.removeItem("user");
-  localStorage.removeItem("userType"); // Eliminem també el tipus d'usuari
+  localStorage.removeItem("userType");
+
+  // Emetem l'event per notificar els listeners
+  window.dispatchEvent(new Event("authChange"));
 };
 
 // Actualitza les dades de l'usuari
@@ -109,13 +118,14 @@ export async function updateUser(userData: { name: string; email: string }) {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    localStorage.setItem("user", JSON.stringify(response.data)); // Actualitzem dades a `localStorage`
+    localStorage.setItem("user", JSON.stringify(response.data));
     return { success: true, user: response.data };
   } catch (error) {
     console.error("Error actualitzant l'usuari:", error);
     return { success: false };
   }
 }
+
 
 export const fetchProducts = async () => {
   try {

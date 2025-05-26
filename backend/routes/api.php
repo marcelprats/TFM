@@ -11,6 +11,7 @@ use App\Http\Controllers\ImportacioController;
 use App\Http\Controllers\ImportRecordController;
 use App\Http\Controllers\ReserveController;
 use App\Http\Controllers\ProducteController;
+use App\Http\Controllers\ContactController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +39,7 @@ Route::get('/productes/{id}',   [ProducteController::class, 'show']);
 Route::patch('/productes/{id}', [ProducteController::class, 'updateStock']);
 Route::get('/productes-tots',   [ProducteController::class, 'getAllProducts']);
 Route::get('/categories',       [CategoriaController::class, 'index']);
+Route::post('/contacte', [ContactController::class, 'submit']);
 
 /*
 |--------------------------------------------------------------------------
@@ -48,10 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Carret
     Route::get('/cart',              [CartController::class, 'index']);
     Route::post('/cart',             [CartController::class, 'addItem']);
+    Route::put('/cart/check-stock',  [CartController::class, 'checkStock']);
     Route::put('/cart/{cartItem}',   [CartController::class, 'updateItem']);
     Route::delete('/cart/{cartItem}',[CartController::class, 'removeItem']);
     Route::delete('/cart',           [CartController::class, 'destroy']);
     Route::post('/cart/checkout',    [CartController::class, 'checkout']);
+
 
     // Comandes
     Route::get('/orders',            [OrderController::class, 'index']);

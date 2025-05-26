@@ -1,122 +1,26 @@
-
-<script setup lang="ts">
-import { ref, onMounted, computed, watch } from "vue";
-import axios from "axios";
-import { useRouter } from "vue-router";
-import Multiselect from "vue-multiselect";
-
-const router = useRouter();
-
-const products = ref([]);
-const categories = ref<any[]>([]);
-const allSubcategories = ref<any[]>([]);
-const filteredSubcategories = ref<any[]>([]);
-
-const selectedCategories = ref<any[]>([]);
-const selectedSubcategories = ref<any[]>([]);
-const searchQuery = ref("");
-const filterByStock = ref(false);
-const showFilters = ref(false);
-
-const minPrice = ref(0);
-const maxPrice = ref(0);
-const selectedMinPrice = ref(0);
-const selectedMaxPrice = ref(0);
-
-const DEFAULT_IMAGE = "/img/no-imatge.jpg";
-const BACKEND_URL = "http://localhost:8000";
-
-const getImageSrc = (imagePath: string | null): string => {
-  if (!imagePath) return DEFAULT_IMAGE;
-  if (imagePath.startsWith("/uploads/")) return `${BACKEND_URL}${imagePath}`;
-  if (imagePath.startsWith(BACKEND_URL)) return imagePath;
-  return `${BACKEND_URL}/uploads/${imagePath}`;
-};
-
-onMounted(async () => {
-  const prodRes = await axios.get("/productes");
-  const catRes = await axios.get("/categories");
-
-  products.value = prodRes.data;
-  const allCats = catRes.data;
-
-  categories.value = allCats.filter((c: any) => c.parent_id === null);
-  allSubcategories.value = allCats.filter((c: any) => c.parent_id !== null);
-
-  if (products.value.length > 0) {
-    const prices = products.value.map((p: any) => parseFloat(p.preu));
-    minPrice.value = Math.min(...prices);
-    maxPrice.value = Math.max(...prices);
-    selectedMinPrice.value = minPrice.value;
-    selectedMaxPrice.value = maxPrice.value;
-  }
-});
-
-watch(selectedCategories, () => {
-  const selectedIds = selectedCategories.value.map((cat: any) => cat.id);
-  filteredSubcategories.value = allSubcategories.value.filter((sub: any) =>
-    selectedIds.includes(sub.parent_id)
-  );
-  selectedSubcategories.value = selectedSubcategories.value.filter((sub: any) =>
-    filteredSubcategories.value.some((f: any) => f.id === sub.id)
-  );
-});
-
-const filteredProducts = computed(() => {
-  return products.value.filter((p: any) => {
-    const nameMatch = p.nom.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const priceMatch = parseFloat(p.preu) >= selectedMinPrice.value && parseFloat(p.preu) <= selectedMaxPrice.value;
-    const stockMatch = !filterByStock.value || p.stock > 0;
-
-    const categoryMatch = selectedCategories.value.length === 0 ||
-      selectedCategories.value.some((cat: any) => cat.id === p.categoria);
-
-    const subcategoryMatch = selectedSubcategories.value.length === 0 ||
-      selectedSubcategories.value.some((sub: any) => sub.id === p.subcategoria);
-
-    return nameMatch && priceMatch && stockMatch && categoryMatch && subcategoryMatch;
-  });
-});
-
-const getStockClass = (stock: number) => {
-  if (stock > 10) return "stock-verde";
-  if (stock > 0) return "stock-taronja";
-  return "stock-vermell";
-};
-
-const goToBotiga = (botigaId: number) => {
-  router.push(`/info-botiga/${botigaId}`);
-};
-
-const goToProducte = (producteId: number) => {
-  router.push(`/producte/${producteId}`);
-};
-
-const resetFilters = () => {
-  selectedCategories.value = [];
-  selectedSubcategories.value = [];
-  searchQuery.value = "";
-  filterByStock.value = false;
-  selectedMinPrice.value = minPrice.value;
-  selectedMaxPrice.value = maxPrice.value;
-};
-</script>
-
 <template>
   <div class="container">
     <h1>Botiga</h1>
 
+    <!-- Search + Toggle Filters -->
     <div class="search-bar">
-      <input v-model="searchQuery" placeholder="🔍 Cercar producte..." />
+      <input
+        v-model="searchQuery"
+        placeholder="🔍 Cercar producte..."
+        aria-label="Cerca producte"
+      />
       <button @click="showFilters = !showFilters">
-        {{ showFilters ? "Amagar filtres" : "Mostrar filtres" }}
+        {{ showFilters ? 'Amagar filtres' : 'Mostrar filtres' }}
       </button>
     </div>
 
+    <!-- Filtres -->
     <div v-if="showFilters" class="filters">
+      <!-- Categories -->
       <div class="filter-group">
-        <label><strong>Categories:</strong></label>
+        <label for="cats"><strong>Categories:</strong></label>
         <Multiselect
+          id="cats"
           v-model="selectedCategories"
           :options="categories"
           track-by="id"
@@ -127,9 +31,11 @@ const resetFilters = () => {
         />
       </div>
 
+      <!-- Subcategories -->
       <div class="filter-group">
-        <label><strong>Subcategories:</strong></label>
+        <label for="subs"><strong>Subcategories:</strong></label>
         <Multiselect
+          id="subs"
           v-model="selectedSubcategories"
           :options="filteredSubcategories"
           track-by="id"
@@ -140,42 +46,105 @@ const resetFilters = () => {
         />
       </div>
 
+      <!-- Preus -->
       <div class="filter-group price-group">
         <div class="price-range">
           <label><strong>Preu mínim:</strong> {{ selectedMinPrice }} €</label>
-          <input type="range" v-model.number="selectedMinPrice" :min="minPrice" :max="maxPrice" step="1" />
+          <input
+            type="range"
+            v-model.number="selectedMinPrice"
+            :min="minPrice"
+            :max="maxPrice"
+            step="1"
+          />
         </div>
-
         <div class="price-range">
           <label><strong>Preu màxim:</strong> {{ selectedMaxPrice }} €</label>
-          <input type="range" v-model.number="selectedMaxPrice" :min="minPrice" :max="maxPrice" step="1" />
+          <input
+            type="range"
+            v-model.number="selectedMaxPrice"
+            :min="minPrice"
+            :max="maxPrice"
+            step="1"
+          />
         </div>
       </div>
 
+      <!-- Stock -->
       <div class="filter-group checkbox-group">
         <label>
           <input type="checkbox" v-model="filterByStock" />
-          <strong>Només amb estoc</strong>
+          <strong>Disponibles</strong>
         </label>
       </div>
 
+      <!-- Reset -->
       <div class="filter-group reset-group">
-        <button class="reset-button" @click="resetFilters">Reiniciar filtres</button>
+        <button class="reset-button" @click="resetFilters">
+          Reiniciar
+        </button>
       </div>
     </div>
 
-    <div class="product-grid">
+    <!-- Loading Spinner -->
+    <div v-if="loading" class="loading-spinner">
+      <span class="spinner"></span> Carregant…
+    </div>
+
+    <!-- Result Count + Ordering -->
+    <div v-else class="result-order">
+      <p class="result-count">
+        {{ totalResults }} producte{{ totalResults === 1 ? '' : 's' }} trobat{{ totalResults === 1 ? '' : 's' }}.
+      </p>
+      <div class="order-controls">
+        <label for="order-select"><strong>Ordenar per:</strong></label>
+        <div class="select-wrapper">
+          <select
+            id="order-select"
+            v-model="orderBy"
+            @change="onOrderChange"
+          >
+            <option value="nom">Nom</option>
+            <option value="preu">Preu</option>
+            <option value="stock">Stock</option>
+            <option value="antiguitat">Antiguitat</option>
+            <option value="novetat">Novetats</option>
+          </select>
+          <button class="arrow-btn" @click="toggleOrderDir" :aria-label="orderDir==='asc'?'Ascendent':'Descendent'">
+            <i :class="arrowClass"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- No results -->
+    <p v-if="!loading && totalResults === 0" class="no-results">
+      Cap producte trobat amb aquests filtres.
+    </p>
+
+    <!-- Product Grid -->
+    <div class="product-grid" v-if="!loading && totalResults > 0">
       <div
-        v-for="product in filteredProducts"
+        v-for="product in sortedProducts"
         :key="product.id"
         class="product-card"
         @click="goToProducte(product.id)"
       >
-        <img :src="getImageSrc(product.imatge)" class="product-image" />
+        <img
+          :src="getImageSrc(product.imatge)"
+          class="product-image"
+          :alt="`Imatge de ${product.nom}`"
+        />
         <h2>{{ product.nom }}</h2>
         <p class="preu">{{ product.preu }} €</p>
-        <p :class="['stock-label', getStockClass(product.stock)]">Stock: {{ product.stock }}</p>
-        <p v-if="product.botiga" class="botiga-link" @click.stop="goToBotiga(product.botiga_id)">
+        <p :class="['stock-label', getStockClass(product.stock)]">
+          Stock: {{ product.stock }}
+        </p>
+        <p
+          v-if="product.botiga"
+          class="botiga-link"
+          @click.stop="goToBotiga(product.botiga_id!)"
+        >
           🏪 {{ product.botiga.nom }}
         </p>
       </div>
@@ -183,14 +152,120 @@ const resetFilters = () => {
   </div>
 </template>
 
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue';
+import Multiselect from 'vue-multiselect';
+import { useRouter, useRoute } from 'vue-router';
+import { useProducts } from '../composables/useProducts';
+
+const router = useRouter();
+const route = useRoute();
+const showFilters = ref(false);
+
+const {
+  loading,
+  categories,
+  filteredSubcategories,
+  selectedCategories,
+  selectedSubcategories,
+  searchQuery,
+  filterByStock,
+  minPrice,
+  maxPrice,
+  selectedMinPrice,
+  selectedMaxPrice,
+  filteredProducts,
+  totalResults,
+  resetFilters,
+} = useProducts();
+
+// === Inicialitza searchQuery des del query param "q" ===
+onMounted(() => {
+  const q = (route.query.q as string) || '';
+  if (q) searchQuery.value = q;
+});
+
+// Si canvia la URL manualment, sincronitza:
+watch(() => route.query.q, q => {
+  searchQuery.value = (q as string) || '';
+});
+
+// Ordering state
+type OrderKey = 'nom' | 'preu' | 'stock' | 'antiguitat' | 'novetat';
+const orderBy = ref<OrderKey>('nom');
+const prevOrder = ref<OrderKey>('nom');
+const orderDir = ref<'asc'|'desc'>('asc');
+
+function onOrderChange() {
+  if (orderBy.value === prevOrder.value) {
+    orderDir.value = orderDir.value === 'asc' ? 'desc' : 'asc';
+  } else {
+    orderDir.value = orderBy.value === 'antiguitat' ? 'asc'
+                   : orderBy.value === 'novetat'   ? 'desc'
+                   : 'asc';
+    prevOrder.value = orderBy.value;
+  }
+}
+
+function toggleOrderDir() {
+  if (orderBy.value === 'antiguitat' || orderBy.value === 'novetat') {
+    orderBy.value = orderBy.value === 'antiguitat' ? 'novetat' : 'antiguitat';
+    orderDir.value = orderBy.value === 'novetat' ? 'desc' : 'asc';
+  } else {
+    orderDir.value = orderDir.value === 'asc' ? 'desc' : 'asc';
+  }
+}
+
+const arrowClass = computed(() =>
+  orderDir.value === 'asc' ? 'arrow-up' : 'arrow-down'
+);
+
+const sortedProducts = computed(() => {
+  return [...filteredProducts.value].sort((a, b) => {
+    let va: any = a[orderBy.value];
+    let vb: any = b[orderBy.value];
+
+    if (orderBy.value === 'preu') {
+      va = parseFloat(a.preu as any);
+      vb = parseFloat(b.preu as any);
+    }
+    if (orderBy.value === 'antiguitat' || orderBy.value === 'novetat') {
+      va = a.id; vb = b.id;
+    }
+
+    if (va < vb) return orderDir.value === 'asc' ? -1 : 1;
+    if (va > vb) return orderDir.value === 'asc' ? 1 : -1;
+    return 0;
+  });
+});
+
+function goToBotiga(id: number) { router.push(`/info-botiga/${id}`); }
+function goToProducte(id: number) { router.push(`/producte/${id}`); }
+
+const BACKEND_URL = 'http://localhost:8000';
+const DEFAULT_IMAGE = '/img/no-imatge.jpg';
+function getImageSrc(path: string|null) {
+  if (!path) return DEFAULT_IMAGE;
+  return path.startsWith('/') ? BACKEND_URL + path
+                              : BACKEND_URL + '/uploads/' + path;
+}
+function getStockClass(stock: number) {
+  if (stock > 10) return 'stock-verde';
+  if (stock > 0)  return 'stock-taronja';
+  return 'stock-vermell';
+}
+</script>
+
 <style scoped>
-@import "vue-multiselect/dist/vue-multiselect.css";
+@import 'vue-multiselect/dist/vue-multiselect.css';
 
 .container {
   max-width: 1200px;
   margin: auto;
   padding: 20px;
 }
+
+/* Search bar */
 .search-bar {
   display: flex;
   flex-wrap: wrap;
@@ -211,6 +286,46 @@ const resetFilters = () => {
   border-radius: 5px;
   cursor: pointer;
 }
+
+/* Result + ordenació */
+.result-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.order-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.select-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.select-wrapper select {
+  appearance: none;
+  padding: 6px 32px 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.9rem;
+}
+.arrow-btn {
+  background: none;
+  border: none;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #42b983;
+  transition: transform 0.2s ease;
+}
+.arrow-up::before { content: '▲'; }
+.arrow-down::before { content: '▼'; }
+.arrow-btn:hover { transform: scale(1.3); }
+
+/* Filtres */
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -252,9 +367,31 @@ const resetFilters = () => {
   cursor: pointer;
   transition: background 0.2s ease;
 }
-.reset-button:hover {
-  background: #c0392b;
+.reset-button:hover { background: #c0392b; }
+
+/* Spinner */
+.loading-spinner {
+  text-align: center;
+  margin: 20px 0;
 }
+.spinner {
+  display: inline-block;
+  width: 24px; height: 24px;
+  border: 3px solid #ccc;
+  border-top-color: #42b983;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Resultats */
+.result-count,
+.no-results {
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+/* Grid de productes */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -265,13 +402,13 @@ const resetFilters = () => {
   border-radius: 10px;
   padding: 15px;
   text-align: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .product-card:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 .product-image {
   width: 100%;
@@ -284,15 +421,9 @@ const resetFilters = () => {
   font-weight: bold;
   margin: 8px 0;
 }
-.stock-verde {
-  color: green;
-}
-.stock-taronja {
-  color: orange;
-}
-.stock-vermell {
-  color: red;
-}
+.stock-verde { color: green; }
+.stock-taronja { color: orange; }
+.stock-vermell { color: red; }
 .botiga-link {
   margin-top: 10px;
   font-size: 14px;
@@ -300,18 +431,11 @@ const resetFilters = () => {
   cursor: pointer;
   text-decoration: underline;
 }
-.botiga-link:hover {
-  color: #0056b3;
-}
+.botiga-link:hover { color: #0056b3; }
+
 @media (max-width: 768px) {
-  .filters {
-    flex-direction: column;
-  }
-  .price-group {
-    flex-direction: column;
-  }
-  .filter-group {
-    width: 100%;
-  }
+  .filters { flex-direction: column; }
+  .price-group { flex-direction: column; }
+  .filter-group { width: 100%; }
 }
 </style>

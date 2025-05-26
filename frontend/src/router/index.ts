@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import PreHome from "../views/PreHome.vue";
 import Home from "../views/Home.vue";
 import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
@@ -22,12 +23,16 @@ import InfoBotiga from "../views/InfoBotiga.vue";
 import InfoVenedor from "../views/InfoVenedor.vue";
 import InfoVenedors from "../views/InfoVenedors.vue";
 import InfoBotigues from "../views/InfoBotigues.vue";
+import QueEsTotaki from "../views/QueEsTotaki.vue";
+import Contacte from "../views/Contacte.vue";
+
 import { isLoggedIn, getUserType } from "../services/authService";
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 
 const routes = [
-  { path: "/", name: "Home", component: Home },
+  { path: "/", name: "PreHome", component: PreHome },
+  { path: "/home", name: "Home", component: Home },
   { path: "/login", name: "Login", component: Login },
   { path: "/register", name: "Register", component: Register },
   { path: "/register-vendor", name: "RegisterVendor", component: RegisterVendor },
@@ -50,6 +55,9 @@ const routes = [
   { path: "/info-venedor/:id", name: "InfoVenedor", component: InfoVenedor },
   { path: "/info-botiga", name: "InfoBotigues", component: InfoBotigues },
   { path: "/info-botiga/:id", name: "InfoBotiga", component: InfoBotiga },
+  { path: "/about", name: "QueEsTotaki", component: QueEsTotaki },
+  { path: "/contacte", name: "Contacte", component: Contacte },
+
 
   {
     path: '/cart-test',
@@ -63,7 +71,16 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    // Si fem enrere/endavant, mantenim la posició
+    if (savedPosition) {
+      return savedPosition;
+    }
+    // Altrament, anem a la part superior
+    return { left: 0, top: 0 };
+  },
 });
+
 
 // Middleware per restringir l'accés a venedors
 router.beforeEach((to, from, next) => {

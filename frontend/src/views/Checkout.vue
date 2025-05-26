@@ -1,7 +1,14 @@
 <template>
   <div class="checkout-container">
     <h1>Finalitzar Comanda</h1>
-    
+
+    <!-- Botons globals: buidar tots -->
+    <div class="global-actions" v-if="hasSelectedItems">
+      <button type="button" class="clear-all-btn" @click="clearAllItems">
+        Buidar carro
+      </button>
+    </div>
+
     <!-- Resum financer global -->
     <div class="financial-summary">
       <p><strong>Total Reservat:</strong> {{ formatPrice(totalReserved) }}</p>
@@ -12,7 +19,11 @@
     <!-- Resum dels ítems seleccionats agrupats per botiga -->
     <div v-if="hasSelectedItems" class="order-summary">
       <h2>Resum de la Comanda</h2>
-      <div v-for="(items, shopId) in groupedSelectedItems" :key="shopId" class="shop-group">
+      <div
+        v-for="(items, shopId) in groupedSelectedItems"
+        :key="shopId"
+        class="shop-group"
+      >
         <div class="shop-header">
           <span class="shop-name">
             Botiga:
@@ -27,12 +38,21 @@
           </span>
           <div class="shop-totals">
             <span class="shop-total">
-              Total per botiga: <strong>{{ formatPrice(calcSelectedShopTotal(items)) }}</strong>
+              Total per botiga:
+              <strong>{{ formatPrice(calcSelectedShopTotal(items)) }}</strong>
             </span>
             <span class="shop-deposit">
-              Deposit: <strong>{{ formatPrice(calcSelectedShopTotal(items) * 0.1) }}</strong>
+              Deposit:
+              <strong>{{ formatPrice(calcSelectedShopTotal(items) * 0.1) }}</strong>
             </span>
           </div>
+          <button
+            type="button"
+            class="clear-group-btn"
+            @click="clearGroupItems(shopId)"
+          >
+            Buidar Botiga
+          </button>
         </div>
         <table class="summary-table">
           <thead>
@@ -41,14 +61,26 @@
               <th>Preu Unitar</th>
               <th>Quantitat</th>
               <th>Total</th>
+              <th>Acció</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.id">
-              <td>{{ item.product.nom }}</td>
+              <td @click="goToProduct(item.product.id)" style="cursor: pointer;">
+                {{ item.product.nom }}
+              </td>
               <td>{{ formatPrice(item.reserved_price) }}</td>
               <td>{{ item.quantity }}</td>
               <td>{{ formatPrice(item.quantity * parseFloat(item.reserved_price)) }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="trash-btn"
+                  @click="removeItem(item.id)"
+                >
+                  🗑️
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -57,8 +89,8 @@
     <div v-else>
       <p>No hi ha ítems seleccionats per fer la comanda.</p>
     </div>
-    
-    <!-- Barra de progress sota les taules -->
+
+    <!-- Barra de progress -->
     <div class="progress-container" v-if="hasSelectedItems">
       <div class="progress-bar">
         <div class="progress-deposit" :style="{ width: depositPercentage + '%' }"></div>
@@ -70,31 +102,57 @@
         <span>Total: {{ formatPrice(totalReserved) }}</span>
       </div>
     </div>
-    
-    <!-- Secció de condicions amb missatge obligatori -->
+
+    <!-- Condicions -->
     <div class="terms">
-      <input
-        type="checkbox"
-        id="acceptConditions"
-        :checked="acceptedConditions"
-        :class="{ error: errorMessage }"
-        disabled
-      />
+      <input type="checkbox" id="acceptConditions" v-model="acceptedConditions" />
       <label for="acceptConditions">
-        Accepto les <a href="#" @click.prevent="openModal">condicions de reserva</a>
+        Accepto les
+        <a href="#" @click.prevent="openConditionsModal">condicions de reserva</a>
         <span class="obligatory-msg">* (Obligatori)</span>
       </label>
       <div v-if="errorMessage" class="error-message">
         {{ errorMessage }}
       </div>
     </div>
-    
-    <button class="btn checkout-btn" @click="handleCheckout">
+
+    <button type="button" class="btn checkout-btn" @click="handleCheckout">
       Pagar Deposit i Confirmar Reserva
     </button>
-    
-    <!-- Modal de Condicions de Reserva -->
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+
+    <!-- Modal stock -->
+    <div v-if="showStockModal" class="modal-overlay" @click.self="closeStockModal">
+      <div class="modal-content">
+        <h2>Avis de Stock</h2>
+        <div class="modal-body">
+          <ul>
+            <li v-for="issue in stockIssues" :key="issue.productId">
+              <template v-if="issue.available > 0">
+                El producte <strong>{{ issue.productName }}</strong> només té
+                <strong>{{ issue.available }}</strong> unitats disponibles. La
+                quantitat s'ha ajustat.
+              </template>
+              <template v-else>
+                El producte <strong>{{ issue.productName }}</strong> ja no està
+                en stock i s'ha eliminat del carro.
+              </template>
+            </li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button class="btn modal-close-btn" @click="closeStockModal">
+            Tancar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal condicions -->
+    <div
+      v-if="showConditionsModal"
+      class="modal-overlay"
+      @click.self="closeConditionsModal"
+    >
       <div class="modal-content">
         <h2>Condicions de Reserva</h2>
         <div class="modal-body">
@@ -121,186 +179,236 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted } from "vue";
+import axios from "axios";
+import { useRouter } from "vue-router";
+import { useCartStore } from "../stores/cartStore";
 
 const router = useRouter();
-const API_URL = 'http://127.0.0.1:8000/api';
+const cartStore = useCartStore();
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
-/** Variables reactives */
-const cart = ref<any>(null);
-const reserve = ref({
-  id: null,
-  total_reserved: 0,
-  deposit_amount: 0,
-  status: 'pending',
-});
-
-/** Variable per emmagatzemar el buyer_type.
- * Es pot obtenir des de, per exemple, localStorage o un store centralitzat.
- * Aquí suposem que s'ha emmagatzemat a 'user_role' al fer login.
- */
-const buyerType = ref('user'); // valor per defecte
-onMounted(() => {
-  buyerType.value = localStorage.getItem('user_role') || 'user';
-});
-
-/** Variables per gestionar condicions */
+// Reactive state
+const cart = ref<any[]>([]);
+const buyerType = ref("user");
 const acceptedConditions = ref(false);
-const showModal = ref(false);
-const errorMessage = ref('');
+const showConditionsModal = ref(false);
+const showStockModal = ref(false);
+const errorMessage = ref("");
+const stockIssues = ref<any[]>([]);
+const stockMessage = ref("");
 
-/** Funció per formatar preus */
-const formatPrice = (price: number | string): string => {
-  const p = typeof price === 'number' ? price : parseFloat(price);
-  if (isNaN(p)) return 'No disponible';
-  return p.toFixed(2) + ' €';
+// On mount, fetch store cart and sync
+onMounted(async () => {
+  buyerType.value = localStorage.getItem("user_role") || "user";
+  await cartStore.fetchCart();
+  loadCart();
+});
+
+// Only selected items
+function loadCart() {
+  cart.value = cartStore.items.filter((i) => i.selected);
+}
+
+// Helpers
+const formatPrice = (price: number | string) => {
+  const p = typeof price === "number" ? price : parseFloat(price);
+  return isNaN(p) ? "No disponible" : p.toFixed(2) + " €";
 };
 
-/** Carrega el carret */
-async function loadCart() {
-  try {
-    const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/cart`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    cart.value = response.data;
-    if (cart.value && cart.value.cart_items) {
-      const selectedTotal = cart.value.cart_items
-        .filter((item: any) => item.selected)
-        .reduce((sum: number, item: any) => sum + item.quantity * parseFloat(item.reserved_price), 0);
-      reserve.value.total_reserved = selectedTotal;
-      reserve.value.deposit_amount = +(selectedTotal * 0.1).toFixed(2);
-    }
-  } catch (error) {
-    console.error('Error carregant el carret:', error);
-  }
-}
-onMounted(loadCart);
+// Computed sums based only on selectedItems
+const selectedItems = computed(() => cart.value);
 
-/** Càlculs globals */
-const totalReserved = computed(() => {
-  if (!cart.value || !cart.value.cart_items) return 0;
-  return cart.value.cart_items
-    .filter((item: any) => item.selected)
-    .reduce((sum: number, item: any) => sum + item.quantity * parseFloat(item.reserved_price), 0);
-});
-const depositAmount = computed(() => +(totalReserved.value * 0.1).toFixed(2));
-const remainder = computed(() => totalReserved.value - depositAmount.value);
-const depositPercentage = computed(() =>
-  totalReserved.value > 0 ? (depositAmount.value / totalReserved.value) * 100 : 0
+const totalReserved = computed(() =>
+  selectedItems.value.reduce(
+    (sum: number, item: any) =>
+      sum + item.quantity * parseFloat(item.reserved_price),
+    0
+  )
 );
+
+const depositAmount = computed(() =>
+  +(totalReserved.value * 0.1).toFixed(2)
+);
+
+const remainder = computed(() =>
+  +(totalReserved.value - depositAmount.value).toFixed(2)
+);
+
+const depositPercentage = computed(() =>
+  totalReserved.value ? (depositAmount.value / totalReserved.value) * 100 : 0
+);
+
 const remainderPercentage = computed(() => 100 - depositPercentage.value);
 
-/** Agrupa els ítems seleccionats per botiga */
-const groupedSelectedItems = computed(() => {
-  if (!cart.value || !cart.value.cart_items) return {};
-  const selected = cart.value.cart_items.filter((item: any) => item.selected);
-  return selected.reduce((groups: any, item: any) => {
-    const shopId = item.product.botiga ? item.product.botiga.id : 'sense_botiga';
-    if (!groups[shopId]) groups[shopId] = [];
-    groups[shopId].push(item);
+const groupedSelectedItems = computed(() =>
+  selectedItems.value.reduce((groups: Record<string, any[]>, item) => {
+    const shopId = item.product.botiga?.id ?? "sense_botiga";
+    (groups[shopId] = groups[shopId] || []).push(item);
     return groups;
-  }, {});
-});
+  }, {})
+);
 
-/** Obté el nom de la botiga */
-const getStoreName = (shopId: string): string => {
-  if (shopId === 'sense_botiga') return 'Sense Botiga';
-  const group = groupedSelectedItems.value[shopId];
-  return group && group[0] && group[0].product.botiga
-    ? group[0].product.botiga.nom
-    : 'No definida';
-};
+const hasSelectedItems = computed(() => selectedItems.value.length > 0);
 
-/** Calcula el total per grup, només amb ítems seleccionats */
-const calcSelectedShopTotal = (items: any[]): number => {
-  return items
-    .filter((item: any) => item.selected)
-    .reduce((sum, item) => sum + item.quantity * parseFloat(item.reserved_price), 0);
-};
+const getStoreName = (shopId: string) =>
+  shopId === "sense_botiga"
+    ? "Sense Botiga"
+    : groupedSelectedItems.value[shopId][0]?.product.botiga.nom ||
+      "No definida";
 
-/** Computed per saber si hi ha almenys un ítem seleccionat */
-const hasSelectedItems = computed(() => {
-  return cart.value && cart.value.cart_items && cart.value.cart_items.some((item: any) => item.selected);
-});
+const calcSelectedShopTotal = (items: any[]) =>
+  items.reduce((sum, i) => sum + i.quantity * i.reserved_price, 0);
 
-/** Funcions per gestionar el modal de condicions */
-function openModal() {
-  showModal.value = true;
+// Global actions
+async function clearAllItems() {
+  await axios.delete(`${API_URL}/cart`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` },
+  });
+  await cartStore.fetchCart();
+  loadCart();
 }
-function closeModal() {
-  showModal.value = false;
+
+async function clearGroupItems(shopId: string) {
+  const items = groupedSelectedItems.value[shopId] || [];
+  await Promise.all(
+    items.map((i) =>
+      axios.delete(`${API_URL}/cart/${i.id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("userToken")}`,
+        },
+      })
+    )
+  );
+  await cartStore.fetchCart();
+  loadCart();
+}
+
+async function removeItem(itemId: number) {
+  await axios.delete(`${API_URL}/cart/${itemId}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` },
+  });
+  await cartStore.fetchCart();
+  loadCart();
+}
+
+// Modals
+function openConditionsModal() {
+  showConditionsModal.value = true;
+}
+function closeConditionsModal() {
+  showConditionsModal.value = false;
 }
 function acceptConditions() {
   acceptedConditions.value = true;
-  errorMessage.value = '';
-  closeModal();
+  errorMessage.value = "";
+  closeConditionsModal();
 }
 
-/** Funció per gestionar el checkout.
- * Ara s'afegeix el camp buyer_type al payload.
- */
+function closeStockModal() {
+  showStockModal.value = false;
+  stockIssues.value = [];
+}
+
+// Stock check before purchase
+async function checkStock() {
+  return axios.put(
+    `${API_URL}/cart/check-stock`,
+    { itemIds: selectedItems.value.map((i) => i.id) },
+    {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("userToken")}`,
+      },
+    }
+  );
+}
+
+// Final checkout
 async function handleCheckout() {
-  // 1) Validacions prèvies
-  const selectedItems = cart.value?.cart_items.filter((i: any) => i.selected) || [];
-  if (!selectedItems.length) {
-    alert('No hi ha ítems seleccionats per fer checkout.');
+  errorMessage.value = "";
+  stockMessage.value = "";
+
+  if (!hasSelectedItems.value) {
+    alert("No hi ha ítems seleccionats");
     return;
   }
   if (!acceptedConditions.value) {
-    errorMessage.value = 'Has d’acceptar les condicions de reserva per poder continuar.';
+    errorMessage.value = "Has d’acceptar les condicions de reserva.";
     return;
   }
-  errorMessage.value = '';
 
+  // Verify stock
   try {
-    const token       = localStorage.getItem('userToken');
-    const selectedIds = selectedItems.map((i: any) => i.id);
-
-    // 2) Crida al backend, enviant només els IDs i buyer_type
-    const res = await axios.post(
-      `${API_URL}/cart/checkout`,
-      { selectedIds, buyer_type: buyerType.value },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    // 3) Destructura la resposta
-    const { baseOrderNumber: base, orderIds: ids } = res.data;
-
-    // 4) Redirigeix segons quantes ordres s'han creat
-    if (ids.length === 1) {
-      // només una ordre → pàgina de confirmació individual
-      router.push(`/order-confirmation/${ids[0]}`);
-    } else {
-      // vàries ordres → overview amb el baseOrderNumber com a query
-      router.push(`/orders-overview?base=${encodeURIComponent(base)}`);
+    await checkStock();
+  } catch (err: any) {
+    if (err.response?.status === 409) {
+      const out = err.response.data.outOfStock;
+      stockIssues.value = out;
+      for (const issue of out) {
+        const item = selectedItems.value.find(
+          (i) => i.product.id === issue.productId
+        );
+        if (!item) continue;
+        if (issue.available > 0) {
+          // adjust quantity
+          await axios.put(
+            `${API_URL}/cart/${item.id}`,
+            { quantity: issue.available },
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("userToken")}`,
+              },
+            }
+          );
+        } else {
+          await removeItem(item.id);
+        }
+      }
+      await cartStore.fetchCart();
+      loadCart();
+      stockMessage.value = "Items ajustats segons stock disponible.";
+      showStockModal.value = true;
+      return;
     }
+    errorMessage.value = "Error comprovant stock. Intenta-ho més tard.";
+    return;
+  }
 
-  } catch (err) {
-    console.error('Error finalitzant la comanda:', err);
-    alert('Error finalitzant la comanda. Si us plau, intenta-ho més tard.');
+  // Proceed to checkout
+  try {
+    const { data } = await axios.post(
+      `${API_URL}/cart/checkout`,
+      {
+        selectedIds: selectedItems.value.map((i) => i.id),
+        buyer_type: buyerType.value,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("userToken")}`,
+        },
+      }
+    );
+    const { baseOrderNumber, orderIds } = data;
+    if (orderIds.length === 1)
+      router.push({ name: "OrderConfirmation", params: { id: orderIds[0] } });
+    else
+      router.push({
+        name: "OrdersOverview",
+        query: { base: baseOrderNumber },
+      });
+  } catch {
+    errorMessage.value = "Error realitzant la comanda.";
   }
 }
 
-
-/** Funció per obtenir la imatge del producte */
-const getImageSrc = (imagePath: string | null): string => {
-  if (!imagePath) return '/img/no-imatge.jpg';
-  if (imagePath.startsWith('/uploads/')) {
-    return `${API_URL.replace('/api', '')}${imagePath}`;
-  }
-  if (imagePath.startsWith('http')) return imagePath;
-  return `${API_URL.replace('/api', '')}/uploads/${imagePath}`;
-};
-
-/** Navegar al detall del producte */
+// Navigation
 function goToProduct(id: number) {
-  router.push(`/producte/${id}`);
+  router.push({ name: "ProductDetail", params: { id } });
 }
 </script>
+
 
 <style scoped>
 /* (Els teus estils es mantenen sense canvis) */
@@ -308,10 +416,6 @@ function goToProduct(id: number) {
   max-width: 600px;
   margin: 30px auto;
   padding: 20px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   text-align: center;
 }

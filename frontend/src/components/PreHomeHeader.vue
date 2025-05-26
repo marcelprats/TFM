@@ -208,7 +208,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 <style scoped>
 /* ─── HEADER BÀSIC ───────────────────────────────────────────────── */
 .main-header {
-  background: #42b983;
+  background:rgb(0, 0, 0);
   position: fixed; top:0; left:0;
   width:100%; z-index:10000;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
@@ -318,7 +318,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 .dropdown-content a {
   display:block; padding:.5rem 1rem; color:#333;
 }
-.dropdown-content a:hover { background:#369e6b; }
+.dropdown-content a:hover { background:rgb(75, 75, 75); }
 
 /* ─── Forcem que el text del summary i dels enllaços no salti de línia ───────────────── */
 .dropdown summary,
@@ -328,7 +328,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 
 /* ─── Fem el fons del dropdown del mateix verd que el header i el text blanc ───────────── */
 .dropdown-content {
-  background: #42b983 !important;
+  background:rgb(0, 0, 0) !important;
 }
 .dropdown-content a {
   color: white !important;
@@ -338,7 +338,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 .auth { display:flex; align-items:center; gap:.5rem; }
 .auth-link { color:white; font-weight:bold; text-decoration:none; }
 .btn {
-  background:white; color:#42b983;
+  background:white; color:rgb(0, 0, 0);
   padding:0 .75rem; height:36px;
   border:none; border-radius:4px; cursor:pointer;
   font-weight:600;
@@ -368,7 +368,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 }
 .full-btn {
   display:block; width:100%; padding:.5rem;
-  margin-bottom:.75rem; background:#42b983;
+  margin-bottom:.75rem; background:rgb(0, 0, 0);
   color:white; border:none; border-radius:.25rem;
   cursor:pointer;
 }
@@ -381,7 +381,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 .input-spinner {
   position:absolute; top:1rem; right:1rem;
   width:16px; height:16px;
-  border:2px solid #ccc; border-top-color:#42b983;
+  border:2px solid #ccc; border-top-color:rgb(0, 0, 0);
   border-radius:50%; animation:spin .7s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -402,7 +402,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
   width:64px; height:64px; object-fit:cover; border-radius:.25rem;
 }
 .search-info-vertical h3{margin:0;color:#333;font-size:1rem;}
-.search-info-vertical p{margin:4px 0 0;color:#42b983;font-weight:500;}
+.search-info-vertical p{margin:4px 0 0;color:rgb(0, 0, 0);font-weight:500;}
 .no-results{ text-align:center; color:#666; margin:1rem 0; }
 
 
@@ -435,7 +435,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
     top: 80px;
     left: 0;
     right: 0;
-    background: #42b983;
+    background:rgb(0, 0, 0);
     flex-direction: column;
     padding: 1rem;
     display: none;

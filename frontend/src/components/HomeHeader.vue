@@ -1,532 +1,535 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAttrs } from 'vue';
-import axios from 'axios';
 import { isLoggedIn, getUser, fetchUser, logout, getUserType } from '../services/authService';
+import { useCartStore } from '../stores/cartStore';
+import { useProducts } from '../composables/useProducts';
 
-const API_URL = 'http://127.0.0.1:8000/api'; // Ajusta la URL de l'API si cal
-
-// Variables reactives i utilitats
 const router = useRouter();
 const attrs = useAttrs();
+
+// Estat usuaris
 const loggedIn = ref(false);
-const user = ref(null);
+const user = ref<any>(null);
+const role = ref('user');
+
+// Estat del menú i dropdowns
 const menuOpen = ref(false);
 const infoOpen = ref(false);
 const personalOpen = ref(false);
-const role = ref("user");
+const infoDropdownRef = ref<HTMLElement|null>(null);
+const personalDropdownRef = ref<HTMLElement|null>(null);
 
-// Variables per gestionar el menú desplegable i el carro
-const infoDropdownRef = ref<HTMLElement | null>(null);
-const personalDropdownRef = ref<HTMLElement | null>(null);
-const cart = ref<any>(null); // Aquí s'emmagatzema la resposta de l'API del carro
+// Carretó
+const cartStore = useCartStore();
+const cartItemCount = computed(() => cartStore.itemCount);
 
-// Funció per carregar el carro a través de l'API
-async function loadCart() {
-  const token = localStorage.getItem('userToken');
+// Cerca live
+const { products: allProducts, loading: loadingProducts } = useProducts();
+const showSearch = ref(false);
+const searchQuery = ref('');
+const results = ref<typeof allProducts.value>([]);
+const searchInputRef = ref<HTMLInputElement|null>(null);
 
-  if (token) {
-    try {
-      const response = await axios.get(`${API_URL}/cart`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      cart.value = response.data;
-    } catch (error) {
-      console.error('Error carregant el carret loguejat:', error);
-    }
-  } else {
-    // Si no està loguejat, carrega el carret des del localStorage
-    const localCart = JSON.parse(localStorage.getItem('guestCart') || '[]');
-    cart.value = {
-      cart_items: localCart.map(item => ({
-        ...item,
-        quantity: item.quantity || 1,
-        reserved_price: item.reserved_price || item.product?.preu || 0,
-      }))
-    };
+async function toggleSearch() {
+  showSearch.value = !showSearch.value;
+  if (showSearch.value) {
+    await nextTick();
+    searchInputRef.value?.focus();
   }
 }
-
-// Computed que retorna el nombre total d'articles sumant les quantitats de cada ítem del carro
-const cartItemCount = computed(() => {
-  if (!cart.value || !cart.value.cart_items) return 0;
-  return cart.value.cart_items
-    .filter(Boolean)
-    .reduce((acc: number, item: any) => acc + (item.quantity || 0), 0);
+watch(searchQuery, q => {
+  const term = q.trim().toLowerCase();
+  results.value = term
+    ? allProducts.value
+        .filter(p => p.nom.toLowerCase().includes(term))
+        .sort((a,b)=>a.nom.localeCompare(b.nom))
+        .slice(0,50)
+    : [];
 });
+function goToProduct(id:number) {
+  showSearch.value = false;
+  router.push(`/producte/${id}`);
+}
+function fullSearch() {
+  showSearch.value = false;
+  router.push({ path:'/botiga', query:{ q: searchQuery.value } });
+}
 
-window.addEventListener('storage', (event) => {
-  if (event.key === 'guestCart') {
-    loadCart(); // Recarrega el carret
-  }
-});
+// Dropdown handlers
+function toggleMenu() { menuOpen.value = !menuOpen.value; }
+function toggleInfo() { infoOpen.value = !infoOpen.value; }
+function togglePersonal() { personalOpen.value = !personalOpen.value; }
+function closeAll() { menuOpen.value = infoOpen.value = personalOpen.value = false; }
+function handleOutsideClick(e: MouseEvent) {
+  if (infoDropdownRef.value && !infoDropdownRef.value.contains(e.target as Node)) infoOpen.value = false;
+  if (personalDropdownRef.value && !personalDropdownRef.value.contains(e.target as Node)) personalOpen.value = false;
+}
 
-// Funcions per gestionar el menú i els desplegables
-const toggleMenu = () => {
-  menuOpen.value = !menuOpen.value;
-};
+// Utilitats
+function getImageSrc(p:string|null){ const B='http://localhost:8000'; if(!p) return '/img/no-imatge.jpg'; return p.startsWith('/')?B+p:`${B}/uploads/${p}`; }
+function formatPrice(v:number|string){ const n=typeof v==='number'?v:parseFloat(v as string); return isNaN(n)?'—':n.toFixed(2)+' €'; }
 
-const toggleInfo = () => {
-  infoOpen.value = !infoOpen.value;
-};
-
-const togglePersonal = () => {
-  personalOpen.value = !personalOpen.value;
-};
-
-const handleOutsideClick = (event: MouseEvent) => {
-  if (infoDropdownRef.value && !infoDropdownRef.value.contains(event.target as Node)) {
-    infoOpen.value = false;
-  }
-  if (personalDropdownRef.value && !personalDropdownRef.value.contains(event.target as Node)) {
-    personalOpen.value = false;
-  }
-};
-
-const handleLogout = async () => {
-  await logout();
-  loggedIn.value = false;
-  user.value = null;
-  role.value = "user";
+// Autenticació
+async function handleLogout(){
+  await logout(); cartStore.$reset();
+  loggedIn.value = false; user.value = null; role.value='user';
   router.push('/');
-};
+}
 
-// Polling: variable per l'interval
-let cartInterval: number;
-
+// Init
 onMounted(async () => {
   document.addEventListener('click', handleOutsideClick);
   loggedIn.value = isLoggedIn();
-  user.value = getUser();
-  role.value = getUserType();
-  if (loggedIn.value && !user.value) {
-    user.value = await fetchUser();
-  }
-  await loadCart();
-  // Actualitza el carro cada 10 segons
-  cartInterval = window.setInterval(async () => {
-    await loadCart();
-  }, 10000);
+  if(loggedIn.value){ user.value = getUser()||await fetchUser(); role.value = getUserType(); }
+  await cartStore.fetchCart();
 });
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleOutsideClick);
-  clearInterval(cartInterval);
-});
+onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 </script>
 
 <template>
   <header class="main-header" v-bind="attrs">
     <div class="container">
-      <!-- LOGO A L'ESQUERRA -->
       <router-link to="/" class="logo">TOTAKI</router-link>
 
-      <!-- TOP BAR PER A MÒBIL (carro + botó hamburguesa) -->
-      <!-- Visible només en dispositius <= 768px o quan vulguis -->
+      <!-- ─── Mobile controls (always visible) ─────────────────── -->
       <div class="mobile-controls">
-        <!-- Carro en mòbil (icona en blanc) -->
+        <button class="icon-btn mobile-search" @click="toggleSearch" aria-label="Cerca">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
         <router-link to="/cart" class="mobile-cart">
           <div class="cart-icon-wrapper">
-            <i class="fa-solid fa-cart-shopping" style="color: white;"></i>
-            <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span v-if="cartItemCount>0" class="cart-badge">{{ cartItemCount }}</span>
           </div>
         </router-link>
-        <!-- Botó hamburguesa -->
-        <button class="menu-toggle" @click="toggleMenu" :class="{ open: menuOpen }" aria-label="Obrir menú">
-          <span></span><span></span><span></span>
+        <button class="menu-toggle" @click="toggleMenu" :class="{ open: menuOpen }">
+          <span/><span/><span/>
         </button>
       </div>
 
-      <!-- MENÚ principal -->
+      <!-- ─── Nav + desktop icons + mobile-expanded ─────────────── -->
       <nav :class="['nav-links', { open: menuOpen }]">
-        <!-- Enllaços principals -->
-        <router-link to="/botiga" @click="menuOpen = false">Botiga</router-link>
-        
+        <!-- Links -->
+        <router-link to="/botiga" @click="closeAll">Botiga</router-link>
+
+        <!-- “Informació” dropdown -->
         <details class="dropdown" ref="infoDropdownRef" :open="infoOpen">
           <summary @click.prevent="toggleInfo">Informació</summary>
           <div class="dropdown-content">
-            <router-link to="/info-botiga" @click="menuOpen = false">Llistat Botigues</router-link>
-            <router-link to="/mapa-botigues" @click="menuOpen = false">Mapa Botigues</router-link>
-            <router-link to="/info-venedor" @click="menuOpen = false">Llistat Venedors</router-link>
+            <router-link to="/info-botiga" @click="closeAll">Llistat Botigues</router-link>
+            <router-link to="/mapa-botigues" @click="closeAll">Mapa Botigues</router-link>
+            <router-link to="/info-venedor" @click="closeAll">Llistat Venedors</router-link>
           </div>
         </details>
 
-        <details v-if="loggedIn && role === 'vendor'" class="dropdown" ref="personalDropdownRef" :open="personalOpen">
+        <router-link to="/about" @click="closeAll">Què és Totaki?</router-link>
+        <router-link to="/contacte" @click="closeAll">Contacte</router-link>
+
+        <!-- “Àrea Personal” dropdown -->
+        <details v-if="loggedIn && role==='vendor'" class="dropdown" ref="personalDropdownRef" :open="personalOpen">
           <summary @click.prevent="togglePersonal">Àrea Personal</summary>
           <div class="dropdown-content">
-            <router-link to="/vendor-orders" @click="menuOpen = false">Informació de vendes</router-link>
-            <router-link to="/area-personal-botigues" @click="menuOpen = false">Les Meves Botigues</router-link>
-            <router-link to="/area-personal-productes" @click="menuOpen = false">Els Meus Productes</router-link>
-            <router-link to="/import-record" @click="menuOpen = false">Registre d'importació</router-link>
+            <router-link to="/vendor-orders" @click="closeAll">Informació de vendes</router-link>
+            <router-link to="/area-personal-botigues" @click="closeAll">Les Meves Botigues</router-link>
+            <router-link to="/area-personal-productes" @click="closeAll">Els Meus Productes</router-link>
+            <router-link to="/import-record" @click="closeAll">Registre d’importació</router-link>
           </div>
         </details>
-        
-        <!-- Secció d'autenticació / Carro (ESCRIPTORI) -->
-        <!-- Carro al costat del "Hola, X" en mode escriptori -->
+
+        <!-- ─── Desktop icons (hidden in mobile-expanded) ──────── -->
+        <button class="icon-btn desktop-search" @click="toggleSearch" aria-label="Cerca">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+        <router-link to="/cart" class="desktop-cart">
+          <div class="cart-icon-wrapper">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span v-if="cartItemCount>0" class="cart-badge">{{ cartItemCount }}</span>
+          </div>
+        </router-link>
+
+        <!-- Auth -->
         <div class="auth">
           <template v-if="loggedIn">
-            <!-- En mode escriptori, posem el carro aquí amb la icona en blanc -->
-            <router-link to="/cart" class="desktop-cart" @click="menuOpen = false">
-              <div class="cart-icon-wrapper">
-                <i class="fa-solid fa-cart-shopping" style="color: white;"></i>
-                <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
-              </div>
-            </router-link>
-            <router-link to="/perfil" class="btn btn-hello" @click="menuOpen = false">
-              Hola, {{ user?.name }}
-            </router-link>
-            <button @click="handleLogout" class="btn btn-logout">Tancar Sessió</button>
+            <router-link to="/perfil" class="btn btn-hello" @click="closeAll">Hola, {{ user?.name }}</router-link>
+            <button class="btn btn-logout" @click="handleLogout">Tancar Sessió</button>
           </template>
           <template v-else>
-            <!-- Si no està loguejat, carro i enllaços de login/registre -->
-            <router-link to="/cart" class="desktop-cart">
-              <div class="cart-icon-wrapper">
-                <i class="fa-solid fa-cart-shopping" style="color: white;"></i>
-                <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
-              </div>
-            </router-link>
-            <router-link to="/login" class="auth-link">Login</router-link>
-            <router-link to="/register" class="auth-link">Registrar-se</router-link>
+            <router-link to="/login" class="auth-link" @click="closeAll">Login</router-link>
+            <router-link to="/register" class="auth-link" @click="closeAll">Registrar-se</router-link>
           </template>
         </div>
       </nav>
     </div>
+
+    <!-- ─── Popup Cerca ─────────────────────────────────────────── -->
+    <transition name="fade">
+      <div v-if="showSearch" class="search-popup" @click.self="toggleSearch">
+        <div class="search-box">
+          <input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            type="text"
+            placeholder="🔍 Cerca producte..."
+            class="popup-input"
+          />
+          <p v-if="searchQuery" class="search-counter">
+            Trobats: {{ results.length }} {{ results.length === 1 ? 'producte' : 'productes' }}
+          </p>
+          <button class="full-btn" @click="fullSearch">Búsqueda completa</button>
+          <button class="close-btn" @click="toggleSearch">&times;</button>
+          <div v-if="loadingProducts" class="input-spinner"></div>
+
+          <div v-if="searchQuery && results.length" class="popup-results">
+            <div
+              v-for="p in results"
+              :key="p.id"
+              class="search-card-vertical"
+              @click="goToProduct(p.id)"
+            >
+              <img :src="getImageSrc(p.imatge)" class="search-image-vertical" />
+              <div class="search-info-vertical">
+                <h3>{{ p.nom }}</h3>
+                <p>{{ formatPrice(p.preu) }}</p>
+              </div>
+            </div>
+          </div>
+          <p v-else-if="searchQuery && !loadingProducts" class="no-results">
+            Cap producte trobat.
+          </p>
+        </div>
+      </div>
+    </transition>
   </header>
 </template>
 
-
 <style scoped>
+/* ─── HEADER BÀSIC ───────────────────────────────────────────────── */
 .main-header {
-  background-color:rgb(0, 0, 0);
-  color: #fff;
-  width: 100%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 9000;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  background:rgb(0, 0, 0);
+  position: fixed; top:0; left:0;
+  width:100%; z-index:10000;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
-
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  max-width:1200px; margin:0 auto; padding:0 1rem;
+  height:80px; display:flex; align-items:center; justify-content:space-between;
 }
-
 .logo {
-  font-size: 1.75rem;
-  font-weight: bold;
-  color: white;
-  text-decoration: none;
+  font-size:1.75rem; font-weight:bold;
+  color:white; text-decoration:none;
 }
-
-.menu-toggle {
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-right: 0.5rem;
-  width: 30px;
-  height: 30px;
-  position: relative;
-}
-
-.menu-toggle span {
-  position: absolute;
-  width: 24px;
-  height: 3px;
-  background: white;
-  border-radius: 2px;
-  transition: 0.3s ease;
-}
-
-.menu-toggle span:nth-child(1) {
-  top: 6px;
-}
-
-.menu-toggle span:nth-child(2) {
-  top: 13px;
-}
-
-.menu-toggle span:nth-child(3) {
-  top: 20px;
-}
-
-.menu-toggle.open span:nth-child(1) {
-  transform: rotate(45deg);
-  top: 13px;
-}
-
-.menu-toggle.open span:nth-child(2) {
-  opacity: 0;
-}
-
-.menu-toggle.open span:nth-child(3) {
-  transform: rotate(-45deg);
-  top: 13px;
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-left: auto;
-  transition: max-height 0.3s ease, opacity 0.3s ease;
-}
-
-.nav-links a {
-  color: white;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.nav-links a:hover {
-  text-decoration: underline;
-}
-
-.nav-links.desktop-nav {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.auth {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.auth-link {
-  font-weight: bold !important;
-  color: white;
-  text-decoration: none;
-}
-
-.auth-link:hover {
-  text-decoration: underline;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 6px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: 0.2s ease;
-  background: white;
-  text-decoration: none;
-}
-
 .btn-hello {
-  color:rgb(0, 0, 0) !important;
-  font-weight: bold !important;
+  color: black !important;
 }
-
 .btn-logout {
-  color: #e63946;
+  background: #e63946 !important;
+  color: white !important;
 }
-
-.btn:hover {
-  background: #f1f1f1;
+/* ─── MOBILE CONTROLS ────────────────────────────────────────── */
+.mobile-controls { display:none; }
+.icon-btn {
+  background:none; border:none; color:white;
+  font-size:1.25rem; padding:.5rem; cursor:pointer;
 }
-
-.user-name {
-  color:rgb(0, 0, 0);
+.mobile-cart i, .desktop-cart i {
+  color:white; font-size:1.6rem;
 }
-
-.dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.dropdown summary {
-  list-style: none;
-  cursor: pointer;
-  color: white;
-  font-weight: 500;
-  padding: 0.4rem 0;
-  display: inline-block;
-}
-
-.dropdown[open] summary::after {
-  content: "";
-}
-
-.dropdown-content {
-  display: none;
-  flex-direction: column;
-  background: white;
-  padding: 0.5rem;
-  border-radius: 6px;
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  min-width: 180px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 1001;
-}
-
-.dropdown[open] .dropdown-content {
-  display: flex;
-}
-
-.dropdown-content a {
-  color: #333;
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.dropdown-content a:hover {
-  background-color: #f1f1f1;
-}
-
-/* Estils per a la icona i badge del carro */
+/* ─── BADGE RODONA I POSICIONADA CORRECTE ─────────────────────── */
 .cart-icon-wrapper {
   position: relative;
-  display: inline-block;
 }
-
-.cart-icon-wrapper i {
-  font-size: 1.6rem;
-}
-
 .cart-badge {
   position: absolute;
-  top: -8px;
+  top: -8px;       /* una mica més ajustat */
   right: -8px;
-  background-color: red;
+  background: red;
   color: white;
-  font-size: 0.7rem;
-  padding: 1px 3px;
-  border-radius: 50%;
-  min-width: 16px;
+  font-size: 0.65rem;
+  padding: 1.5px;
+  border-radius: 50%; /* cercle perfecte */
+  min-width: 14px;
+  min-height: 14px;
+  line-height: 1;
   text-align: center;
 }
-
-.mobile-controls {
-  display: none; /* Per defecte amagat en escriptori */
+.menu-toggle {
+  display:none; flex-direction:column;
+  justify-content:center; align-items:center;
+  margin-left:.5rem; position:relative; width:30px; height:30px;
+}
+.menu-toggle span {
+  position:absolute; width:24px; height:3px;
+  background:white; border-radius:2px;
+  transition:.3s ease;
 }
 
-.desktop-cart {
-  display: inline-block; /* Visible en escriptori */
-  margin-right: 1rem;
-  margin-left: 2rem;
+.menu-toggle,
+.menu-toggle.open {
+  background: transparent !important;
+}
+.menu-toggle span:nth-child(1){top:6px;}
+.menu-toggle span:nth-child(2){top:13px;}
+.menu-toggle span:nth-child(3){top:20px;}
+.menu-toggle.open span:nth-child(1){transform:rotate(45deg); top:13px;}
+.menu-toggle.open span:nth-child(2){opacity:0;}
+.menu-toggle.open span:nth-child(3){transform:rotate(-45deg); top:13px;}
+
+/* ─── NAV LINKS ───────────────────────────────────────────────── */
+.nav-links {
+  display:flex; align-items:center; gap:1rem;
+  margin-left:auto;
+  transition: max-height .3s, opacity .3s;
+}
+.nav-links > * { margin-right:.5rem; }
+.nav-links > a, .nav-links > details > summary {
+  position:relative; color:white; text-decoration:none; font-weight:500;
+  padding:0 .25rem; cursor:pointer;
 }
 
+.nav-links > a::after, .nav-links > details > summary::after {
+  content:""; position:absolute; left:0; bottom:-4px;
+  width:0; height:2px; background:white; transition:width .3s;
+}
+.nav-links > a:hover::after,
+.nav-links > details > summary:hover::after,
+.nav-links > a.router-link-active::after,
+.nav-links > details[open] > summary::after {
+  width:100%;
+}
+
+/* ─── DROPDOWN “Informació” ───────────────────────────────────── */
+.dropdown {
+  position: relative; 
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px); 
+  left: 0;
+  background: white;     
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 10001;
+}
+.dropdown[open] .dropdown-content { display:flex; flex-direction:column; }
+.dropdown-content a {
+  display:block; padding:.5rem 1rem; color:#333;
+}
+.dropdown-content a:hover { background:rgb(75, 75, 75); }
+
+/* ─── Forcem que el text del summary i dels enllaços no salti de línia ───────────────── */
+.dropdown summary,
+.dropdown-content a {
+  white-space: nowrap;
+}
+
+/* ─── Fem el fons del dropdown del mateix verd que el header i el text blanc ───────────── */
+.dropdown-content {
+  background:rgb(0, 0, 0) !important;
+}
+.dropdown-content a {
+  color: white !important;
+}
+
+/* ─── AUTH ─────────────────────────────────────────────────────── */
+.auth { display:flex; align-items:center; gap:.5rem; }
+.auth-link { color:white; font-weight:bold; text-decoration:none; }
+.btn {
+  background:white; color:rgb(0, 0, 0);
+  padding:0 .75rem; height:36px;
+  border:none; border-radius:4px; cursor:pointer;
+  font-weight:600;
+}
+
+/* ─── POPUP CERCA ─────────────────────────────────────────────── */
+.fade-enter-active,.fade-leave-active{transition:opacity .2s}
+.fade-enter-from,.fade-leave-to{opacity:0}
+
+.search-popup {
+  position:fixed; inset:0; background:rgba(0,0,0,.4);
+  display:flex; justify-content:center; align-items:flex-start;
+  padding:2rem; z-index:11000;
+}
+.search-box {
+  background:white; border-radius:.5rem; padding:1rem;
+  width:100%; max-width:600px; position:relative;
+}
+.popup-input {
+  width:100%; padding:.75rem 1rem;
+  border:1px solid #ccc; border-radius:.25rem;
+  margin-bottom:.5rem; box-sizing:border-box;
+}
+.search-counter {
+  text-align:center; margin-bottom:.5rem;
+  color:#374151; font-size:.9rem;
+}
+.full-btn {
+  display:block; width:100%; padding:.5rem;
+  margin-bottom:.75rem; background:rgb(0, 0, 0);
+  color:white; border:none; border-radius:.25rem;
+  cursor:pointer;
+}
+.full-btn:hover { background:#369e6b; }
+.close-btn {
+  position:absolute; top:.5rem; right:.5rem;
+  background:none; border:none; font-size:1.25rem;
+  cursor:pointer;
+}
+.input-spinner {
+  position:absolute; top:1rem; right:1rem;
+  width:16px; height:16px;
+  border:2px solid #ccc; border-top-color:rgb(0, 0, 0);
+  border-radius:50%; animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.popup-results {
+  display:block; max-height:60vh; overflow-y:auto; margin-top:1rem;
+}
+.search-card-vertical {
+  display:flex; gap:1rem; align-items:center;
+  background:white; border-radius:.5rem; padding:.75rem;
+  margin-bottom:.75rem; box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  transition:transform .2s,box-shadow .2s;
+}
+.search-card-vertical:hover {
+  transform:translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,0.15);
+}
+.search-image-vertical {
+  width:64px; height:64px; object-fit:cover; border-radius:.25rem;
+}
+.search-info-vertical h3{margin:0;color:#333;font-size:1rem;}
+.search-info-vertical p{margin:4px 0 0;color:rgb(0, 0, 0);font-weight:500;}
+.no-results{ text-align:center; color:#666; margin:1rem 0; }
+
+
+.auth .btn-hello {
+  display: inline-flex;
+  align-items: center;   /* vertical centering */
+  justify-content: center;
+  height: 36px;          /* igual que la resta de botons */
+  line-height: 1;        /* perquè el text quedi centrat */
+}
+
+/* ─── RESPONSIVE ───────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .menu-toggle {
-    display: flex;
+  /* Mostrem icones mòbil alineades verticalment */
+  .mobile-controls {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end;
   }
 
+  /* Botó hamburguesa */
+  .menu-toggle {
+    display: flex;
+    background: transparent !important;
+  }
+
+  /* Nav col·lapsada */
   .nav-links {
     position: absolute;
     top: 80px;
     left: 0;
     right: 0;
     background:rgb(0, 0, 0);
-    width: 100%;
     flex-direction: column;
     padding: 1rem;
     display: none;
     align-items: flex-end;
     animation: slideFadeIn 0.3s ease forwards;
   }
-
   .nav-links.open {
     display: flex;
   }
 
+  /* Amaguem el cercador i el carro dins el menú mòbil */
+  .nav-links.open .desktop-cart,
+  .nav-links.open .desktop-search {
+    display: none !important;
+  }
+
+  /* Tots els enllaços alineats a la dreta */
   .nav-links > * {
-    width: auto;
+    width: 100%;
+    text-align: right;
+    margin: 0;
+  }
+
+  /* Contenidor principal conserva centrat vertical els controls */
+  .container {
+    align-items: center;
+  }
+
+  /* Dropdown inline dins el menú */
+  .nav-links.open .dropdown-content {
+    position: static;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    width: 100%;
+    margin: 0;
+  }
+  /* Links dins el dropdown ara com elements de menú normals */
+  .nav-links.open .dropdown-content a {
+    color: white;
+    font-weight: 400;
+    padding: 0.5rem 0;
     text-align: right;
   }
 
-  .dropdown-content {
-    position: relative;
-    background: transparent;
-    box-shadow: none;
-    padding-left: 0;
-    padding-right: 0;
-    align-items: flex-end;
-  }
-
-  .dropdown-content a {
-    color: white;
-    padding: 0.3rem 0;
-  }
-
-  .auth {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.2rem;
-    margin-top: 1rem;
-  }
-
-  .auth .btn {
-    background: transparent;
-    color: white !important;
-    font-weight: bold;
-    height: auto;
-    padding: 0.3rem 0;
-    border: none;
-    width: auto;
-  }
-
-  .auth .btn:hover {
-    background: transparent;
-    text-decoration: underline;
-  }
-
-  .auth a {
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-    padding: 0.3rem 0;
-  }
-
-  .auth a:hover {
-    text-decoration: underline;
-  }
-
-    .mobile-controls {
+  /* Alineació botons d’autenticació */
+  .nav-links.open .auth {
     display: flex;
-    /* Si vols el carro a l’esquerra i el botó a la dreta, pots fer: */
     justify-content: flex-end;
-    gap: 1rem;
+    width: 100%;
+    margin-top: 0.5rem;
   }
-  
-  .desktop-cart {
-    display: none; /* Per no duplicar el carro en mòbil */
+  .nav-links.open .auth .btn,
+  .nav-links.open .auth .auth-link {
+    width: auto;
+    margin-left: 0.5rem;
   }
-  
-  .menu-toggle {
-    display: block;
+
+  /* Ajustem l’ample de la línia als enllaços principals actius */
+  .nav-links.open > a.router-link-active {
+    display: inline-block;
+    width: auto;
+    padding: 0.5rem 0;
   }
+  .nav-links.open > a.router-link-active::after {
+    width: 100%;
+  }
+
+  /* I per als summaries cuan un fill està actiu */
+  .nav-links.open details.dropdown:has(.dropdown-content .router-link-active) > summary {
+    display: inline-block;
+    width: auto;
+    padding: 0.5rem 0;
+  }
+  .nav-links.open details.dropdown:has(.dropdown-content .router-link-active) > summary::after {
+    width: 100%;
+  }
+  /* Mostra una fletxa al costat del summary si algun enllaç del seu dropdown està actiu */
+.details.dropdown:has(.dropdown-content .router-link-active) > summary::before {
+  content: "▸";      /* pots canviar per ▶ o qualsevol altra fletxa */
+  display: inline-block;
+  margin-right: 0.5rem;
+}
 }
 
+
+/* ─── Animacions ───────────────────────────────────────── */
 @keyframes slideFadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0%   { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes fadeDropdown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 </style>

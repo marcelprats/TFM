@@ -1,39 +1,63 @@
-// stores/cartStore.ts
-import { defineStore } from 'pinia';
+// src/stores/cartStore.ts
+import { defineStore } from 'pinia'
+import axios from 'axios'
 
-interface CartItem {
-  id: number;
-  product: any; // o defineix una interfície per al producte
-  quantity: number;
-  reserved_price: number;
+const API_URL = 'http://127.0.0.1:8000/api'
+
+export interface CartItem {
+  id: number
+  quantity: number
+  reserved_price: number
+  product: {
+    id: number
+    nom: string
+    preu: number
+  }
 }
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
-    items: [] as CartItem[],
-    nextId: 1, // Per assignar un ID únic als ítems del carret
+    items: [] as CartItem[]
   }),
   getters: {
-    totalPrice: (state) =>
-      state.items.reduce((total, item) => total + (item.quantity * item.reserved_price), 0),
+    itemCount: (state) => state.items.reduce((sum, i) => sum + i.quantity, 0),
+    totalPrice: (state) => state.items.reduce((sum, i) => sum + i.quantity * i.reserved_price, 0)
   },
   actions: {
-    addItem(product: any, quantity: number) {
-      // Suposem que 'reserved_price' és el preu actual del producte
-      const reserved_price = parseFloat(product.preu);
-      // Comprovem si el producte ja existeix al carret
-      const existingItem = this.items.find((item) => item.product.id === product.id);
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        this.items.push({
-          id: this.nextId++,
-          product: product,
-          quantity: quantity,
-          reserved_price: reserved_price,
-        });
+    async fetchCart() {
+      const token = localStorage.getItem('userToken')
+      if (!token) {
+        this.items = []
+        return
+      }
+      try {
+        const { data } = await axios.get<{ cart_items: CartItem[] }>(
+          `${API_URL}/cart`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        this.items = data.cart_items
+      } catch {
+        this.items = []
       }
     },
-    // Altres funcions per eliminar, actualitzar, etc.
-  },
-});
+    async addItem(productId: number, quantity: number) {
+      const token = localStorage.getItem('userToken')
+      if (!token) throw new Error('No token')
+      await axios.post(
+        `${API_URL}/cart`,
+        { product_id: productId, quantity },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      await this.fetchCart()
+    },
+    async removeItem(itemId: number) {
+      const token = localStorage.getItem('userToken')
+      if (!token) throw new Error('No token')
+      await axios.delete(
+        `${API_URL}/cart/${itemId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      await this.fetchCart()
+    }
+  }
+})

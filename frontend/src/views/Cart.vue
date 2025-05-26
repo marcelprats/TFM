@@ -1,9 +1,10 @@
 <template>
   <div class="cart-container">
-    <h1>El teu Carro</h1>
+    <!-- Header -->
+    <h1>El teu Carro ({{ cartStore.itemCount }} ítems)</h1>
 
-    <!-- Botons globals a dalt si hi ha ítems -->
-    <div v-if="hasItems" class="global-actions">
+    <!-- Accions globals desktop -->
+    <div v-if="hasItems" class="global-actions desktop-only">
       <button class="btn clear-all-btn" @click="openClearAllModal">
         Buidar tot el carro
       </button>
@@ -12,15 +13,18 @@
       </button>
     </div>
 
-    <!-- Missatge si el carro està buit -->
-    <div v-if="!hasItems">
+    <!-- Carro buit -->
+    <div v-if="!hasItems" class="empty-state">
       <p>El teu carro està buit.</p>
     </div>
 
-    <!-- Ítems agrupats per botiga -->
-    <div v-else>
-      <div v-for="(items, shopId) in groupedCartItems" :key="shopId" class="shop-group">
-        <!-- Capçalera del grup -->
+    <!-- Desktop: taula agrupada per botiga -->
+    <div v-else class="desktop-view">
+      <div
+        v-for="(items, shopId) in groupedCartItems"
+        :key="shopId"
+        class="shop-group"
+      >
         <div class="shop-header">
           <span class="shop-name">
             Botiga:
@@ -29,59 +33,46 @@
                 <strong>{{ getStoreName(shopId) }}</strong>
               </router-link>
             </template>
-            <template v-else>
-              <strong>Sense Botiga</strong>
-            </template>
+            <template v-else><strong>Sense Botiga</strong></template>
           </span>
           <span class="shop-total">
-            Total per botiga: <strong>{{ formatPrice(calcSelectedShopTotal(items)) }}</strong>
+            Total per botiga:
+            <strong>{{ formatPrice(calcShopTotal(items)) }}</strong>
           </span>
           <button class="btn clear-group-btn" @click="openClearModal(shopId)">
             Buidar carro de {{ getStoreName(shopId) }}
           </button>
         </div>
-        <!-- Taula amb els ítems del grup -->
+
         <table>
           <thead>
             <tr>
-              <th>
-                <!-- Checkbox "Select All" per aquest grup -->
-                <input type="checkbox"
-                  :checked="allSelected(shopId)"
-                  @change="toggleSelectGroup(shopId, items)"
-                />
-              </th>
+              <th><input type="checkbox" :checked="allSelected(shopId)" @change="toggleSelectGroup(shopId, items)" /></th>
               <th>Producte</th>
               <th>Preu Unitar</th>
               <th>Quantitat</th>
+              <th class="reservation-col">Reserva (10%)</th>
               <th>Total</th>
               <th>Accions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.id">
-              <td>
-                <!-- Checkbox lligada a item.selected -->
-                <input type="checkbox" v-model="item.selected" @change="updateItemSelected(item)" />
-              </td>
-              <td class="product-cell" @click="goToProduct(item.product.id)" style="cursor:pointer;">
+              <td><input type="checkbox" v-model="item.selected" @change="updateCartItem(item)" /></td>
+              <td class="product-cell" @click="goToProduct(item.product.id)">
                 <img :src="getImageSrc(item.product.imatge)" alt="producte" class="product-image" />
                 <span>{{ item.product.nom }}</span>
               </td>
               <td>{{ formatPrice(item.reserved_price) }}</td>
               <td>
                 <div class="quantity-control">
-                  <button class="quantity-btn" @click="decreaseQuantity(item)">−</button>
-                  <input type="number"
-                         v-model.number="item.quantity"
-                         min="1"
-                         :max="item.product.stock"
-                         @change="updateCartItem(item)"
-                  />
-                  <button class="quantity-btn" @click="increaseQuantity(item)">+</button>
+                  <button class="quantity-btn" :disabled="item.quantity<=1" @click="decreaseQuantity(item)">−</button>
+                  <input type="number" v-model.number="item.quantity" :min="1" :max="item.product.stock" @change="onQuantityChange(item)" />
+                  <button class="quantity-btn" :disabled="item.quantity>=item.product.stock" @click="increaseQuantity(item)">+</button>
                 </div>
               </td>
-              <td>{{ formatPrice(item.quantity * parseFloat(item.reserved_price)) }}</td>
+              <td class="reservation-col">{{ formatPrice(item.quantity * Number(item.product.preu) * 0.1) }}</td>
+              <td>{{ formatPrice(item.quantity * Number(item.product.preu)) }}</td>
               <td>
                 <button class="btn trash-btn" @click="confirmSingleDelete(item.id)">
                   <i class="fa-solid fa-trash"></i>
@@ -93,8 +84,51 @@
       </div>
     </div>
 
-    <!-- Botons globals a la part inferior -->
-    <div v-if="hasItems" class="global-actions">
+    <!-- Mobile (i desktop if vols cards): cards agrupades per botiga -->
+    <div class="cards-view mobile-only">
+      <div v-for="(items, shopId) in groupedCartItems" :key="shopId" class="shop-cards">
+        <div class="shop-header cards-header">
+          <h2>
+            {{ getStoreName(shopId) }} —
+            <small>{{ formatPrice(calcShopTotal(items)) }}</small>
+          </h2>
+          <button class="btn clear-group-btn" @click="openClearModal(shopId)">
+            Buidar carro de {{ getStoreName(shopId) }}
+          </button>
+        </div>
+        <div class="cards-grid">
+          <div v-for="item in items" :key="item.id" class="card">
+            <div class="card-header">
+              <input type="checkbox" v-model="item.selected" @change="updateCartItem(item)" />
+              <button class="btn trash-btn" @click="confirmSingleDelete(item.id)">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+            <img :src="getImageSrc(item.product.imatge)" alt="producte" class="card-image" />
+            <h3 @click="goToProduct(item.product.id)">{{ item.product.nom }}</h3>
+            <p>Unitat: {{ formatPrice(item.reserved_price) }}</p>
+            <div class="quantity-control">
+              <button class="quantity-btn" :disabled="item.quantity<=1" @click="decreaseQuantity(item)">−</button>
+              <input type="number" v-model.number="item.quantity" :min="1" :max="item.product.stock" @change="onQuantityChange(item)" />
+              <button class="quantity-btn" :disabled="item.quantity>=item.product.stock" @click="increaseQuantity(item)">+</button>
+            </div>
+            <p>Reserva: {{ formatPrice(item.quantity * Number(item.product.preu) * 0.1) }}</p>
+            <p>Total: {{ formatPrice(item.quantity * Number(item.product.preu)) }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Accions globals desktop -->
+    <div v-if="hasItems" class="global-actions desktop-only">
+      <button class="btn clear-all-btn" @click="openClearAllModal">
+        Buidar tot el carro
+      </button>
+      <button class="btn checkout-all-btn" @click="checkoutTotal">
+        Finalitzar Comanda
+      </button>
+    </div>
+    <!-- Accions globals móvil (fixes a baix) -->
+    <div v-if="hasItems" class="global-actions mobile-only mobile-fixed">
       <button class="btn clear-all-btn" @click="openClearAllModal">
         Buidar tot el carro
       </button>
@@ -103,555 +137,250 @@
       </button>
     </div>
 
-    <!-- Modal per buidar el grup de botiga -->
+    <!-- Modals ... (igual que abans) -->
+    <!-- Clear one shop -->
     <div class="modal-overlay" v-if="showClearModal" @click="closeClearModal">
       <div class="modal" @click.stop>
         <h2>Confirmar Buidatge</h2>
-        <p>
-          Estàs segur que vols buidar tots els ítems de la botiga 
-          <strong>{{ getStoreName(modalShopId) }}</strong>?
-        </p>
+        <p>Estàs segur que vols buidar tots els ítems de la botiga <strong>{{ getStoreName(modalShopId) }}</strong>?</p>
         <ul>
           <li v-for="item in (groupedCartItems[modalShopId] || [])" :key="item.id">
             {{ item.product.nom }} (x{{ item.quantity }})
           </li>
         </ul>
         <div class="modal-actions">
-          <button class="btn clear-group-btn" @click="clearCartGroup(modalShopId)">
-            Confirmar
-          </button>
+          <button class="btn clear-group-btn" @click="clearCartGroup(modalShopId)">Confirmar</button>
           <button class="btn" @click="closeClearModal">Cancel·lar</button>
         </div>
       </div>
     </div>
-
-    <!-- Modal per buidar tot el carro -->
+    <!-- Clear all -->
     <div class="modal-overlay" v-if="showClearAllModal" @click="closeClearAllModal">
       <div class="modal" @click.stop>
         <h2>Confirmar Buidatge Total</h2>
         <p>Estàs segur que vols buidar tots els ítems del carro?</p>
         <ul>
-          <li v-for="item in (cart.cart_items || [])" :key="item.id">
+          <li v-for="item in cartStore.items" :key="item.id">
             {{ item.product.nom }} (x{{ item.quantity }})
           </li>
         </ul>
         <div class="modal-actions">
-          <button class="btn clear-all-btn" @click="clearAllCart">
-            Confirmar
-          </button>
+          <button class="btn clear-all-btn" @click="clearAllCart">Confirmar</button>
           <button class="btn" @click="closeClearAllModal">Cancel·lar</button>
         </div>
       </div>
     </div>
-
-    <!-- Modal per Checkout per grup -->
-    <div class="modal-overlay" v-if="showCheckoutModal" @click="closeCheckoutModal">
-      <div class="modal" @click.stop>
-        <h2>Confirmar Checkout</h2>
-        <p>
-          Es crearà una ordre per la botiga 
-          <strong>{{ getStoreName(modalShopId) }}</strong> amb els següents ítems seleccionats:
-        </p>
-        <ul>
-          <li v-for="item in (groupedCartItems[modalShopId] || [])" :key="item.id" v-if="item.selected">
-            {{ item.product.nom }} (x{{ item.quantity }})
-          </li>
-        </ul>
-        <div class="modal-actions">
-          <button class="btn checkout-all-btn" @click="confirmCheckout(modalShopId)">
-            Confirmar Checkout
-          </button>
-          <button class="btn" @click="closeCheckoutModal">Cancel·lar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal per confirmació d'eliminació individual -->
+    <!-- Delete single -->
     <div class="modal-overlay" v-if="showSingleDeleteModal" @click="closeSingleDeleteModal">
       <div class="modal" @click.stop>
         <h2>Confirmar Eliminació</h2>
-        <p>
-          Estàs segur que vols eliminar l'ítem <strong>{{ singleDeleteItemName }}</strong>?
-        </p>
+        <p>Estàs segur que vols eliminar l'ítem <strong>{{ singleDeleteItemName }}</strong>?</p>
         <div class="modal-actions">
-          <button class="btn remove-btn" @click="deleteSingleItem">
-            Confirmar
-          </button>
+          <button class="btn remove-btn" @click="deleteSingleItem">Confirmar</button>
           <button class="btn" @click="closeSingleDeleteModal">Cancel·lar</button>
         </div>
       </div>
     </div>
-    
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { useCartStore } from '../stores/cartStore'
+import { useToast } from 'vue-toastification'
 
-const API_URL = 'http://127.0.0.1:8000/api';
-const router = useRouter();
-const cart = ref<any>(null);
+const API_URL       = axios.defaults.baseURL || 'http://127.0.0.1:8000/api'
+const BACKEND_URL   = API_URL.replace(/\/api\/?$/, '')
+const DEFAULT_IMAGE = '/img/no-imatge.jpg'
 
-const singleDeleteItemName = ref('');
+const router    = useRouter()
+const toast     = useToast()
+const cartStore = useCartStore()
 
-/** Variables per gestió de selecció (són gestionades via el camp "selected" de cada ítem) */
-const selectedItems = ref<number[]>([]);
-const selectedShopIds = ref<string[]>([]);
+// Modals & state
+const showClearModal        = ref(false)
+const showClearAllModal     = ref(false)
+const showSingleDeleteModal = ref(false)
+const modalShopId           = ref<string>('')
+const singleDeleteItemName  = ref<string>('')
+let itemToDelete: number | null = null
 
-/** Variables per modals */
-const showClearModal = ref(false);
-const modalShopId = ref<string>('');
-const showCheckoutModal = ref(false);
-const showClearAllModal = ref(false);
-const showSingleDeleteModal = ref(false);
-const itemToDelete = ref<number | null>(null);
+onMounted(() => cartStore.fetchCart())
 
-/** Carrega el carro i inicialitza la selecció basant-se en el camp "selected" */
-async function loadCart() {
-  try {
-    const token = localStorage.getItem('userToken');
-    const res = await axios.get(`${API_URL}/cart`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    cart.value = res.data;
-    if (cart.value && cart.value.cart_items) {
-      // Afegim els IDs dels ítems seleccionats actualment
-      selectedItems.value = cart.value.cart_items
-        .filter((item: any) => item.selected)
-        .map((item: any) => item.id);
-      // Afegim també les botigues corresponents
-      selectedShopIds.value = [
-        ...new Set(cart.value.cart_items
-          .filter((item: any) => item.selected)
-          .map((item: any) =>
-            item.product.botiga ? item.product.botiga.id.toString() : 'sense_botiga'
-          ))
-      ];
-    }
-  } catch (error) {
-    console.error('Error carregant el carro:', error);
-  }
+// Computed
+const hasItems = computed(() => cartStore.items.length > 0)
+const groupedCartItems = computed<Record<string, any[]>>(() =>
+  cartStore.items.reduce((groups, item) => {
+    const sid = item.product.botiga?.id?.toString() || 'sense_botiga'
+    ;(groups[sid] ||= []).push(item)
+    return groups
+  }, {} as Record<string, any[]>)
+)
+
+// Helpers
+function getStoreName(sid: string) {
+  if (sid === 'sense_botiga') return 'Sense Botiga'
+  return groupedCartItems.value[sid][0].product.botiga.nom
 }
-onMounted(loadCart);
-
-/** Computed per saber si hi ha ítems al carro */
-const hasItems = computed(() => {
-  return cart.value && cart.value.cart_items && cart.value.cart_items.length > 0;
-});
-
-/** Agrupa els ítems del carro per botiga */
-const groupedCartItems = computed(() => {
-  if (!cart.value || !cart.value.cart_items) return {};
-  return cart.value.cart_items.reduce((groups: any, item: any) => {
-    const shopId = item.product.botiga ? item.product.botiga.id : 'sense_botiga';
-    if (!groups[shopId]) groups[shopId] = [];
-    groups[shopId].push(item);
-    return groups;
-  }, {});
-});
-
-/** Obté el nom de la botiga */
-const getStoreName = (shopId: string): string => {
-  if (shopId === 'sense_botiga') return 'Sense Botiga';
-  const group = groupedCartItems.value[shopId];
-  return group && group[0] && group[0].product.botiga
-    ? group[0].product.botiga.nom
-    : 'No definida';
-};
-
-/** Calcula el total per botiga només amb ítems seleccionats */
-const calcSelectedShopTotal = (items: any[]): number => {
-  return items
-    .filter((item: any) => item.selected)
-    .reduce((sum, item) => sum + item.quantity * parseFloat(item.reserved_price), 0);
-};
-
-/** Funció per alternar la selecció de tots els ítems d'un grup */
-function toggleSelectGroup(shopId: string, items: any[]) {
-  const groupIds = items.map((i: any) => i.id);
-  const allAreSelected = groupIds.every((id: number) => selectedItems.value.includes(id));
-  if (allAreSelected) {
-    selectedItems.value = selectedItems.value.filter((id: number) => !groupIds.includes(id));
-    selectedShopIds.value = selectedShopIds.value.filter(id => id !== shopId.toString());
-    items.forEach((item: any) => {
-      item.selected = false;
-      updateItemSelected(item);
-    });
-  } else {
-    groupIds.forEach(id => {
-      if (!selectedItems.value.includes(id)) selectedItems.value.push(id);
-    });
-    if (!selectedShopIds.value.includes(shopId.toString()))
-      selectedShopIds.value.push(shopId.toString());
-    items.forEach((item: any) => {
-      item.selected = true;
-      updateItemSelected(item);
-    });
-  }
+function formatPrice(val: number | string) {
+  const n = typeof val === 'number' ? val : parseFloat(val)
+  return isNaN(n) ? '—' : n.toFixed(2) + ' €'
 }
-function allSelected(shopId: string): boolean {
-  const group = groupedCartItems.value[shopId];
-  if (!group) return false;
-  return group.every((item: any) => item.selected);
+function calcShopTotal(items: any[]) {
+  return items.filter(i => i.selected).reduce((s, i) => s + i.quantity * Number(i.product.preu), 0)
+}
+function allSelected(sid: string) {
+  return groupedCartItems.value[sid].every(i => i.selected)
+}
+function getImageSrc(path: string|null|undefined): string {
+  if (!path) return DEFAULT_IMAGE
+  if (path.startsWith('/uploads/')) return BACKEND_URL + path
+  if (path.startsWith(BACKEND_URL)) return path
+  return BACKEND_URL + '/uploads/' + path
 }
 
-/** Quan es canvia la checkbox d'un ítem, actualitza el camp "selected" al servidor */
-async function updateItemSelected(item: any) {
-  try {
-    const token = localStorage.getItem('userToken');
-    await axios.put(`${API_URL}/cart/${item.id}`, {
-      quantity: item.quantity,
-      selected: item.selected
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    await loadCart();
-  } catch (error) {
-    console.error('Error actualitzant selected:', error);
-  }
-}
-
-/** Funcions per buidar el grup de botiga */
-function openClearModal(shopId: string) {
-  modalShopId.value = shopId;
-  showClearModal.value = true;
-}
-function closeClearModal() {
-  showClearModal.value = false;
-  modalShopId.value = '';
-}
-async function clearCartGroup(shopId: string) {
-  const group = groupedCartItems.value[shopId];
-  if (!group || group.length === 0) return;
-  try {
-    const token = localStorage.getItem('userToken');
-    for (const item of group) {
-      await axios.delete(`${API_URL}/cart/${item.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    }
-    await loadCart();
-    const groupIds = group.map((i: any) => i.id);
-    selectedItems.value = selectedItems.value.filter((id: number) => !groupIds.includes(id));
-    selectedShopIds.value = selectedShopIds.value.filter(id => id !== shopId.toString());
-  } catch (error) {
-    console.error('Error buidant el grup:', error);
-  } finally {
-    closeClearModal();
-  }
-}
-
-/** Funcions globals per buidar tot el carro */
-function openClearAllModal() {
-  showClearAllModal.value = true;
-}
-function closeClearAllModal() {
-  showClearAllModal.value = false;
-}
-async function clearAllCart() {
-  if (!cart.value || !cart.value.cart_items) return;
-  try {
-    const token = localStorage.getItem('userToken');
-    for (const item of cart.value.cart_items) {
-      await axios.delete(`${API_URL}/cart/${item.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    }
-    await loadCart();
-    selectedItems.value = [];
-    selectedShopIds.value = [];
-  } catch (error) {
-    console.error('Error buidant tot el carro:', error);
-  } finally {
-    closeClearAllModal();
-  }
-}
-
-/** Modal per Checkout per grup */
-function openCheckoutModal(shopId: string) {
-  if (groupHasSelection(shopId)) {
-    modalShopId.value = shopId;
-    showCheckoutModal.value = true;
-  } else {
-    alert('Selecciona almenys un ítem d’aquesta botiga per fer checkout.');
-  }
-}
-function closeCheckoutModal() {
-  showCheckoutModal.value = false;
-  modalShopId.value = '';
-}
-function groupHasSelection(shopId: string): boolean {
-  const group = groupedCartItems.value[shopId];
-  if (!group) return false;
-  return group.some((item: any) => item.selected);
-}
-/** Quan es confirma el checkout d'un grup, redirigeix a la pàgina /checkout amb el paràmetre shopId */
-function confirmCheckout(shopId: string) {
-  router.push(`/checkout?shopId=${shopId}`);
-}
-
-/** Botó per Checkout global */
-function checkoutTotal() {
-  if (selectedItems.value.length === 0) {
-    alert('Selecciona almenys un ítem per fer checkout.');
-    return;
-  }
-  if (selectedShopIds.value.length > 1) {
-    router.push('/checkout?all=true');
-  } else {
-    router.push(`/checkout?shopId=${selectedShopIds.value[0]}`);
-  }
-}
-
-/** Funcions per actualitzar la quantitat d'un ítem */
+// Server & handlers (igual que abans)...
 async function updateCartItem(item: any) {
-  try {
-    const token = localStorage.getItem('userToken');
-    await axios.put(`${API_URL}/cart/${item.id}`, {
-      quantity: item.quantity,
-      selected: item.selected
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    await loadCart();
-  } catch (error) {
-    console.error('Error actualitzant l’ítem:', error);
+  const token = localStorage.getItem('userToken')
+  await axios.put(`${API_URL}/cart/${item.id}`, { quantity: item.quantity, selected: item.selected }, { headers: { Authorization: `Bearer ${token}` } })
+  await cartStore.fetchCart()
+}
+async function toggleSelectGroup(sid: string, items: any[]) {
+  const all = allSelected(sid)
+  for (const i of items) {
+    i.selected = !all
+    await updateCartItem(i)
   }
 }
-function increaseQuantity(item: any) {
-  if (item.quantity < item.product.stock) {
-    item.quantity++;
-    updateCartItem(item);
+function onQuantityChange(item: any) {
+  if (item.quantity > item.product.stock) { toast.error('No hi ha tant stock!'); item.quantity = item.product.stock }
+  updateCartItem(item)
+}
+function increaseQuantity(item: any) { if (item.quantity < item.product.stock) { item.quantity++; updateCartItem(item) } else toast.error('Has arribat al màxim!') }
+function decreaseQuantity(item: any) { if (item.quantity > 1) { item.quantity--; updateCartItem(item) } }
+function openClearModal(sid: string) { modalShopId.value = sid; showClearModal.value = true }
+function closeClearModal() { showClearModal.value = false; modalShopId.value = '' }
+async function clearCartGroup(sid: string) {
+  const token = localStorage.getItem('userToken')
+  for (const i of groupedCartItems.value[sid]) {
+    await axios.delete(`${API_URL}/cart/${i.id}`, { headers: { Authorization: `Bearer ${token}` } })
   }
+  await cartStore.fetchCart()
+  closeClearModal()
 }
-function decreaseQuantity(item: any) {
-  if (item.quantity > 1) {
-    item.quantity--;
-    updateCartItem(item);
+function openClearAllModal() { showClearAllModal.value = true }
+function closeClearAllModal() { showClearAllModal.value = false }
+async function clearAllCart() {
+  const token = localStorage.getItem('userToken')
+  for (const i of cartStore.items) {
+    await axios.delete(`${API_URL}/cart/${i.id}`, { headers: { Authorization: `Bearer ${token}` } })
   }
+  await cartStore.fetchCart()
+  closeClearAllModal()
 }
-
-/** Eliminació individual */
-function confirmSingleDelete(itemId: number) {
-  const item = cart.value?.cart_items?.find((i: any) => i.id === itemId);
-  itemToDelete.value = itemId;
-  singleDeleteItemName.value = item ? item.product.nom : 'Ítem desconegut';
-  showSingleDeleteModal.value = true;
+function confirmSingleDelete(id: number) {
+  itemToDelete = id
+  singleDeleteItemName.value = cartStore.items.find(i => i.id === id)?.product.nom || ''
+  showSingleDeleteModal.value = true
 }
-
+function closeSingleDeleteModal() { showSingleDeleteModal.value = false; itemToDelete = null }
 async function deleteSingleItem() {
-  if (itemToDelete.value === null) return;
-  await removeItem(itemToDelete.value);
-  closeSingleDeleteModal();
+  if (!itemToDelete) return
+  const token = localStorage.getItem('userToken')
+  await axios.delete(`${API_URL}/cart/${itemToDelete}`, { headers: { Authorization: `Bearer ${token}` } })
+  await cartStore.fetchCart()
+  closeSingleDeleteModal()
 }
-function closeSingleDeleteModal() {
-  showSingleDeleteModal.value = false;
-  itemToDelete.value = null;
-}
-async function removeItem(itemId: number) {
-  try {
-    const token = localStorage.getItem('userToken');
-    await axios.delete(`${API_URL}/cart/${itemId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    await loadCart();
-    selectedItems.value = selectedItems.value.filter((id: number) => id !== itemId);
-  } catch (error) {
-    console.error('Error eliminant l’ítem del carro:', error);
-  }
-}
-
-/** Funció per formatar preus */
-const formatPrice = (price: number | string): string => {
-  const p = typeof price === 'number' ? price : parseFloat(price);
-  return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €';
-};
-
-/** Funció per obtenir la imatge del producte */
-const getImageSrc = (imagePath: string | null): string => {
-  if (!imagePath) return '/img/no-imatge.jpg';
-  if (imagePath.startsWith('/uploads/')) {
-    return `${API_URL.replace('/api', '')}${imagePath}`;
-  }
-  if (imagePath.startsWith('http')) return imagePath;
-  return `${API_URL.replace('/api', '')}/uploads/${imagePath}`;
-};
-
-/** Navegar al detall del producte */
-function goToProduct(id: number) {
-  router.push(`/producte/${id}`);
-}
+function checkoutTotal() { router.push('/checkout?all=true') }
+function goToProduct(id: number) { router.push(`/producte/${id}`) }
 </script>
 
 <style scoped>
-.cart-container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
+.cart-container { max-width:1000px; margin:0 auto; padding:20px; background:#fff; }
+h1 { text-align:center; margin-bottom:20px; }
+.empty-state { text-align:center; font-size:1.1rem; }
 
-/* Botons globals */
-.global-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin: 20px 0;
-}
-.clear-all-btn,
-.clear-group-btn,
-.trash-btn,
-.remove-btn {
-  background-color: #d9534f !important;
-}
-.clear-all-btn:hover,
-.clear-group-btn:hover,
-.trash-btn:hover,
-.remove-btn:hover {
-  background-color: #c9302c !important;
-}
-.checkout-all-btn,
-.checkout-btn {
-  background-color: #28a745;
-}
-.checkout-all-btn:hover,
-.checkout-btn:hover {
-  background-color: #218838;
-}
+/* Globals */
+.global-actions { display:flex; justify-content:flex-end; gap:10px; margin:20px 0; }
+.btn { color:#fff!important; }
+.clear-all-btn, .clear-group-btn, .trash-btn, .remove-btn { background:#d9534f!important; }
+.clear-all-btn:hover, .clear-group-btn:hover, .trash-btn:hover, .remove-btn:hover { background:#c9302c!important; }
+.checkout-all-btn { background:#28a745!important; }
+.checkout-all-btn:hover { background:#218838!important; }
 
-/* Grup per botiga */
-.shop-group {
-  margin-bottom: 40px;
-}
+/* Desktop-only / Mobile-only */
+.desktop-only { display:flex; }
+.mobile-only { display:none; }
+
+/* Desktop tables */
+.desktop-view table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+.desktop-view th, .desktop-view td { border:1px solid #ddd; padding:12px; text-align:center; }
+.desktop-view th { background:#42b983; color:#fff; }
+.product-cell { display:flex; align-items:center; gap:10px; cursor:pointer; }
+.product-image { width:50px; height:50px; object-fit:cover; border-radius:4px; }
+.quantity-control { display:flex; align-items:center; gap:8px; }
+.quantity-btn { background:#42b983; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; }
+.quantity-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.quantity-btn:hover:not(:disabled) { background:#368c6e; }
+
+/* Cards view */
+.cards-view { display:none; }
+.cards-header { display:flex; justify-content:space-between; align-items:center; }
+.cards-grid { display:grid; gap:16px; }
+.card { background:#fafafa; border:1px solid #ddd; border-radius:8px; padding:12px; }
+.card-header { display:flex; justify-content:space-between; }
+.card-image { width:100%; height:120px; object-fit:cover; border-radius:4px; margin:8px 0; }
+.card h3 { cursor:pointer; margin:8px 0; }
+.card p { margin:4px 0; }
+
+
+/* 1. Desktop: empènyer el botó “clear-group-btn” a la dreta */
 .shop-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #f2f2f2;
-  padding: 10px 15px;
-  border-radius: 4px;
-  margin-bottom: 10px;
 }
 .shop-header .shop-name,
 .shop-header .shop-total {
-  font-size: 16px;
-  color: #333;
+  margin-right: 1rem;
 }
-.shop-header .shop-totals {
-  text-align: right;
-  display: flex;
-  gap: 10px;
+/* aquest utilitari mou el clear-group-btn al final */
+.shop-header .clear-group-btn {
+  margin-left: auto;
 }
-
-/* Taula */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 20px;
-}
-th,
-td {
-  border: 1px solid #ddd;
-  padding: 12px;
-  text-align: center;
-}
-th {
-  background-color: #42b983;
-  color: #fff;
-}
-.product-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.product-cell .product-image {
-  width: 50px;
-  height: 50px;
-  border-radius: 4px;
-  object-fit: cover;
-  overflow: hidden;
-}
-
-/* Quantitat */
-.quantity-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.quantity-btn {
-  background-color: #42b983;
-  color: #fff;
-  border: none;
-  padding: 6px 10px;
-  font-size: 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-.quantity-btn:hover {
-  background-color: #368c6e;
-}
-.quantity-control input {
-  width: 60px;
-  text-align: center;
-  font-size: 16px;
-  padding: 4px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-/* Botons generals */
-.btn {
-  background-color: #42b983;
-  color: #fff;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-.btn:hover {
-  background-color: #368c6e;
-}
-
-/* Modals */
-.modal-overlay {
+/* 2. Mobile: contenidor només del fons darrere els botons */
+.mobile-fixed {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.modal {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   background: #fff;
-  padding: 20px 30px;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}
-.modal h2 {
-  margin-top: 0;
-  color: #333;
-}
-.modal-actions {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px ;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   gap: 10px;
-  margin-top: 20px;
+  z-index: 100;
+}
+/* perquè no ocupin tot l’amplada */
+.mobile-fixed .btn {
+  flex: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .desktop-view { display: none; }
+  .mobile-only { display: block; }
+  .cards-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+}
+@media (min-width: 769px) {
+  .mobile-only { display: none; }
+}
+/* Reserva-col ocult en mobile */
+@media (max-width: 560px) {
+  .reservation-col { display: none; }
 }
 </style>

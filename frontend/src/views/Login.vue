@@ -14,7 +14,7 @@ const handleLogin = async () => {
   try {
     const user = await loginUser(email.value, password.value, isVendor.value);
     console.log("Usuari loguejat:", user);
-    router.push("/"); // Redirigir a la pàgina d'inici
+    router.push("/home"); // Redirigir a la pàgina d'inici
   } catch (error) {
     errorMessage.value = "Credencials incorrectes";
   }
