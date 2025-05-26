@@ -1,5 +1,6 @@
 <template>
   <div class="home-container">
+
     <!-- Hero Section -->
     <section class="home-hero">
       <div class="hero-content">
@@ -10,9 +11,7 @@
         </button>
       </div>
       <picture>
-        <!-- Desktop -->
         <source media="(min-width: 768px)" srcset="/img/hero-image-d.png" />
-        <!-- Mobile fallback -->
         <img src="/img/hero-image-m.png" alt="Descobreix els comerços locals" class="hero-image" />
       </picture>
     </section>
@@ -20,7 +19,7 @@
     <!-- Cercador + Mapa -->
     <section class="home-map-section">
       <div class="home-filter-wrapper">
-        <h2 class="filter-title">Comerços locals aprop teu</h2>
+        <h2 class="filter-title">Comerços locals a prop teu</h2>
         <p class="filter-subtitle">
           Filtra per nom de botiga i localitza-la al mapa.
         </p>
@@ -50,76 +49,80 @@
       </div>
     </section>
 
-        <!-- Cerca live de Productes -->
-    <section class="home-product-search">
-      <h2 class="section-title">Cerca Productes</h2>
-      <div class="search-input-wrapper">
-        <input
-          v-model="homeQuery"
-          type="text"
-          placeholder="🔍 Cerca producte..."
-          class="home-search-input"
-        />
-        <span v-if="loadingProducts" class="input-spinner"></span>
-        <!-- botó explorar -->
-   <button
-     class="explore-btn"
-     :disabled="!homeQuery.trim()"
-     @click="
-       router.push({
-         path: '/botiga',
-         query: { q: homeQuery.trim() }
-       })
-     "
-   >
-     Explorar Botiga
-   </button>
+    <!-- Cerca Productes + TopReviews -->
+    <section 
+      class="home-search-reviews" 
+      :class="{ 'search-active': searchActive }"
+    >
+      <!-- Carousel de valoracions -->
+      <div class="col right">
+        <TopReviews />
       </div>
 
-      <!-- Comptador -->
-      <div v-if="homeQuery" class="search-counter">
-        Trobats: {{ homeResultsSorted.length }} producte
-        {{ homeResultsSorted.length === 1 ? '' : 's' }}
-      </div>
+      <!-- Cercador live -->
+      <div class="col left">
+        <section class="home-product-search">
+          <h2 class="section-title">Cerca Productes</h2>
+          <div class="search-input-wrapper">
+            <input
+              v-model="homeQuery"
+              type="text"
+              placeholder="🔍 Cerca producte..."
+              class="home-search-input"
+            />
+            <span v-if="loadingProducts" class="input-spinner"></span>
+            <button
+              class="explore-btn"
+              :disabled="!homeQuery.trim()"
+              @click="router.push({ path: '/botiga', query: { q: homeQuery.trim() } })"
+            >
+              Explorar Botiga
+            </button>
+          </div>
+          <div v-if="homeQuery" class="search-counter">
+            Trobats: {{ homeResultsSorted.length }}
+          </div>
 
-      <!-- Desktop: scroll horitzontal -->
-      <div v-if="showResults && homeResultsSorted.length" class="search-results-desktop">
-        <button class="scroll-btn left" @click="scroll(-1)">
-          <i class="fa-solid fa-chevron-left"></i>
-        </button>
-        <div class="cards-container" ref="cardsContainer">
-          <div
-            v-for="p in homeResultsSorted"
-            :key="p.id"
-            class="search-card"
-            @click="goToProducte(p.id)"
-          >
-            <img :src="getImageSrc(p.imatge)" alt="" class="search-image"/>
-            <div class="search-info">
-              <h3 class="search-name">{{ p.nom }}</h3>
-              <p class="search-price">{{ p.preu }} €</p>
+          <!-- Horitzontal desktop (amagat en vola de cerca) -->
+          <div v-if="showResults && homeResultsSorted.length" class="search-results-desktop">
+            <button class="scroll-btn left" @click="scroll(-1)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="cards-container" ref="cardsContainer">
+              <div
+                v-for="p in homeResultsSorted"
+                :key="p.id"
+                class="search-card"
+                @click="goToProducte(p.id)"
+              >
+                <img :src="getImageSrc(p.imatge)" class="search-image"/>
+                <div class="search-info">
+                  <h3 class="search-name">{{ p.nom }}</h3>
+                  <p class="search-price">{{ p.preu }} €</p>
+                </div>
+              </div>
+            </div>
+            <button class="scroll-btn right" @click="scroll(1)">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+
+          <!-- Mobile (i en cerca activa) -->
+          <div v-if="showResults && homeResultsSorted.length" class="search-results-mobile">
+            <div
+              v-for="p in homeResultsSorted"
+              :key="p.id"
+              class="search-card-vertical"
+              @click="goToProducte(p.id)"
+            >
+              <img :src="getImageSrc(p.imatge)" class="search-image-vertical"/>
+              <div class="search-info-vertical">
+                <h3>{{ p.nom }}</h3>
+                <p>{{ p.preu }} €</p>
+              </div>
             </div>
           </div>
-        </div>
-        <button class="scroll-btn right" @click="scroll(1)">
-          <i class="fa-solid fa-chevron-right"></i>
-        </button>
-      </div>
-
-      <!-- Mobile: llista vertical -->
-      <div v-if="showResults && homeResultsSorted.length" class="search-results-mobile">
-        <div
-          v-for="p in homeResultsSorted"
-          :key="p.id"
-          class="search-card-vertical"
-          @click="goToProducte(p.id)"
-        >
-          <img :src="getImageSrc(p.imatge)" alt="" class="search-image-vertical"/>
-          <div class="search-info-vertical">
-            <h3>{{ p.nom }}</h3>
-            <p>{{ p.preu }} €</p>
-          </div>
-        </div>
+        </section>
       </div>
     </section>
 
@@ -136,7 +139,7 @@
       <div class="contact-cta-content">
         <h2>Contacta amb <span class="highlight">Totaki</span></h2>
         <p>
-          Tens algun dubte o proposta? Escriu‐nos un missatge i et respondrem en menys de 24 h.
+          Tens algun dubte o proposta? Escriu‐ns un missatge i et respondrem en menys de 24 h.
         </p>
         <button @click="router.push('/contacte')" class="cta-button">
           Envia'ns un missatge
@@ -147,99 +150,92 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
-import ProductCarousel from '../components/ProductCarousel.vue';
-import StoresMap from '../components/MapaBotigues.vue';
-import { useProducts } from '../composables/useProducts';
+import { ref, watch, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import StoresMap from '../components/MapaBotigues.vue'
+import ProductCarousel from '../components/ProductCarousel.vue'
+import TopReviews from '../components/TopReviews.vue'
+import { useProducts } from '../composables/useProducts'
 
-interface Store { id: number; nom: string; latitude: number; longitude: number; }
-interface Product { id: number; nom: string; preu: number|string; imatge: string|null; }
+const router = useRouter()
 
-const router = useRouter();
-
-// === primer, carreguem stores i latestProducts igual que abans ===
-const mapRef = ref<any>(null);
-const filterInput = ref<HTMLInputElement|null>(null);
-const latestProducts = ref<Product[]>([]);
-const stores = ref<Store[]>([]);
-const filter = ref<string>('');
+// ─── Stores + mapa ───────────────────────────────────────
+const mapRef = ref<any>(null)
+const filterInput = ref<HTMLInputElement|null>(null)
+const stores = ref<{id:number,nom:string,latitude:number,longitude:number}[]>([])
+const filter = ref('')
 onMounted(async () => {
-  try {
-    const [prodRes, botRes] = await Promise.all([
-      axios.get<Product[]>('/productes'),
-      axios.get<Store[]>('/botigues'),
-    ]);
-    latestProducts.value = prodRes.data.slice().sort((a,b)=>b.id - a.id);
-    stores.value = botRes.data;
-    const coords = stores.value.filter(s=>s.latitude!=null && s.longitude!=null)
-      .map(s=>[s.latitude,s.longitude] as [number,number]);
-    setTimeout(()=> {
-      if(mapRef.value?.fitBounds && coords.length) {
-        mapRef.value.fitBounds(coords,{padding:[40,40]});
-      }
-    },200);
-  } catch(e){ console.error(e) }
-});
-const filteredStores = computed(()=>
-  stores.value.filter(s=>s.nom.toLowerCase().includes(filter.value.toLowerCase()))
-);
-const suggestions = computed(()=>{
-  if(!filter.value) return [];
-  return stores.value
-    .filter(s=>s.nom.toLowerCase().includes(filter.value.toLowerCase()))
-    .sort((a,b)=>a.nom.localeCompare(b.nom)).slice(0,50);
-});
-function onSuggestionClick(s:Store){
-  filter.value='';
-  if(filterInput.value){
-    filterInput.value.classList.add('highlight');
-    setTimeout(()=>filterInput.value!.classList.remove('highlight'),800);
-  }
-  setTimeout(()=>mapRef.value?.zoomToStore(s),100);
+  const res = await axios.get('/botigues')
+  stores.value = res.data
+  // ajustar bound
+  const coords = stores.value.map(s => [s.latitude, s.longitude] as [number,number])
+  setTimeout(() => mapRef.value?.fitBounds(coords, { padding:[40,40] }), 200)
+})
+const filteredStores = computed(() =>
+  stores.value.filter(s => s.nom.toLowerCase().includes(filter.value.toLowerCase()))
+)
+const suggestions = computed(() =>
+  filter.value
+    ? filteredStores.value
+      .sort((a,b)=>a.nom.localeCompare(b.nom))
+      .slice(0,50)
+    : []
+)
+function onSuggestionClick(s:typeof stores.value[0]) {
+  filter.value = ''
+  filterInput.value?.classList.add('highlight')
+  setTimeout(() => filterInput.value?.classList.remove('highlight'), 800)
+  setTimeout(() => mapRef.value?.zoomToStore(s), 100)
 }
 
-// === després, useProducts per al cercador live ===
-const { products: allProducts, loading: loadingProducts } = useProducts();
-const homeQuery = ref('');
-const showResults = ref(false);
+// ─── Cerca live de productes ─────────────────────────────
+const { products: allProducts, loading: loadingProducts } = useProducts()
+const homeQuery = ref('')
+const showResults = ref(false)
+watch(homeQuery, q => (showResults.value = q.trim().length > 0))
 
-// actualitza showResults si buidem
-watch(homeQuery, q=>{   showResults.value = q.trim().length > 0
- });
-
-const homeResults = computed(()=> {
-  const term = homeQuery.value.trim().toLowerCase();
-  if(!term) return [];
+const homeResultsSorted = computed(() => {
+  const term = homeQuery.value.trim().toLowerCase()
+  if (!term) return []
   return allProducts.value
-    .filter(p=>p.nom.toLowerCase().includes(term))
-    .sort((a,b)=>a.nom.localeCompare(b.nom));
-});
+    .filter(p => p.nom.toLowerCase().includes(term))
+    .sort((a,b) => a.nom.localeCompare(b.nom))
+})
 
-const homeResultsSorted = homeResults; // ja ordenat
-
-function goToProducte(id:number){
-  showResults.value=false;
-  router.push(`/producte/${id}`);
+function goToProducte(id:number) {
+  showResults.value = false
+  router.push(`/producte/${id}`)
 }
 
 // scroll horitzontal
-const cardsContainer = ref<HTMLElement|null>(null);
-function scroll(dir:number){
-  const c = cardsContainer.value;
-  if(!c) return;
-  const shift = c.clientWidth * 0.8 * dir;
-  c.scrollBy({ left: shift, behavior:'smooth' });
+const cardsContainer = ref<HTMLElement|null>(null)
+function scroll(dir:number) {
+  const c = cardsContainer.value
+  if (!c) return
+  c.scrollBy({ left: c.clientWidth * 0.8 * dir, behavior:'smooth' })
 }
 
-// utilitats d’imatge
-const BACKEND_URL = 'http://localhost:8000';
-const DEFAULT_IMAGE = '/img/no-imatge.jpg';
-function getImageSrc(path:string|null){
-  if(!path) return DEFAULT_IMAGE;
-  return path.startsWith('/')?BACKEND_URL+path:BACKEND_URL+'/uploads/'+path;
+// utilitats imatge
+const BACKEND_URL = 'http://localhost:8000'
+const DEFAULT_IMAGE = '/img/no-imatge.jpg'
+function getImageSrc(path:string|null) {
+  return path ? (path.startsWith('/') ? BACKEND_URL+path : BACKEND_URL+'/uploads/'+path) : DEFAULT_IMAGE
 }
+
+// ─── Últims productes per al carousel ─────────────────────
+const latestProducts = ref<any[]>([])
+onMounted(async () => {
+  const res = await axios.get('/productes')
+  latestProducts.value = res.data
+    .slice().sort((a,b)=>b.id-a.id)
+    .slice(0,25)
+})
+
+// ─── Control per amagar horitzontal i mostrar vertical ─────
+const searchActive = computed(
+  () => showResults.value && homeResultsSorted.value.length > 0
+)
 </script>
 
 <style scoped>
@@ -390,14 +386,28 @@ function getImageSrc(path:string|null){
   height: 100%;
 }
 
-/* ─── Carousel Últims ─────────────────────────────────────────── */
-.product-carousel {
-  margin: 2rem 0;
+/* ─── Cerca live + Valoracions  ───────────────────────────────── */
+.home-search-reviews {
+  display: flex;
+  gap: 2rem;
+  margin: 3rem 0;
+}
+.home-search-reviews .col {
+  flex: 1;
+}
+/* Quan la cerca live està activa, amagem el carrusel horitzontal i mostrem la llista mòbil */
+.home-search-reviews.search-active .search-results-desktop {
+  display: none !important;
+}
+.home-search-reviews.search-active .search-results-mobile {
+  display: block !important;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-/* ─── Cerca live ───────────────────────────────────────────────── */
+/* ─── Cerca Productes ─────────────────────────────────────────── */
 .home-product-search {
-  margin: 3rem 0;
+  margin: 0; /* ja gestionat per .home-search-reviews */
 }
 .section-title {
   font-size: 1.75rem;
@@ -414,7 +424,6 @@ function getImageSrc(path:string|null){
 .explore-btn {
   padding: .75rem 1rem;
   font-size: 1rem;
-  line-height: 1.2;
   box-sizing: border-box;
   border-radius: .375rem;
 }
@@ -426,7 +435,6 @@ function getImageSrc(path:string|null){
   background: #42b983;
   color: white;
   border: none;
-  border-radius: .375rem;
   cursor: pointer;
   transition: background .2s;
 }
@@ -478,10 +486,6 @@ function getImageSrc(path:string|null){
   color: #42b983;
   cursor: pointer;
   padding: .25rem;
-}
-.scroll-btn:disabled {
-  opacity: .3;
-  cursor: default;
 }
 .search-card {
   flex: 0 0 160px;
@@ -554,13 +558,21 @@ function getImageSrc(path:string|null){
   color: #42b983;
   font-weight: 500;
 }
-@media(max-width:767px) {
+@media(max-width:768px) {
   .search-results-desktop { display: none; }
   .search-results-mobile {
     display: block;
     max-height: 300px;
     overflow-y: auto;
   }
+  .home-search-reviews {
+    flex-direction: column;
+  }
+}
+
+/* ─── Carousel Últims ─────────────────────────────────────────── */
+.product-carousel {
+  margin: 2rem 0;
 }
 
 /* ─── CTA Contacte ─────────────────────────────────────────────── */

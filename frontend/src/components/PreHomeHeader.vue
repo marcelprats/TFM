@@ -122,16 +122,21 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
             <router-link to="/info-botiga" @click="closeAll">Llistat Botigues</router-link>
             <router-link to="/mapa-botigues" @click="closeAll">Mapa Botigues</router-link>
             <router-link to="/info-venedor" @click="closeAll">Llistat Venedors</router-link>
+            <router-link to="/valoracions" @click="closeAll">Valoracions de productes</router-link>
           </div>
         </details>
 
         <router-link to="/about" @click="closeAll">Què és Totaki?</router-link>
         <router-link to="/contacte" @click="closeAll">Contacte</router-link>
 
+        <router-link v-if="loggedIn && role === 'user'" to="/perfil" @click="closeAll" class="mi-estil-si-vols" >
+         Perfil
+        </router-link>
         <!-- “Àrea Personal” dropdown -->
         <details v-if="loggedIn && role==='vendor'" class="dropdown" ref="personalDropdownRef" :open="personalOpen">
           <summary @click.prevent="togglePersonal">Àrea Personal</summary>
           <div class="dropdown-content">
+            <router-link to="/perfil" @click="closeAll">Perfil comprador</router-link>
             <router-link to="/vendor-orders" @click="closeAll">Informació de vendes</router-link>
             <router-link to="/area-personal-botigues" @click="closeAll">Les Meves Botigues</router-link>
             <router-link to="/area-personal-productes" @click="closeAll">Els Meus Productes</router-link>
@@ -153,7 +158,6 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
         <!-- Auth -->
         <div class="auth">
           <template v-if="loggedIn">
-            <router-link to="/perfil" class="btn btn-hello" @click="closeAll">Hola, {{ user?.name }}</router-link>
             <button class="btn btn-logout" @click="handleLogout">Tancar Sessió</button>
           </template>
           <template v-else>
@@ -210,7 +214,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
 .main-header {
   background:rgb(0, 0, 0);
   position: fixed; top:0; left:0;
-  width:100%; z-index:10000;
+  width:100%; z-index:10000 !important;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 .container {
@@ -372,7 +376,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
   color:white; border:none; border-radius:.25rem;
   cursor:pointer;
 }
-.full-btn:hover { background:#369e6b; }
+.full-btn:hover { background:rgb(75, 75, 75); }
 .close-btn {
   position:absolute; top:.5rem; right:.5rem;
   background:none; border:none; font-size:1.25rem;

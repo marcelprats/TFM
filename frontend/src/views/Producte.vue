@@ -82,10 +82,17 @@
         </div>
       </div>
 
+
       <!-- ─── Secció Descripció ───────────────────────────────────────── -->
       <div class="description-section">
         <h2>Descripció</h2>
         <p>{{ product.descripcio }}</p>
+      </div>
+
+      <!-- ─── Secció Valoracions ───────────────────────────────────────── -->
+      <div class="description-section">
+        <h2>Valoracions</h2>
+        <Valoracions :productId="product!.id" />
       </div>
 
       <!-- ─── Secció Info Botiga ─────────────────────────────────────── -->
@@ -181,6 +188,7 @@ import L from 'leaflet'
 import { fetchProductById, fetchProducts } from '../services/authService'
 import { useCartStore } from '../stores/cartStore'
 import ProductCarousel from '../components/ProductCarousel.vue'
+import Valoracions from '../components/Valoracions.vue'
 
 interface Store {
   id: number

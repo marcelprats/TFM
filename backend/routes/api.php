@@ -12,6 +12,7 @@ use App\Http\Controllers\ImportRecordController;
 use App\Http\Controllers\ReserveController;
 use App\Http\Controllers\ProducteController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ReviewsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,7 +40,10 @@ Route::get('/productes/{id}',   [ProducteController::class, 'show']);
 Route::patch('/productes/{id}', [ProducteController::class, 'updateStock']);
 Route::get('/productes-tots',   [ProducteController::class, 'getAllProducts']);
 Route::get('/categories',       [CategoriaController::class, 'index']);
-Route::post('/contacte', [ContactController::class, 'submit']);
+Route::post('/contacte',        [ContactController::class, 'submit']);
+Route::get('/reviews',          [ReviewsController::class, 'index']);
+Route::get('/productes/{productId}/status', [ReviewsController::class, 'status']);
+Route::get('/productes/{productId}/reviews',   [ReviewsController::class, 'byProduct']);
 
 /*
 |--------------------------------------------------------------------------
@@ -64,40 +68,46 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/orders/{order}',    [OrderController::class, 'update']);
     Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
 
+    //Valoracions
+    Route::get('/my-reviews', [ReviewsController::class, 'myReviews']);
+    Route::post('/reviews',   [ReviewsController::class, 'store']);
+
     // Historial de comandes del comprador actual
     Route::get('/my-orders',         [OrderController::class, 'myOrders']);
 
-    // RUTES EXCLUSIVES PER VENEDORS
-    Route::prefix('vendor')->middleware('auth:sanctum')->group(function () {
+// RUTES EXCLUSIVES PER VENEDORS
+Route::prefix('vendor')->middleware('auth:sanctum')->group(function () {
 
-        // Botigues
-        Route::post('/botigues',                    [BotigaController::class, 'store']);
-        Route::put('/botigues/{botiga}',            [BotigaController::class, 'update']);
-        Route::delete('/botigues/{botiga}',         [BotigaController::class, 'destroy']);
-        Route::get('/botigues-mes',                 [BotigaController::class, 'getBotiguesByAuthVendor']);
+    // Botigues
+    Route::post('/botigues',                    [BotigaController::class, 'store']);
+    Route::put('/botigues/{botiga}',            [BotigaController::class, 'update']);
+    Route::delete('/botigues/{botiga}',         [BotigaController::class, 'destroy']);
+    Route::get('/botigues-mes',                 [BotigaController::class, 'getBotiguesByAuthVendor']);
 
-        // Productes
-        Route::get('/productes',                    [ProducteController::class, 'index']);
-        Route::post('/productes',                   [ProducteController::class, 'store']);
-        Route::put('/productes/{id}',               [ProducteController::class, 'update']);
-        Route::patch('/productes/{id}',             [ProducteController::class, 'update']);
-        Route::delete('/productes/{id}',            [ProducteController::class, 'destroy']);
+    // Productes
+    Route::get('/productes',                    [ProducteController::class, 'index']);
+    Route::post('/productes',                   [ProducteController::class, 'store']);
+    Route::put('/productes/{id}',               [ProducteController::class, 'update']);
+    Route::patch('/productes/{id}',             [ProducteController::class, 'update']);
+    Route::delete('/productes/{id}',            [ProducteController::class, 'destroy']);
 
-        // Importacions
-        Route::post('/import-productes',            [ImportacioController::class, 'importar']);
-        Route::get('/importacions',                 [ImportRecordController::class, 'indexApi']);
-        Route::get('/importacions/{id}',            [ImportRecordController::class, 'showApi']);
+    // Importacions
+    Route::post('/import-productes',            [ImportacioController::class, 'importar']);
+    Route::get('/importacions',                 [ImportRecordController::class, 'indexApi']);
+    Route::get('/importacions/{id}',            [ImportRecordController::class, 'showApi']);
 
-        // Comandes que ha rebut el vendor (les seves botigues)
-        Route::get('/orders',                       [OrderController::class, 'vendorOrders']);
+    // Comandes que ha rebut el vendor (les seves botigues)
+    Route::get('/orders',                       [OrderController::class, 'vendorOrders']);
 
-        // Categories
-        Route::get('/categories',                   [CategoriaController::class, 'index']);
+    // Categories
+    Route::get('/categories',                   [CategoriaController::class, 'index']);
 
-        // Perfil
-        Route::get('/vendors',                      [VendorController::class, 'index']);
-        Route::get('/vendors/{id}',                 [VendorController::class, 'show']);
-        Route::put('/vendors/{id}',                 [VendorController::class, 'update']);
-        Route::delete('/vendors/{id}',              [VendorController::class, 'destroy']);
+
+
+    // Perfil
+    Route::get('/vendors',                      [VendorController::class, 'index']);
+    Route::get('/vendors/{id}',                 [VendorController::class, 'show']);
+    Route::put('/vendors/{id}',                 [VendorController::class, 'update']);
+    Route::delete('/vendors/{id}',              [VendorController::class, 'destroy']);
     });
 });

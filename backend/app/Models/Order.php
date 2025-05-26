@@ -22,15 +22,36 @@ class Order extends Model
         'status',
     ];
 
-    // La comanda pertany a una reserva
+    /**
+     * La comanda pertany a una reserva.
+     */
     public function reserve()
     {
         return $this->belongsTo(Reserve::class, 'reserve_id');
     }
 
-    // Relació polimòrfica per accedir al comprador (User o Vendor)
+    /**
+     * Relació polimòrfica per accedir al comprador (User o Vendor).
+     */
     public function buyer()
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Els ítems d'aquesta comanda, passant per la reserva.
+     *
+     * Cada Order té un reserve_id que apunta a Reserve::id,
+     * i cada Reserve té molts ReserveItem via reserve_id.
+     * Per tant, podem definir un hasManyThrough, o bé, un
+     * hasMany directe sobre ReserveItem mitjançant la clau reserve_id.
+     */
+    public function reserveItems()
+    {
+        return $this->hasMany(
+            \App\Models\ReserveItem::class,
+            'reserve_id',  // Clau forana a la taula reserve_items
+            'reserve_id'   // Clau local a la taula orders
+        );
     }
 }
