@@ -32,7 +32,7 @@
         Mostrar menys
       </button>
       <router-link to="/about" class="about">
-        Més informació
+        Com funciona
       </router-link>
     </div>
   </section>

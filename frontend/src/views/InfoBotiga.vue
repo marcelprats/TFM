@@ -5,11 +5,12 @@ import { useRoute } from "vue-router";
 import L from "leaflet";
 
 const API_URL = "http://127.0.0.1:8000/api";
-const route = useRoute();
-const botiga = ref(null);
-const productes = ref([]);
-const horaris = ref([]);
-const mapRef = ref(null);
+const route = useRoute(); 
+const botiga = ref<any>(null);
+const summary = ref({ ambient: 0, personal: 0, recollida: 0 });
+const productes = ref<any[]>([]);
+const horaris = ref<any[]>([]);
+const mapRef = ref<HTMLElement | null>(null);
 const loading = ref(true);
 const errorMessage = ref("");
 
@@ -34,16 +35,24 @@ const getHourSegment = (dia, hora, segment) => {
 // 📌 Carregar botiga i horaris
 const fetchBotiga = async () => {
   try {
-    const response = await axios.get(`${API_URL}/botigues/${route.params.id}`);
-    botiga.value = response.data;
-    productes.value = response.data.productes || [];
-    horaris.value = response.data.horaris || [];
+    const [bRes, sRes] = await Promise.all([
+      axios.get(`${API_URL}/botigues/${route.params.id}`),
+      axios.get(`${API_URL}/botigues/${route.params.id}/store-summary`)
+    ]);
+    botiga.value = bRes.data;
+        console.log('📊 Resum rebuda del servidor:', sRes.data);
+
+    summary.value.ambient = sRes.data.ambient?.avg ?? 0;
+    summary.value.personal = sRes.data.personal?.avg ?? 0;
+    summary.value.recollida = sRes.data.recollida?.avg ?? 0;
+    productes.value = bRes.data.productes || [];
+    horaris.value = bRes.data.horaris || [];
     loading.value = false;
     await nextTick();
     initMap();
   } catch (error) {
     errorMessage.value = "Error carregant la botiga.";
-    console.error("❌ Error carregant botiga:", error);
+    console.error(error);
     loading.value = false;
   }
 };
@@ -94,12 +103,24 @@ onMounted(() => {
     <div v-if="loading" class="loading">🔄 Carregant botiga...</div>
     <div v-else-if="errorMessage" class="error">{{ errorMessage }}</div>
     <div v-else-if="botiga">
-              <h1 class="botiga-nom">{{ botiga.nom }}</h1>
+      <h1 class="botiga-nom">{{ botiga.nom }}</h1>
 
       <!-- 📍 Dues columnes -->
       <div class="grid-layout">
+      
         <!-- 🏪 Info + Mapa -->
         <div class="col-left">
+              <!-- Resum mitjanes per àmbit -->
+      <section class="store-summary">
+        <h2>Valoracions</h2>
+        <ul>
+          <li>Ambient: {{ summary.ambient > 0 ? summary.ambient.toFixed(2) + '★' : '-' }}</li>
+          <li>Personal: {{ summary.personal > 0 ? summary.personal.toFixed(2) + '★' : '-' }}</li>
+          <li>Recollida: {{ summary.recollida > 0 ? summary.recollida.toFixed(2) + '★' : '-' }}</li>
+        </ul>
+      </section>
+              <h2>Descripció</h2>
+
           <p class="botiga-desc">{{ botiga.descripcio }}</p>
 
         </div>
@@ -177,7 +198,12 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 🔹 Disseny vertical amb dues columnes */
+/* Disseny vertical amb dues columnes */
+
+.botiga-container {
+  padding: 20px;
+}
+
 .grid-layout {
   display: flex;
   flex-direction: row;

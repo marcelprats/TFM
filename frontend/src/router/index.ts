@@ -29,6 +29,8 @@ import QueEsTotaki           from '../views/QueEsTotaki.vue'
 import Contacte              from '../views/Contacte.vue'
 import Valoracions           from '../views/Valoracions.vue'
 import AllValoracions        from '../views/AllValoracions.vue'
+import StoreReviews          from '../views/StoreReviews.vue'
+
 
 import { isLoggedIn, getUserType } from '../services/authService'
 import '@fortawesome/fontawesome-free/css/all.min.css'
@@ -71,6 +73,15 @@ const routes: RouteRecordRaw[] = [
     })
   },
 { path: '/valoracions', name: 'AllValoracions', component: AllValoracions },
+
+  {
+    path: '/info-botiga/:botigaId/reviews',
+    name: 'StoreReviews',
+    component: StoreReviews,
+    props: (route: RouteLocationNormalized) => ({
+      botigaId: Number(route.params.botigaId)
+    })
+  },
 
   {
     path: '/cart-test',

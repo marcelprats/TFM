@@ -136,74 +136,81 @@
       </button>
     </div>
 
-    <!-- Taula de productes -->
-    <table class="producte-table">
-      <thead>
-        <tr>
-          <th>
-            <input
-              type="checkbox"
-              @change="toggleSelectAll"
-              :checked="allSelected"
-            />
-          </th>
-          <th @click="sortProducts('nom')">
-            Nom <span v-if="sortColumn==='nom'">({{ sortDirection }})</span>
-          </th>
-          <th @click="sortProducts('descripcio')">
-            Descripció <span v-if="sortColumn==='descripcio'">({{ sortDirection }})</span>
-          </th>
-          <th @click="sortProducts('preu')">
-            Preu (€) <span v-if="sortColumn==='preu'">({{ sortDirection }})</span>
-          </th>
-          <th @click="sortProducts('stock')">
-            Stock <span v-if="sortColumn==='stock'">({{ sortDirection }})</span>
-          </th>
-          <th>Categoria</th>
-          <th>Subcategoria</th>
-          <th @click="sortProducts('botiga_nom')">
-            Botiga <span v-if="sortColumn==='botiga_nom'">({{ sortDirection }})</span>
-          </th>
-          <th>Imatge</th>
-          <th>Accions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="prod in sortedProducts" :key="prod.id">
-          <td>
-            <input
-              type="checkbox"
-              :value="prod.id"
-              v-model="selectedProducts"
-            />
-          </td>
-          <!-- El nom com a enllaç al detall del producte -->
-          <td>
-            <router-link :to="{ name: 'Producte', params: { id: prod.id } }" class="product-link">
-              {{ prod.nom }}
-            </router-link>
-          </td>
-          <td>{{ prod.descripcio || "—" }}</td>
-          <td>{{ prod.preu }}</td>
-          <td>{{ prod.stock }}</td>
-          <td>{{ categoryName(prod.categoria) }}</td>
-          <td>{{ subcategoryName(prod.subcategoria) }}</td>
-          <td>{{ prod.botiga_nom }}</td>
-          <td>
-            <img v-if="prod.imatge" :src="prod.imatge" alt="Imatge" width="40" height="40" />
-            <span v-else>—</span>
-          </td>
-          <td class="actions">
-            <button class="btn edit-btn" @click="openEditProduct(prod)">
-              ✏️ Editar
-            </button>
-            <button class="btn delete-btn" @click="confirmDeleteProduct(prod.id)">
-              🗑️ Eliminar
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Taula de productes envoltada per scroll horitzontal -->
+    <div class="table-responsive">
+      <table class="producte-table">
+        <thead>
+          <tr>
+            <th>
+              <input
+                type="checkbox"
+                @change="toggleSelectAll"
+                :checked="allSelected"
+              />
+            </th>
+            <th @click="sortProducts('nom')">
+              Nom <span v-if="sortColumn==='nom'">({{ sortDirection }})</span>
+            </th>
+            <th @click="sortProducts('descripcio')">
+              Descripció <span v-if="sortColumn==='descripcio'">({{ sortDirection }})</span>
+            </th>
+            <th @click="sortProducts('preu')">
+              Preu (€) <span v-if="sortColumn==='preu'">({{ sortDirection }})</span>
+            </th>
+            <th @click="sortProducts('stock')">
+              Stock <span v-if="sortColumn==='stock'">({{ sortDirection }})</span>
+            </th>
+            <th>Categoria</th>
+            <th>Subcategoria</th>
+            <th @click="sortProducts('botiga_nom')">
+              Botiga <span v-if="sortColumn==='botiga_nom'">({{ sortDirection }})</span>
+            </th>
+            <th>Imatge</th>
+            <th>Accions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="prod in sortedProducts" :key="prod.id">
+            <td data-label="">
+              <input
+                type="checkbox"
+                :value="prod.id"
+                v-model="selectedProducts"
+              />
+            </td>
+            <td data-label="Nom">
+              <router-link :to="{ name: 'Producte', params: { id: prod.id } }" class="product-link">
+                {{ prod.nom }}
+              </router-link>
+            </td>
+            <td data-label="Descripció">{{ prod.descripcio || "—" }}</td>
+            <td data-label="Preu (€)">{{ prod.preu }}</td>
+            <td data-label="Stock">{{ prod.stock }}</td>
+            <td data-label="Categoria">{{ categoryName(prod.categoria) }}</td>
+            <td data-label="Subcategoria">{{ subcategoryName(prod.subcategoria) }}</td>
+            <td data-label="Botiga">{{ prod.botiga_nom }}</td>
+            <td data-label="Imatge">
+              <img
+                v-if="prod.imatge"
+                :src="prod.imatge"
+                alt="Imatge"
+                width="40"
+                height="40"
+              />
+              <span v-else>—</span>
+            </td>
+            <td data-label="Accions" class="actions">
+              <button class="btn edit-btn" @click="openEditProduct(prod)">
+                ✏️ Editar
+              </button>
+              <button class="btn delete-btn" @click="confirmDeleteProduct(prod.id)">
+                🗑️ Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <!-- Modal per Afegir Producte -->
     <div v-if="showAddModal" class="modal" @click.self="showAddModal = false">
@@ -327,7 +334,7 @@
       </div>
     </div>
 
-    <!-- Modal per Bulk Update (tancar fent clic fora) -->
+    <!-- Modal per Bulk Update -->
     <div v-if="bulkUpdateVisible" class="modal" @click.self="bulkUpdateVisible = false">
       <div class="modal-content" @click.stop>
         <h3>Actualització Massiva</h3>
@@ -370,7 +377,6 @@
               </option>
             </select>
           </div>
-          <!-- Nova secció per Botiga -->
           <div class="form-group">
             <label>Botiga:</label>
             <select v-model="bulkUpdateValues.botiga" class="input-field">
@@ -391,7 +397,6 @@
         </div>
       </div>
     </div>
-
 
     <!-- Modal de confirmació d'eliminació -->
     <div v-if="showDeleteModal" class="modal" @click.self="showDeleteModal = false">
@@ -420,6 +425,7 @@
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   </div>
 </template>
+
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
@@ -1015,17 +1021,19 @@ function goToRegistreImportacio() {
 
 /* Cerca i filtres */
 .search-filters {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+  display: flex !important;        /* flex container */
+  flex-direction: row !important;  /* sempre fila */
+  flex-wrap: nowrap;               /* mai salti de línia */
+  align-items: center;             /* alinea verticalment */
+  gap: 8px;                        /* espai entre input i botó */
 }
 .search-input {
-  flex: 1 1 300px;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #42b983;
-  border-radius: 5px;
-  transition: border 0.3s ease;
+  max-width: 200px;    /* pots ajustar aquest valor */
+  width: auto;         /* perquè ocupi tot dins del màxim */
+  padding: 4px 8px;    /* ja ho teníem per fer-lo més compacte */
+  font-size: 14px;
+  line-height: 1.2;
+  min-height: 32px;
 }
 .search-input:focus {
   border-color: #368c6e;
@@ -1152,6 +1160,20 @@ function goToRegistreImportacio() {
   background: #e3f2fd;
 }
 
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* scroll suau a iOS */
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+
 /* Enllaç del producte */
 .product-link {
   color: #007bff;
@@ -1275,6 +1297,7 @@ function goToRegistreImportacio() {
 
 /* Responsive */
 @media (max-width: 768px) {
+  /* Top bar i filtres */
   .top-bar {
     flex-direction: column;
     align-items: stretch;
@@ -1284,17 +1307,54 @@ function goToRegistreImportacio() {
   }
   .search-input {
     width: 100%;
+    padding: 3px 6px;
+    font-size: 13px;
+    min-height: 28px;  }
+  .filters-grid {
+    grid-template-columns: 1fr;
   }
+
+  /* Ajustos de modal */
+  .modal-content {
+    max-width: 90%;
+  }
+
+  /* Ajustos genèrics de taula */
   .producte-table th,
   .producte-table td {
     padding: 8px;
     font-size: 12px;
   }
-  .modal-content {
-    max-width: 90%;
+
+  /* Reflow de la taula: amaguem l’encapçalament i convertim cada fila en bloc */
+  .producte-table {
+    border: 0;
   }
-  .filters-grid {
-    grid-template-columns: 1fr;
+  .producte-table thead {
+    display: none;
+  }
+  .producte-table tr {
+    display: block;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+  }
+  .producte-table tr:hover {
+    background: transparent;
+  }
+  .producte-table td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+    font-size: 13px;
+  }
+  .producte-table td::before {
+    content: attr(data-label);
+    flex: 1;
+    font-weight: 600;
+    color: #333;
+  }
+  .producte-table td:last-child {
+    border-bottom: none;
   }
 }
 </style>

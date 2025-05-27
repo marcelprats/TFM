@@ -25,17 +25,6 @@
             </router-link>
             <span v-else>No disponible</span>
           </p>
-          <p class="vendor">
-            <strong>Venedor: </strong>
-            <router-link
-              v-if="product.vendor"
-              :to="`/info-venedor/${product.vendor.id}`"
-              class="vendor-link"
-            >
-              {{ product.vendor.name }}
-            </router-link>
-            <span v-else>No disponible</span>
-          </p>
           <p class="stock">
             <strong>Stock disponible:</strong> {{ product.stock ?? "No disponible" }}
           </p>

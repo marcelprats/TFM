@@ -209,7 +209,7 @@ const horarisPerBotiga = (b:any)=>{
 
 const renderMap = () => {
   if (map.value) map.value.remove();
-  map.value = L.map("mapa").setView([41.3851,2.1734],13);
+  map.value = L.map("mapa").setView([41.3851,2.1734],1000);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution:"© OpenStreetMap"
   }).addTo(map.value!);

@@ -1,42 +1,25 @@
 <template>
-  <div class="valoracions-page">
-    <h1 class="title">
-      Valoracions de:
-      <router-link
-        v-if="product?.nom"
-        :to="`/producte/${product.id}`"
-        class="product-link"
-      >
-        {{ product.nom }}
-      </router-link>
-    </h1>
-    <img
-      v-if="product?.imatge_url"
-      :src="product.imatge_url"
-      alt="Imatge del producte"
-      class="product-image"
-    />
-    <img
-      v-else
-      src="/img/no-imatge.jpg"
-      alt="Sense imatge"
-      class="product-image"
-    />
-
-    <div v-if="loading" class="loading">Carregant...</div>
+  <section class="reviews-component">
+    <div v-if="loading" class="loading">Carregant valoracions...</div>
     <div v-else>
-      <!-- Formulari de valoració si pot valorar -->
-      <div v-if="purchased && !reviewed" class="review-form-container">
-        <form @submit.prevent="submitReview" class="review-form">
-          <label>ID Reserva Item:</label>
-          <input
-            type="text"
-            v-model="reserveItemId"
-            readonly
-            class="readonly-input full-width"
-          />
+      <!-- Product Header -->
+      <div class="product-header">
+        <img :src="product.imatge_url || '/img/no-imatge.jpg'" alt="Imatge del producte" class="product-image-header" />
+        <div class="product-info">
+          <h1 class="product-title">{{ product.nom }}</h1>
+          <p class="product-summary">
+            Has comprat aquest producte <strong>{{ purchaseCount }}</strong> vegades i has valorat-lo <strong>{{ reviewCount }}</strong> vegades.
+          </p>
+        </div>
+      </div>
 
-          <label>Puntuació:</label>
+      <!-- Formulari si hi ha reserves completes pendents de review -->
+      <div v-if="pendingItems.length > 0" class="review-form-container">
+        <form @submit.prevent="submitReview" class="review-form">
+          <label>ID Item Reserva:</label>
+          <input type="text" v-model="reserveItemId" readonly class="readonly-input full-width" />
+
+          <label>Puntuació de producte:</label>
           <select v-model.number="rating" class="full-width">
             <option v-for="n in 5" :key="n" :value="n">{{ n }}★</option>
           </select>
@@ -44,52 +27,41 @@
           <label>Comentari:</label>
           <textarea v-model="comment" rows="3" class="full-width"></textarea>
 
-          <label>Puja imatges o vídeo:</label>
-          <input
-            type="file"
-            ref="fileInput"
-            multiple
-            accept="image/*,video/*"
-            @change="handleFiles"
-            class="full-width"
-          />
+          <label>Puja fitxers:</label>
+          <input type="file" multiple accept="image/*,video/*" @change="handleFiles" class="full-width" />
 
-          <button type="submit" class="full-width">Enviar review</button>
+          <!-- Valoració de la botiga -->
+          <h2>Valora la botiga</h2>
+          <label>Ambient de la botiga:</label>
+          <select v-model.number="storeAmbient" class="full-width">
+            <option v-for="n in 5" :key="n" :value="n">{{ n }}★</option>
+          </select>
+          <label>Personal:</label>
+          <select v-model.number="storePersonal" class="full-width">
+            <option v-for="n in 5" :key="n" :value="n">{{ n }}★</option>
+          </select>
+          <label>Recollida de la comanda:</label>
+          <select v-model.number="storeRecollida" class="full-width">
+            <option v-for="n in 5" :key="n" :value="n">{{ n }}★</option>
+          </select>
+
+          <button type="submit" class="btn full-width">Enviar Review</button>
           <p v-if="error" class="error">{{ error }}</p>
         </form>
       </div>
 
-      <!-- Llista de reviews i no pot valorar -->
+      <!-- Llista reviews si no cal formulari -->
       <div v-else>
-        <div v-if="reviews.length">
-          <div v-for="rev in reviews" :key="rev.id" class="review-card">
+        <h2>Comentaris publicats</h2>
+        <div v-if="reviewsList.length">
+          <div v-for="rev in reviewsList" :key="rev.id" class="review-card">
             <div class="stars">
               <span v-for="n in 5" :key="n">{{ n <= rev.rating ? '★' : '☆' }}</span>
             </div>
             <p class="comment">{{ rev.comment }}</p>
             <small class="byline">
-              <router-link :to="`/producte/${product.id}`">
-                {{ product.nom }}
-              </router-link>
-              &nbsp;–&nbsp;{{ rev.reviewer_name }} el {{ formatDate(rev.created_at) }}
+              <strong>{{ rev.reviewer_name }}</strong> – {{ formatDate(rev.created_at) }}
             </small>
-            <!-- mostra multimèdia si existeix -->
-            <div v-if="rev.files && rev.files.length" class="media-gallery">
-              <div v-for="(f, idx) in rev.files" :key="idx">
-                <img
-                  v-if="f.type.startsWith('image')"
-                  :src="f.url"
-                  class="media-image"
-                />
-                <video
-                  v-else-if="f.type.startsWith('video')"
-                  controls
-                  class="media-video"
-                >
-                  <source :src="f.url" :type="f.type" />
-                </video>
-              </div>
-            </div>
           </div>
         </div>
         <div v-else class="no-reviews">
@@ -97,254 +69,188 @@
         </div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import axios from 'axios'
+<script setup lang="ts">
+import { defineProps, ref, onMounted, computed } from 'vue';
+import axios from 'axios';
 
-export default defineComponent({
-  name: 'Valoracions',
-  props: {
-    productId: {
-      type: Number as () => number | null,
-      default: null
-    }
-  },
-  setup(props) {
-    const route = useRoute()
-    const loading = ref(true)
-    const reviews = ref<any[]>([])
-    const myOrders = ref<any[]>([])
-    const myReviews = ref<any[]>([])
-    const purchased = ref(false)
-    const reviewed = ref(false)
+// Props
+const props = defineProps<{ productId: number }>();
 
-    const reserveItemId = ref<number | string>('')
-    const rating = ref(5)
-    const comment = ref('')
-    const error = ref('')
-    const files = ref<File[]>([]) // multimèdia
+// State
+const loading = ref(true);
+const product = ref<any>(null);
+const orders = ref<any[]>([]);
+const userReviews = ref<any[]>([]);
+const reviewsList = ref<any[]>([]);
 
-    const product = ref<any>(null)
+const reserveItemId = ref<string>('');
+const rating = ref(5);
+const comment = ref('');
+const files = ref<File[]>([]);
+const storeAmbient = ref(5);
+const storePersonal = ref(5);
+const storeRecollida = ref(5);
+const error = ref('');
 
-    axios.defaults.baseURL = '/api'
+axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
+axios.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('userToken')}`;
 
-    // Carregar dades producte
-    const fetchProduct = async () => {
-      try {
-        const res = await axios.get(`/productes/${props.productId}`)
-        product.value = res.data
-      } catch (e) {
-        console.error('Error producte:', e)
-      }
-    }
+// Helpers
+function getReserveItems(order: any): any[] {
+  return order.reserve_items ?? order.reserve?.reserve_items ?? [];
+}
 
-    // Carregar comandes i reviews d'usuari
-    const fetchUserData = async () => {
-      try {
-        const [ordRes, revRes] = await Promise.all([
-          axios.get('/my-orders'),
-          axios.get('/my-reviews')
-        ])
-        myOrders.value = ordRes.data
-        myReviews.value = revRes.data
+// Computed lists
+const reserveItems = computed(() =>
+  orders.value
+    .filter(o => o.status === 'completed')
+    .flatMap(o => getReserveItems(o))
+    .filter((ri: any) => ri.product_id === props.productId)
+);
 
-        // Autoassignar reserveItemId si hi ha reserva completada
-        const found = myOrders.value
-          .flatMap(o => o.reserve_items || o.reserveItems || (o.reserve && (o.reserve.reserve_items || o.reserve.reserveItems)) || [])
-          .find((ri: any) => ri.product_id === props.productId)
-        if (found) reserveItemId.value = found.id
-      } catch (e) {
-        console.error('Error carregant dades d’usuari:', e)
-      }
-    }
+const pendingItems = computed(() =>
+  reserveItems.value.filter(ri =>
+    !userReviews.value.some(r => r.reserve_item_id === ri.id)
+  )
+);
 
-    // Helper per obtenir ítems de reserva
-    function getReserveItems(order: any): any[] {
-      if (Array.isArray(order.reserveItems)) return order.reserveItems
-      if (Array.isArray(order.reserve_items)) return order.reserve_items
-      if (order.reserve && Array.isArray(order.reserve.reserveItems)) return order.reserve.reserveItems
-      if (order.reserve && Array.isArray(order.reserve.reserve_items)) return order.reserve.reserve_items
-      return []
-    }
+const purchaseCount = computed(() => reserveItems.value.length);
+const reviewCount = computed(() =>
+  userReviews.value.filter(r =>
+    reserveItems.value.some(ri => ri.id === r.reserve_item_id)
+  ).length
+);
 
-    // Computar flags
-    const computeFlags = () => {
-      if (props.productId === null) return
-      purchased.value = myOrders.value.some(order => {
-        const items = getReserveItems(order)
-        return items.some((ri: any) => ri.product_id === props.productId)
-      })
-      reviewed.value = myReviews.value.some((r: any) => r.product_id === props.productId)
-      console.log('👉 purchased:', purchased.value, '– reviewed:', reviewed.value)
-    }
-
-    // Carregar reviews globals o per producte
-    const fetchReviews = async () => {
-      loading.value = true
-      try {
-        let url = '/reviews'
-        if (props.productId !== null) url = `/productes/${props.productId}/reviews`
-        if (purchased.value && !reviewed.value && props.productId !== null) {
-          reviews.value = []
-        } else {
-          const res = await axios.get(url)
-          reviews.value = res.data
-        }
-      } catch (e) {
-        console.error('Error carregant reviews:', e)
-        reviews.value = []
-      } finally {
-        loading.value = false
-      }
-    }
-
-    // Gestionar fitxers
-    const handleFiles = (e: Event) => {
-      const target = e.target as HTMLInputElement
-      files.value = target.files ? Array.from(target.files) : []
-    }
-
-    // Enviar review amb FormData
-    const submitReview = async () => {
-      error.value = ''
-      const form = new FormData()
-      form.append('reserveItemId', String(reserveItemId.value))
-      form.append('rating', String(rating.value))
-      form.append('comment', comment.value)
-      files.value.forEach((f, i) => form.append('files[]', f))
-
-      try {
-        const res = await axios.post('/reviews', form, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
-        if (res.status === 201) {
-          reviewed.value = true
-          fetchReviews()
-        }
-      } catch (e: any) {
-        error.value = e.response?.data?.error || 'Error enviant review'
-      }
-    }
-
-    onMounted(async () => {
-      await fetchProduct()
-      await fetchUserData()
-      computeFlags()
-      fetchReviews()
-    })
-
-    watch(() => route.params.productId, async () => {
-      await fetchProduct()
-      await fetchUserData()
-      computeFlags()
-      fetchReviews()
-    })
-
-    const formatDate = (dt: string) =>
-      new Date(dt).toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-    return {
-      loading,
-      reviews,
-      purchased,
-      reviewed,
-      reserveItemId,
-      rating,
-      comment,
-      error,
-      files,
-      product,
-      handleFiles,
-      submitReview,
-      formatDate
-    }
+// Fetch data
+async function fetchData() {
+  loading.value = true;
+  try {
+    const [prodRes, ordRes, revUserRes, revProdRes] = await Promise.all([
+      axios.get(`/productes/${props.productId}`),
+      axios.get('/my-orders'),
+      axios.get('/my-reviews'),
+      axios.get(`/productes/${props.productId}/reviews`)
+    ]);
+    product.value = prodRes.data;
+    orders.value = ordRes.data || [];
+    userReviews.value = revUserRes.data || [];
+    reviewsList.value = revProdRes.data || [];
+    reserveItemId.value = pendingItems.value.length > 0 ? String(pendingItems.value[0].id) : '';
+  } catch (e) {
+    console.error(e);
+    error.value = 'Error carregant dades.';
+  } finally {
+    loading.value = false;
   }
-})
+}
+
+function handleFiles(e: Event) {
+  const t = e.target as HTMLInputElement;
+  files.value = t.files ? Array.from(t.files) : [];
+}
+
+async function submitReview() {
+  error.value = '';
+  if (!reserveItemId.value) return;
+  const form = new FormData();
+  form.append('reserveItemId', reserveItemId.value);
+  form.append('rating', String(rating.value));
+  form.append('comment', comment.value);
+  form.append('store_ambient', String(storeAmbient.value));
+  form.append('store_personal', String(storePersonal.value));
+  form.append('store_recollida', String(storeRecollida.value));
+  files.value.forEach(f => form.append('files[]', f));
+  try {
+    await axios.post('/reviews', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    await fetchData();
+  } catch (e: any) {
+    error.value = e.response?.data?.error || 'Error enviant review';
+  }
+}
+
+onMounted(fetchData);
+
+// Format date for display
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
 </script>
 
 <style scoped>
-.valoracions-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 1rem;
-}
-.title {
-  font-size: 1.75rem;
-  margin-bottom: 0.5rem;
-}
-.product-link {
-  color: #007bff;
-  text-decoration: none;
-}
-.product-link:hover {
-  text-decoration: underline;
-}
-.product-image {
-  max-width: 200px;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-.full-width {
-  width: 100%;
-}
-.readonly-input {
-  background: #f0f0f0;
-  border: 1px solid #ccc;
-  padding: 0.5rem;
-  margin-top: 0.25rem;
-}
-.review-form-container {
-  border: 1px dashed #aaa;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  background: #fffbea;
-}
-.review-form label {
-  display: block;
-  margin-top: 0.5rem;
-}
-.review-form select,
-.review-form textarea {
-  margin-top: 0.25rem;
-}
-.review-form button {
-  margin-top: 1rem;
-  padding: 0.5rem 1.25rem;
-  border: none;
-  border-radius: 4px;
-  display: block;
-  width: 100%;
-}
-.error {
-  color: red;
-  margin-top: 0.5rem;
-}
-.review-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  background: #fafafa;
-}
-.stars {
-  font-size: 1.25rem;
-  color: #ffb400;
-}
-.media-gallery {
+.reviews-component { margin: 20px; }
+.loading { color: #333; }
+
+/* Product Header Styles */
+.product-header {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
-.media-image {
-  max-width: 100px;
-  border-radius: 4px;
+.product-image-header {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
 }
-.media-video {
-  max-width: 200px;
-  border-radius: 4px;
+.product-info {
+  display: flex;
+  flex-direction: column;
 }
+.product-title {
+  font-size: 1.5rem;
+  margin: 0;
+  color: #333;
+}
+.product-summary {
+  font-size: 1rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.review-form-container { border: 1px dashed #aaa; padding: 1rem; background: #fffbea; margin-bottom: 1.5rem; }
+.review-form label { display: block; margin-top: 0.5rem; }
+.full-width { width: 100%; }
+.review-form button { margin-top: 1rem; }
+
+.review-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; background: #fafafa; }
+.stars { font-size: 1.25rem; color: #ffb400; margin-bottom: 0.5rem; }
+.comment { margin: 0.5rem 0; }
+.byline { font-size: 0.875rem; color: #555; }
+.error { color: red; margin-top: 0.5rem; }
+.no-reviews { font-style: italic; color: #666; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .product-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .product-image-header {
+      width: 100%;
+      height: auto;
+      max-height: 200px;
+    }
+    .product-title {
+      font-size: 1.25rem;
+    }
+    .product-summary {
+      font-size: 0.9rem;
+    }
+    .review-form,
+    .review-card {
+      padding: 0.75rem;
+    }
+    .review-form-container,
+    .review-card {
+      margin: 1rem 0;
+    }
+  }
 </style>

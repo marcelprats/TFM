@@ -121,7 +121,6 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
           <div class="dropdown-content">
             <router-link to="/info-botiga" @click="closeAll">Llistat Botigues</router-link>
             <router-link to="/mapa-botigues" @click="closeAll">Mapa Botigues</router-link>
-            <router-link to="/info-venedor" @click="closeAll">Llistat Venedors</router-link>
             <router-link to="/valoracions" @click="closeAll">Valoracions de productes</router-link>
           </div>
         </details>
@@ -249,7 +248,7 @@ onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
   position: absolute;
   top: -8px;       /* una mica més ajustat */
   right: -8px;
-  background: red;
+  background: #e63946 !important;
   color: white;
   font-size: 0.65rem;
   padding: 1.5px;
