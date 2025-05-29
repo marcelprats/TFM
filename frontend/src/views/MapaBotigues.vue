@@ -85,209 +85,221 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, nextTick } from "vue";
-import axios from "axios";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { ref, onMounted, watch, computed, nextTick } from 'vue'
+import axios from 'axios'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
-const API_URL = "http://127.0.0.1:8000/api";
+// State
+const botigues = ref<any[]>([])
+const filtreDia = ref('')
+const filtreHora = ref('')
+const obertAra = ref(false)
+const mostrarHorari = ref(false)
+const llistaQuery = ref('')
+const userLocation = ref<{ lat: number; lng: number } | null>(null)
+const distancies = ref<Record<number, number>>({})
+const map = ref<L.Map | null>(null)
+const orderBy = ref<'nom' | 'distancia'>('nom')
+const selectedBotigaId = ref<number | null>(null)
 
-const botigues = ref<any[]>([]);
-const filtreDia = ref("");
-const filtreHora = ref("");
-const obertAra = ref(false);
-const mostrarHorari = ref(false);
-const llistaQuery = ref("");
-const userLocation = ref<{ lat: number; lng: number } | null>(null);
-const distancies = ref<Record<number, number>>({});
-const map = ref<L.Map | null>(null);
-const orderBy = ref<"nom"|"distancia">("nom");
-const selectedBotigaId = ref<number | null>(null);
+// Constants
+const diesSetmana = [
+  'Dilluns','Dimarts','Dimecres','Dijous',
+  'Divendres','Dissabte','Diumenge'
+]
+const hores = Array.from({ length: 24 }, (_, i) => `${i}`)
 
-const diesSetmana = ["Dilluns","Dimarts","Dimecres","Dijous","Divendres","Dissabte","Diumenge"];
-const hores = Array.from({ length: 24 }, (_, i) => `${i}`);
-
+// Toggle filters
 function toggleObertAra() {
-  obertAra.value = !obertAra.value;
+  obertAra.value = !obertAra.value
   if (obertAra.value) {
-    mostrarHorari.value = false;
-    filtreDia.value = "";
-    filtreHora.value = "";
+    mostrarHorari.value = false
+    filtreDia.value = ''
+    filtreHora.value = ''
   }
 }
 function toggleMostrarHorari() {
-  mostrarHorari.value = !mostrarHorari.value;
+  mostrarHorari.value = !mostrarHorari.value
   if (mostrarHorari.value) {
-    obertAra.value = false;
+    obertAra.value = false
   } else {
-    filtreDia.value = "";
-    filtreHora.value = "";
+    filtreDia.value = ''
+    filtreHora.value = ''
   }
 }
 
-const handleOrderByDistancia = () => {
-  if (!userLocation.value) obtenirUbicacio();
-  orderBy.value = "distancia";
-};
+// Order by distance
+function handleOrderByDistancia() {
+  if (!userLocation.value) obtenirUbicacio()
+  orderBy.value = 'distancia'
+}
 
+// Filtered list
 const botiguesFiltrades = computed(() => {
-  const query = llistaQuery.value.toLowerCase();
-  const ara = new Date();
-  const diaActual = diesSetmana[(ara.getDay()+6)%7];
-  const minutsActuals = ara.getHours()*60 + ara.getMinutes();
+  const q = llistaQuery.value.toLowerCase()
+  const ara = new Date()
+  const diaActual = diesSetmana[(ara.getDay() + 6) % 7]
+  const minutsActuals = ara.getHours() * 60 + ara.getMinutes()
 
   return botigues.value
-    .filter(b => b.nom.toLowerCase().includes(query))
+    .filter(b => b.nom.toLowerCase().includes(q))
     .filter(b => {
-      const horaris = Array.isArray(b.horaris) ? b.horaris : [];
-      // si activo horari — només amb horaris
-      if (mostrarHorari.value && horaris.length === 0) return false;
-      // si activo obertAra — només amb horaris
-      if (obertAra.value && horaris.length === 0) return false;
-
+      const horaris = Array.isArray(b.horaris) ? b.horaris : []
+      if ((mostrarHorari.value || obertAra.value) && horaris.length === 0) return false
       if (obertAra.value) {
-        return horaris.some((h:any)=>
-          h.dia.toLowerCase()===diaActual.toLowerCase()&&
-          parseInt(h.obertura)*60<=minutsActuals&&
-          minutsActuals<parseInt(h.tancament)*60
-        );
+        return horaris.some((h: any) =>
+          h.dia.toLowerCase() === diaActual.toLowerCase() &&
+          parseInt(h.obertura) * 60 <= minutsActuals &&
+          minutsActuals < parseInt(h.tancament) * 60
+        )
       }
       if (mostrarHorari.value) {
-        return horaris.some((h:any)=>{
-          const diaOk = !filtreDia.value||h.dia.toLowerCase()===filtreDia.value.toLowerCase();
-          const horaOk = !filtreHora.value||
-            (parseInt(h.obertura)<=parseInt(filtreHora.value)&&
-             parseInt(filtreHora.value)<parseInt(h.tancament));
-          return diaOk&&horaOk;
-        });
+        return horaris.some((h: any) => {
+          const diaOk = !filtreDia.value || h.dia.toLowerCase() === filtreDia.value.toLowerCase()
+          const horaOk =
+            !filtreHora.value ||
+            (parseInt(h.obertura) <= parseInt(filtreHora.value) &&
+             parseInt(filtreHora.value) < parseInt(h.tancament))
+          return diaOk && horaOk
+        })
       }
-      // si no filtro horari, incloc tots
-      return true;
+      return true
     })
-    .sort((a,b)=>{
-      if (orderBy.value==="distancia") {
-        return (distancies.value[a.id]||Infinity)-(distancies.value[b.id]||Infinity);
+    .sort((a, b) => {
+      if (orderBy.value === 'distancia') {
+        return (distancies.value[a.id] || Infinity) - (distancies.value[b.id] || Infinity)
       }
-      return a.nom.localeCompare(b.nom);
-    });
-});
+      return a.nom.localeCompare(b.nom)
+    })
+})
 
-const carregarBotigues = async () => {
+// Load shops from API
+async function carregarBotigues() {
   try {
-    const token = localStorage.getItem("userToken");
-    const res = await axios.get(`${API_URL}/botigues`, {
-      headers: { Authorization:`Bearer ${token}` }
-    });
-    botigues.value = res.data;
-    await nextTick();
-    renderMap();
-  } catch(e){ console.error(e) }
-};
+    const res = await axios.get('/botigues')
+    botigues.value = res.data
+    await nextTick()
+    renderMap()
+  } catch (e) {
+    console.error('Error carregant botigues:', e)
+  }
+}
 
-const calcularDistancia = (lat1:number,lon1:number,lat2:number,lon2:number)=>{
-  const R=6371;
-  const dLat=(lat2-lat1)*Math.PI/180;
-  const dLon=(lon2-lon1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+
-          Math.cos(lat1*Math.PI/180)*
-          Math.cos(lat2*Math.PI/180)*
-          Math.sin(dLon/2)**2;
-  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*10)/10;
-};
+// Distance calculation
+function calcularDistancia(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10
+}
 
-const horarisPerBotiga = (b:any)=>{
-  const out:Record<string,string> = {};
-  diesSetmana.forEach(d=>{
-    const hDia=(Array.isArray(b.horaris)?b.horaris:[])
-      .filter((h:any)=>h.dia.toLowerCase()===d.toLowerCase());
+// Format schedules
+function horarisPerBotiga(b: any) {
+  const out: Record<string, string> = {}
+  diesSetmana.forEach(d => {
+    const hDia = (Array.isArray(b.horaris) ? b.horaris : [])
+      .filter((h: any) => h.dia.toLowerCase() === d.toLowerCase())
     out[d] = hDia.length
-      ? hDia.map((h:any)=>`${h.obertura.slice(0,5)} - ${h.tancament.slice(0,5)}`).join(", ")
-      : "Tancat";
-  });
-  return out;
-};
+      ? hDia.map((h: any) => `${h.obertura.slice(0,5)} - ${h.tancament.slice(0,5)}`)
+          .join(', ')
+      : 'Tancat'
+  })
+  return out
+}
 
-const renderMap = () => {
-  if (map.value) map.value.remove();
-  map.value = L.map("mapa").setView([41.3851,2.1734],1000);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution:"© OpenStreetMap"
-  }).addTo(map.value!);
+// Render Leaflet map
+function renderMap() {
+  map.value?.remove()
+  map.value = L.map('mapa').setView([41.3851, 2.1734], 13)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map.value!)
 
-  const coords:[number,number][] = [];
+  const coords: [number,number][] = []
 
   if (userLocation.value) {
-    const {lat,lng} = userLocation.value;
-    coords.push([lat,lng]);
-    const redIcon=L.icon({
-      iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-      shadowUrl:"https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
-      iconSize:[25,41],iconAnchor:[12,41],popupAnchor:[1,-34],shadowSize:[41,41]
-    });
-    L.marker([lat,lng],{icon:redIcon})
-     .addTo(map.value!).bindPopup("📍 Estàs aquí").openPopup();
+    const { lat, lng } = userLocation.value
+    coords.push([lat, lng])
+    const redIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
+      iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
+    })
+    L.marker([lat, lng], { icon: redIcon })
+      .addTo(map.value!)
+      .bindPopup('📍 Estàs aquí')
+      .openPopup()
   }
 
-  botiguesFiltrades.value.forEach(b=>{
-    if (!b.latitude||!b.longitude) return;
-    coords.push([b.latitude,b.longitude]);
+  botiguesFiltrades.value.forEach(b => {
+    if (!b.latitude || !b.longitude) return
+    coords.push([b.latitude, b.longitude])
     if (userLocation.value) {
       distancies.value[b.id] = calcularDistancia(
-        userLocation.value.lat,userLocation.value.lng,
-        b.latitude,b.longitude
-      );
+        userLocation.value.lat, userLocation.value.lng,
+        b.latitude, b.longitude
+      )
     }
-    const m = L.marker([b.latitude,b.longitude]).addTo(map.value!);
-    m.bindPopup(`<b><a href="/info-botiga/${b.id}">${b.nom}</a></b>`);
-    m.on("click",()=>toggleBotigaDetall(b));
-    b.marker = m;
-  });
+    const m = L.marker([b.latitude, b.longitude]).addTo(map.value!)
+    m.bindPopup(`<b><a href="/info-botiga/${b.id}">${b.nom}</a></b>`)
+    m.on('click', () => toggleBotigaDetall(b))
+    b.marker = m
+  })
 
   if (coords.length) {
-    map.value!.fitBounds(coords,{padding:[30,30]});
+    map.value!.fitBounds(coords, { padding: [30,30] })
   }
-};
+}
 
-const obtenirUbicacio = () => {
-  navigator.geolocation.getCurrentPosition(pos=>{
-    userLocation.value={lat:pos.coords.latitude,lng:pos.coords.longitude};
-    orderBy.value="distancia";
-    renderMap();
-  },err=>console.error(err));
-};
+// Get user location
+function obtenirUbicacio() {
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLocation.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      orderBy.value = 'distancia'
+      renderMap()
+    },
+    err => console.error(err)
+  )
+}
 
-const toggleBotigaDetall = async (b: any) => {
-  selectedBotigaId.value = selectedBotigaId.value === b.id ? null : b.id;
-  await nextTick();
+// Toggle shop detail
+async function toggleBotigaDetall(b: any) {
+  selectedBotigaId.value = selectedBotigaId.value === b.id ? null : b.id
+  await nextTick()
 
-  // 1) Centrem el mapa i obrim popup
   if (b.marker && map.value) {
-    map.value.flyTo([b.latitude, b.longitude], 16, { animate: true });
-    b.marker.openPopup();
+    map.value.flyTo([b.latitude, b.longitude], 16, { animate: true })
+    b.marker.openPopup()
   }
 
-  // 2) Fem scroll dins la llista a la card seleccionada
-  const cardEl = document.getElementById(`botiga-${b.id}`);
-  if (cardEl) {
-    cardEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  const cardEl = document.getElementById(`botiga-${b.id}`)
+  if (cardEl) cardEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  // 3) Fem scroll global per mostrar just els filtres sota el header
-  const filtersEl = document.querySelector('.filters') as HTMLElement;
-  const headerH   = (document.querySelector('.main-header') as HTMLElement).offsetHeight;
+  const filtersEl = document.querySelector('.filters') as HTMLElement
+  const headerH = (document.querySelector('.main-header') as HTMLElement).offsetHeight
   if (filtersEl) {
-    const filtersY = filtersEl.getBoundingClientRect().top + window.pageYOffset;
-    window.scrollTo({
-      top: filtersY - headerH,
-      behavior: 'smooth'
-    });
+    const y = filtersEl.getBoundingClientRect().top + window.pageYOffset
+    window.scrollTo({ top: y - headerH, behavior: 'smooth' })
   }
-};
+}
 
+// React to filter changes
+watch(
+  [filtreDia, filtreHora, obertAra, mostrarHorari, llistaQuery, orderBy],
+  renderMap
+)
 
-watch([filtreDia,filtreHora,obertAra,mostrarHorari,llistaQuery,orderBy],renderMap);
-onMounted(carregarBotigues);
+// Initial load
+onMounted(carregarBotigues)
 </script>
+
 
 <style scoped>
 html, body { overflow-x:hidden; width:100%; }

@@ -2,7 +2,7 @@
   <div class="mobile-list">
     <div
       class="order-card"
-      v-for="order in orders"
+      v-for="order in props.orders"
       :key="order.id"
     >
       <div class="card-row">
@@ -12,23 +12,23 @@
           </span>
           <p><strong>Codi:</strong> {{ order.order_number }}</p>
           <p><strong>Total:</strong> {{ formatPrice(order.total_amount) }}</p>
-          <p><strong>Data:</strong> {{ new Date(order.created_at).toLocaleDateString() }}</p>
+          <p><strong>Data:</strong> {{ new Date(order.created_at).toLocaleDateString('ca-ES') }}</p>
         </div>
         <div class="order-products-col">
           <div class="product-grid">
-            <template v-if="getReserveItems(order).length">
+            <template v-if="reserveItems(order).length">
               <div
                 class="product-card"
-                v-for="(item, i) in getLimitedReserveItems(order)"
+                v-for="(item, i) in limitedReserveItems(order)"
                 :key="i"
               >
                 {{ item.product.nom }}
               </div>
               <div
-                v-if="getReserveItems(order).length > 2"
+                v-if="reserveItems(order).length > 2"
                 class="more-products"
               >
-                +{{ getReserveItems(order).length - 2 }} més
+                +{{ reserveItems(order).length - 2 }} més
               </div>
             </template>
             <template v-else>
@@ -38,39 +38,52 @@
         </div>
       </div>
       <div class="order-actions">
-        <button @click="$emit('view-summary', order.id)" class="action-btn large">Resum</button>
-        <button @click="$emit('view-ticket', order.id)"  class="action-btn large">Tiquet</button>
+        <button @click="emit('view-summary', order.id)" class="action-btn large">Resum</button>
+        <button @click="emit('view-ticket', order.id)"  class="action-btn large">Tiquet</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits } from 'vue'
 
-defineProps<{ orders: any[] }>();
+const props = defineProps<{
+  orders: Array<{
+    id: number
+    status: string
+    order_number: string
+    total_amount: number | string
+    created_at: string
+    reserve?: { reserve_items: any[] }
+  }>
+}>()
+
 const emit = defineEmits<{
-  (e: 'view-summary', id: number): void;
-  (e: 'view-ticket',  id: number): void;
-}>();
+  (e: 'view-summary', id: number): void
+  (e: 'view-ticket',  id: number): void
+}>()
 
 function formatPrice(price: number | string): string {
-  const p = typeof price === 'number' ? price : parseFloat(price);
-  return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €';
+  const p = typeof price === 'number' ? price : parseFloat(price)
+  return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €'
 }
-function getReserveItems(order: any) {
-  return order.reserve?.reserve_items || [];
+
+function reserveItems(order: typeof props.orders[0]) {
+  return order.reserve?.reserve_items ?? []
 }
-function getLimitedReserveItems(order: any) {
-  return getReserveItems(order).slice(0, 2);
+
+function limitedReserveItems(order: typeof props.orders[0]) {
+  return reserveItems(order).slice(0, 2)
 }
+
 function badgeClass(status: string) {
   switch (status) {
-    case 'pending':   return 'badge-pending';
-    case 'reserved':  return 'badge-reserved';
-    case 'completed': return 'badge-completed';
-    case 'cancelled': return 'badge-cancelled';
-    default:          return '';
+    case 'pending':   return 'badge-pending'
+    case 'reserved':  return 'badge-reserved'
+    case 'completed': return 'badge-completed'
+    case 'cancelled': return 'badge-cancelled'
+    default:          return ''
   }
 }
 </script>

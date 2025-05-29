@@ -66,7 +66,7 @@ const track = ref<HTMLDivElement|null>(null)
 let autoInterval: ReturnType<typeof setInterval> | null = null
 const router = useRouter()
 
-/** Mou un sol slide */
+/** Mou un sol slide en la direcció indicada */
 function scrollByOne(direction: 1|-1) {
   if (!track.value) return
   const slide = track.value.querySelector<HTMLElement>('.carousel-slide')
@@ -76,6 +76,7 @@ function scrollByOne(direction: 1|-1) {
   const width = slide.clientWidth + gap
   track.value.scrollBy({ left: direction * width, behavior: 'smooth' })
 }
+
 function goNext() { scrollByOne(1) }
 function goPrev() { scrollByOne(-1) }
 
@@ -111,18 +112,15 @@ onBeforeUnmount(() => stopAuto())
   color: #064e3b;
 }
 
-/* Padding interior per a marge inferior i superior */
 .carousel-wrapper {
   position: relative;
   overflow: visible;
-  padding: 1rem 2rem; /* controla marge superior/inferior i laterals */
+  padding: 1rem 2rem;
 }
 
-/* Track de slides */
 .carousel-track {
   display: flex;
   overflow-x: auto;
-  overflow-y: hidden;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -133,11 +131,10 @@ onBeforeUnmount(() => stopAuto())
   display: none;
 }
 
-/* Slides */
 .carousel-slide {
   flex: 0 0 auto;
   scroll-snap-align: start;
-  margin-right: 16px;         /* espai entre cards */
+  margin-right: 16px;
   transition: transform 0.3s ease;
   cursor: pointer;
 }
@@ -146,30 +143,28 @@ onBeforeUnmount(() => stopAuto())
   z-index: 1;
 }
 
-/* Botons de navegació: cercle verd amb fletxa blanca */
 .nav-button {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: #42b983;       /* fons verd */
+  background: #42b983;
   border: none;
-  padding: 0.4rem;           /* coixí interior */
+  padding: 0.4rem;
   cursor: pointer;
   z-index: 10;
-  border-radius: 50%;        /* cercle */
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s, opacity 0.2s;
 }
 .nav-button:hover {
-  background: #369e6b;       /* verd fosc al hover */
+  background: #369e6b;
   opacity: 0.9;
 }
 .nav-button.prev { left: 0.5rem; }
 .nav-button.next { right: 0.5rem; }
 
-/* SVG de la fletxa en blanc */
 .nav-button svg {
   width: 1.5rem;
   height: 1.5rem;
@@ -179,7 +174,6 @@ onBeforeUnmount(() => stopAuto())
   stroke: none;
 }
 
-/* Quan la pantalla és molt estreta, centrem l’única card i fem snap centrat */
 @media (max-width: 450px) {
   .carousel-track {
     scroll-snap-type: x mandatory;

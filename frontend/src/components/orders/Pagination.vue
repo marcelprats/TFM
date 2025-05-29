@@ -1,16 +1,23 @@
 <template>
   <div class="pagination">
-    <button @click="$emit('prev')" :disabled="current === 1">Anterior</button>
+    <button @click="emit('prev')" :disabled="current === 1">Anterior</button>
     <span>Pàgina {{ current }} de {{ total }}</span>
-    <button @click="$emit('next')" :disabled="current === total">Següent</button>
+    <button @click="emit('next')" :disabled="current === total">Següent</button>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  current: number;
-  total: number;
-}>();
+import { defineProps, defineEmits } from 'vue'
+
+const props = defineProps<{
+  current: number
+  total: number
+}>()
+
+const emit = defineEmits<{
+  (e: 'prev'): void
+  (e: 'next'): void
+}>()
 </script>
 
 <style scoped>
@@ -42,4 +49,3 @@ defineProps<{
   font-size: 0.9rem;
 }
 </style>
-

@@ -179,7 +179,6 @@
   </div>
 </template>
 
-
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import axios from "axios";
@@ -188,7 +187,6 @@ import { useCartStore } from "../stores/cartStore";
 
 const router = useRouter();
 const cartStore = useCartStore();
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
 // Reactive state
 const cart = ref<any[]>([]);
@@ -264,9 +262,7 @@ const calcSelectedShopTotal = (items: any[]) =>
 
 // Global actions
 async function clearAllItems() {
-  await axios.delete(`${API_URL}/cart`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` },
-  });
+  await axios.delete(`/cart`);
   await cartStore.fetchCart();
   loadCart();
 }
@@ -275,21 +271,14 @@ async function clearGroupItems(shopId: string) {
   const items = groupedSelectedItems.value[shopId] || [];
   await Promise.all(
     items.map((i) =>
-      axios.delete(`${API_URL}/cart/${i.id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("userToken")}`,
-        },
-      })
-    )
+      axios.delete(`/cart/${i.id}`))
   );
   await cartStore.fetchCart();
   loadCart();
 }
 
 async function removeItem(itemId: number) {
-  await axios.delete(`${API_URL}/cart/${itemId}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem("userToken")}` },
-  });
+  await axios.delete(`/cart/${itemId}`);
   await cartStore.fetchCart();
   loadCart();
 }
@@ -315,13 +304,8 @@ function closeStockModal() {
 // Stock check before purchase
 async function checkStock() {
   return axios.put(
-    `${API_URL}/cart/check-stock`,
+    `/cart/check-stock`,
     { itemIds: selectedItems.value.map((i) => i.id) },
-    {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("userToken")}`,
-      },
-    }
   );
 }
 
@@ -354,13 +338,8 @@ async function handleCheckout() {
         if (issue.available > 0) {
           // adjust quantity
           await axios.put(
-            `${API_URL}/cart/${item.id}`,
-            { quantity: issue.available },
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("userToken")}`,
-              },
-            }
+            `/cart/${item.id}`,
+            { quantity: issue.available },           
           );
         } else {
           await removeItem(item.id);
@@ -379,16 +358,11 @@ async function handleCheckout() {
   // Proceed to checkout
   try {
     const { data } = await axios.post(
-      `${API_URL}/cart/checkout`,
+      `/cart/checkout`,
       {
         selectedIds: selectedItems.value.map((i) => i.id),
         buyer_type: buyerType.value,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("userToken")}`,
-        },
-      }
     );
     const { baseOrderNumber, orderIds } = data;
     if (orderIds.length === 1)

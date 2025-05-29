@@ -68,13 +68,23 @@ function handleOutsideClick(e: MouseEvent) {
 }
 
 // Utilitats
-function getImageSrc(p:string|null){ const B='http://localhost:8000'; if(!p) return '/img/no-imatge.jpg'; return p.startsWith('/')?B+p:`${B}/uploads/${p}`; }
-function formatPrice(v:number|string){ const n=typeof v==='number'?v:parseFloat(v as string); return isNaN(n)?'—':n.toFixed(2)+' €'; }
+function getImageSrc(p:string|null){ 
+  const B = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  if(!p) return '/img/no-imatge.jpg';
+  return p.startsWith('/') ? B + p : `${B}/uploads/${p}`; 
+}
+function formatPrice(v:number|string){ 
+  const n = typeof v==='number' ? v : parseFloat(v as string);
+  return isNaN(n) ? '—' : n.toFixed(2) + ' €'; 
+}
 
 // Autenticació
 async function handleLogout(){
-  await logout(); cartStore.$reset();
-  loggedIn.value = false; user.value = null; role.value='user';
+  await logout();
+  cartStore.$reset();
+  loggedIn.value = false;
+  user.value = null;
+  role.value = 'user';
   router.push('/');
 }
 
@@ -82,10 +92,15 @@ async function handleLogout(){
 onMounted(async () => {
   document.addEventListener('click', handleOutsideClick);
   loggedIn.value = isLoggedIn();
-  if(loggedIn.value){ user.value = getUser()||await fetchUser(); role.value = getUserType(); }
+  if(loggedIn.value){
+    user.value = getUser() || await fetchUser();
+    role.value = getUserType();
+  }
   await cartStore.fetchCart();
 });
-onBeforeUnmount(()=> document.removeEventListener('click', handleOutsideClick));
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleOutsideClick);
+});
 </script>
 
 <template>

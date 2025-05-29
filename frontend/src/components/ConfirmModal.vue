@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="overlay"
     class="modal-overlay"
     @click.self="onCancel"
     tabindex="-1"

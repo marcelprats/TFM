@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- Contingut del tiquet amb estil retro -->
+    <!-- Contingut del tiquet -->
     <div ref="ticket" class="order-confirmation retro-ticket">
       <h1>Confirmació de la Comanda</h1>
       <div v-if="errorMessage" class="error-message">
@@ -53,57 +53,55 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import axios from 'axios';
-import { useRoute } from 'vue-router';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import QrcodeVue from 'qrcode.vue';
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import { useRoute } from 'vue-router'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import QrcodeVue from 'qrcode.vue'
 
-const route = useRoute();
-const order = ref<any>(null);
-const errorMessage = ref('');
-const API_URL = 'http://127.0.0.1:8000/api';
+const route = useRoute()
+const order = ref<any>(null)
+const errorMessage = ref('')
 
-function formatPrice(price: number | string): string {
-  const p = typeof price === 'number' ? price : parseFloat(price);
-  if (isNaN(p)) return 'No disponible';
-  return p.toFixed(2) + ' €';
+// Funció per formatar preus
+function formatPrice(price: number|string): string {
+  const p = typeof price === 'number' ? price : parseFloat(price)
+  return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €'
 }
 
+// Carrega la comanda
 async function loadOrder() {
   try {
-    const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/orders/${route.params.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    order.value = response.data;
-  } catch (error) {
-    if (error.response && error.response.status === 403) {
-      errorMessage.value = 'Accés no autoritzat: aquesta comanda no pertany a vostè.';
+    const response = await axios.get(`/orders/${route.params.id}`)
+    order.value = response.data
+  } catch (err: any) {
+    if (err.response?.status === 403) {
+      errorMessage.value = 'Accés no autoritzat: aquesta comanda no pertany a vostè.'
     } else {
-      errorMessage.value = 'Error carregant la comanda. Si us plau, intenta-ho més tard.';
+      errorMessage.value = 'Error carregant la comanda. Si us plau, intenta-ho més tard.'
     }
   }
 }
 
-onMounted(loadOrder);
+onMounted(loadOrder)
 
+// Descarrega el tiquet com PDF
 async function downloadTicket() {
   try {
-    const ticketElement = document.querySelector<HTMLElement>('.retro-ticket');
-    if (!ticketElement) return;
-    const canvas = await html2canvas(ticketElement, { scale: 2 });
-    const imgData = canvas.toDataURL('image/png');
+    const el = document.querySelector<HTMLElement>('.retro-ticket')
+    if (!el) return
+    const canvas = await html2canvas(el, { scale: 2 })
+    const img = canvas.toDataURL('image/png')
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'px',
       format: [canvas.width, canvas.height]
-    });
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-    pdf.save(`${order.value.order_number}.pdf`);
-  } catch (err) {
-    console.error('Error descarregant el tiquet:', err);
+    })
+    pdf.addImage(img, 'PNG', 0, 0, canvas.width, canvas.height)
+    pdf.save(`${order.value.order_number}.pdf`)
+  } catch (e) {
+    console.error('Error descarregant el tiquet:', e)
   }
 }
 </script>

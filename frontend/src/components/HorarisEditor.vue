@@ -40,43 +40,75 @@
   </div>
 </template>
 
-<script setup>
-const props = defineProps({
-  horaris: { type: Array, required: true }
-});
+<script setup lang="ts">
+import { defineProps, defineEmits } from 'vue'
 
+// 1) Defineix el `prop` de `horaris`
+const props = defineProps<{
+  horaris: { dia: string; tancat: boolean; franjes: { obertura: string; tancament: string }[] }[]
+}>()
+
+// 2) Defineix l’`emit` perquè funcioni `v-model:horaris`
+const emit = defineEmits<{
+  (e: 'update:horaris', value: typeof props.horaris): void
+}>()
+
+// Resta de lògica d’hores i utilitats
 const hores = Array.from({ length: 24 * 4 }, (_, i) => {
-  const h = Math.floor(i / 4).toString().padStart(2, "0");
-  const m = (i % 4 * 15).toString().padStart(2, "0");
-  return `${h}:${m}`;
-});
+  const h = Math.floor(i / 4).toString().padStart(2, "0")
+  const m = (i % 4 * 15).toString().padStart(2, "0")
+  return `${h}:${m}`
+})
 
-const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+const capitalize = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1)
 
-const afegirFranja = (horari) => {
-  if (!horari.franjes.length) {
-    horari.franjes.push({ obertura: "09:00", tancament: "13:00" });
-  } else {
-    const ultimaFranja = horari.franjes[horari.franjes.length - 1];
-    const novaObertura = (parseInt(ultimaFranja.tancament.split(":"), 10) + 1)
-      .toString()
-      .padStart(2, "0") + ":00";
+// 3) Funció per afegir una franja sense mutar la `prop`
+const afegirFranja = (horari: typeof props.horaris[0]) => {
+  const out = props.horaris.map(h =>
+    h === horari
+      ? {
+          ...h,
+          franjes: h.franjes.length
+            ? [
+                ...h.franjes,
+                {
+                  obertura: h.franjes[h.franjes.length - 1].tancament,
+                  tancament: "00:00"
+                }
+              ]
+            : [{ obertura: "09:00", tancament: "13:00" }]
+        }
+      : h
+  )
+  emit('update:horaris', out)
+}
 
-    horari.franjes.push({ obertura: novaObertura, tancament: "00:00" });
-  }
-};
+// 4) Funció per eliminar una franja sense mutar la `prop`
+const eliminarFranja = (horari: typeof props.horaris[0], index: number) => {
+  const out = props.horaris.map(h =>
+    h === horari
+      ? { ...h, franjes: h.franjes.filter((_, i) => i !== index) }
+      : h
+  )
+  emit('update:horaris', out)
+}
 
-const eliminarFranja = (horari, index) => {
-  horari.franjes.splice(index, 1);
-};
-
-const toggleTancat = (horari) => {
-  if (horari.tancat) {
-    horari.franjes = [];
-  } else {
-    horari.franjes.push({ obertura: "09:00", tancament: "13:00" });
-  }
-};
+// 5) Funció per alternar tancat/obert sense mutar la `prop`
+const toggleTancat = (horari: typeof props.horaris[0]) => {
+  const out = props.horaris.map(h =>
+    h === horari
+      ? {
+          ...h,
+          tancat: !h.tancat,
+          franjes: h.tancat
+            ? [{ obertura: "09:00", tancament: "13:00" }]
+            : []
+        }
+      : h
+  )
+  emit('update:horaris', out)
+}
 </script>
 
 <style scoped>

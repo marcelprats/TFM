@@ -31,8 +31,6 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
 
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api'
-
 const loading = ref(true)
 const reviews = ref<any[]>([])
 const productNames = ref<Record<number, string>>({})

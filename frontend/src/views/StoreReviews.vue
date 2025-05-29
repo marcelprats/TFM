@@ -50,8 +50,6 @@ export default defineComponent({
     const chartRef = ref<HTMLCanvasElement | null>(null)
     let chartInstance: Chart | null = null
 
-    axios.defaults.baseURL = '/api'
-
     async function fetchData() {
       try {
         // Carrega nom de la botiga i reviews

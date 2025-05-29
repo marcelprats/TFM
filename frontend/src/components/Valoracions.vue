@@ -55,7 +55,6 @@
 import { defineProps, ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 
-
 // Props
 const props = defineProps<{ productId: number }>()
 
@@ -72,9 +71,6 @@ const comment = ref('')
 const error = ref('')
 const files = ref<File[]>([])
 
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api'
-axios.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('userToken')}`
-
 // Helpers
 function getReserveItems(order: any): any[] {
   return order.reserveItems || order.reserve_items || []
@@ -88,7 +84,7 @@ async function fetchUserData() {
     ])
     myOrders.value = ordRes.data
     myReviews.value = revRes.data
-    // Assign reserveItemId
+
     const found = myOrders.value
       .flatMap(o => getReserveItems(o))
       .find((ri: any) => ri.product_id === props.productId)
@@ -130,10 +126,10 @@ function handleFiles(e: Event) {
 async function submitReview() {
   error.value = ''
   const form = new FormData()
-  form.append('reserveItemId', String(reserveItemId.value))
-  form.append('rating', String(rating.value))
-  form.append('comment', comment.value)
-  files.value.forEach(f => form.append('files[]', f))
+    form.append('reserveItemId', String(reserveItemId.value))
+    form.append('rating', String(rating.value))
+    form.append('comment', comment.value)
+    files.value.forEach(f => form.append('files[]', f))
 
   try {
     const res = await axios.post('/reviews', form, {
@@ -149,12 +145,10 @@ async function submitReview() {
 }
 
 function formatDate(dateStr: string) {
-  const date = new Date(dateStr)
-  return date.toLocaleString('es-ES', {
+  return new Date(dateStr).toLocaleDateString('ca-ES', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-
   })
 }
 

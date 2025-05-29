@@ -1,26 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { useRoute } from "vue-router";
-import axios from "axios";
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import axios from 'axios'
 
-const route = useRoute();
-const venedor = ref(null);
-const botigues = ref([]);
-const API_URL = "http://127.0.0.1:8000/api";
+const route = useRoute()
+const venedor = ref<any>(null)
+const botigues = ref<any[]>([])
 
 onMounted(async () => {
-  const venedorId = route.params.id; // ID del venedor passat per l'URL
-
+  const venedorId = route.params.id as string
   try {
-    const response = await axios.get(`${API_URL}/vendors/${venedorId}`);
-    console.log("Dades rebudes de l'API:", response.data); // 🔍 Debugging
-
-    venedor.value = response.data;
-    botigues.value = response.data.botigues || []; // Assegurar que sigui un array
+    const response = await axios.get(`/vendors/${venedorId}`)
+    venedor.value = response.data
+    botigues.value = response.data.botigues ?? []
   } catch (error) {
-    console.error("Error carregant el venedor:", error);
+    console.error('Error carregant el venedor:', error)
   }
-});
+})
 </script>
 
 <template>

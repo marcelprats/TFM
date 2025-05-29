@@ -39,65 +39,63 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
-import dayjs from 'dayjs';
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import dayjs from 'dayjs'
 
-const API_URL = 'http://127.0.0.1:8000/api';
+const router = useRouter()
+const importRecords = ref<any[]>([])
 
-const router = useRouter();
-const importRecords = ref<any[]>([]);
+// Ordenació
+const sortColumn = ref<string>('')
+const sortDirection = ref<'asc' | 'desc'>('asc')
 
-// Variables per a l'ordenació
-const sortColumn = ref<string>('');
-const sortDirection = ref<string>('asc');
-
+// Carrega els registres al muntar
 onMounted(async () => {
   try {
-    const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/vendor/importacions`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    importRecords.value = response.data;
+    const response = await axios.get('/vendor/importacions')
+    importRecords.value = response.data
   } catch (error) {
-    console.error('Error carregant els registres d’importació:', error);
+    console.error('Error carregant els registres d’importació:', error)
   }
-});
+})
 
-// Funció per ordenar per columna
+// Funció per canviar l'ordre
 function sortBy(column: string) {
   if (sortColumn.value === column) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
   } else {
-    sortColumn.value = column;
-    sortDirection.value = 'asc';
+    sortColumn.value = column
+    sortDirection.value = 'asc'
   }
 }
 
+// Càlcul dels registres ordenats
 const sortedRecords = computed(() => {
-  if (!sortColumn.value) return importRecords.value;
+  if (!sortColumn.value) return importRecords.value
   return importRecords.value.slice().sort((a, b) => {
-    let aVal = a[sortColumn.value];
-    let bVal = b[sortColumn.value];
+    let aVal = a[sortColumn.value]
+    let bVal = b[sortColumn.value]
     if (typeof aVal === 'number' && typeof bVal === 'number') {
-      return sortDirection.value === 'asc' ? aVal - bVal : bVal - aVal;
+      return sortDirection.value === 'asc' ? aVal - bVal : bVal - aVal
     }
-    aVal = aVal ? aVal.toString() : '';
-    bVal = bVal ? bVal.toString() : '';
+    aVal = aVal ? aVal.toString() : ''
+    bVal = bVal ? bVal.toString() : ''
     return sortDirection.value === 'asc'
       ? aVal.localeCompare(bVal)
-      : bVal.localeCompare(aVal);
-  });
-});
+      : bVal.localeCompare(aVal)
+  })
+})
 
-// Mètode per formatejar la data
+// Formata la data
 function formatDate(dateStr: string): string {
-  return dayjs(dateStr).format('DD/MM/YYYY HH:mm');
+  return dayjs(dateStr).format('DD/MM/YYYY HH:mm')
 }
 
+// Navega al detall
 function viewRecord(id: number) {
-  router.push(`/import-record/${id}`);
+  router.push(`/import-record/${id}`)
 }
 </script>
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\ReviewStoreDetail;
 
 class Review extends Model
 {
@@ -27,5 +28,13 @@ class Review extends Model
     public function reserveItem()
     {
         return $this->belongsTo(ReserveItem::class);
+    }
+
+    /**
+     * Detalls de puntuació per àmbits de la botiga.
+     */
+    public function storeDetails()
+    {
+        return $this->hasMany(ReviewStoreDetail::class, 'review_id');
     }
 }

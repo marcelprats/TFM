@@ -83,16 +83,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { useRoute, useRouter, RouterLink } from 'vue-router';
-import { logout, isLoggedIn, getUserType } from '../services/authService';
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { logout, isLoggedIn, getUserType } from '../services/authService'
 
-const route    = useRoute();
-const router   = useRouter();
+const route    = useRoute()
+const router   = useRouter()
 
-// Flags reactius
-const loggedIn = ref(isLoggedIn());
-const role     = ref(getUserType());
+// Reactive flags
+const loggedIn = ref(isLoggedIn())
+const role     = ref(getUserType())
 
 const links = [
   { name: 'Inici',          to: '/home' },
@@ -100,30 +100,29 @@ const links = [
   { name: 'Mapa Botigues',  to: '/mapa-botigues' },
   { name: 'Què és Totaki?', to: '/about' },
   { name: 'Contacte',       to: '/contacte' },
-];
+]
 
 function handleLogout() {
-  logout();
-  // loginUser/logout d'`authService` emetran 'authChange'
-  router.push('/');
+  logout()
+  // notify other listeners/tabs
+  window.dispatchEvent(new Event('authChange'))
+  router.push('/')
 }
 
 function syncAuth() {
-  loggedIn.value = isLoggedIn();
-  role.value     = getUserType();
+  loggedIn.value = isLoggedIn()
+  role.value     = getUserType()
 }
 
-// “storage” per a canvis en altres pestanyes,
-// “authChange” per a canvis en la mateixa pestanya
 onMounted(() => {
-  window.addEventListener('storage', syncAuth);
-  window.addEventListener('authChange', syncAuth);
-});
+  window.addEventListener('storage', syncAuth)
+  window.addEventListener('authChange', syncAuth)
+})
 
 onBeforeUnmount(() => {
-  window.removeEventListener('storage', syncAuth);
-  window.removeEventListener('authChange', syncAuth);
-});
+  window.removeEventListener('storage', syncAuth)
+  window.removeEventListener('authChange', syncAuth)
+})
 </script>
 
 <style scoped>

@@ -435,21 +435,6 @@ import ProductImportWizard from "../components/ProductImportWizard.vue";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-const API_URL = "http://127.0.0.1:8000/api/vendor";
-
-// Instància d'axios amb token automàtic
-const axiosInstance = axios.create({
-  baseURL: API_URL,
-});
-
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("userToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 // Interfaces
 interface Botiga {
   id: number;
@@ -557,8 +542,7 @@ async function fetchProductes() {
   try {
     const token = localStorage.getItem("userToken");
     if (!token) return;
-    const response = await axiosInstance.get(`${API_URL}/productes`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await axios.get(`/vendor/productes`, {
     });
     productes.value = response.data.map((prod: any) => ({
       ...prod,
@@ -578,8 +562,7 @@ async function fetchProductes() {
 async function fetchBotigues() {
   try {
     const token = localStorage.getItem("userToken");
-    const response = await axiosInstance.get(`${API_URL}/botigues-mes`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await axios.get(`/vendor/botigues-mes`, {
     });
     botigues.value = response.data;
   } catch (error) {
@@ -591,8 +574,7 @@ async function fetchCategories() {
   try {
     const token = localStorage.getItem("userToken");
     if (!token) return;
-    const response = await axiosInstance.get(`${API_URL}/categories`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await axios.get(`/vendor/categories`, {
     });
     categories.value = response.data;
   } catch (error) {
@@ -760,12 +742,10 @@ async function addProducte() {
     } else if (newProduct.value.imatge) {
       formData.append("imatge", newProduct.value.imatge);
     }
-    await axiosInstance.post(`${API_URL}/productes`, formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
+    await axios.post(`/productes`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
     });
+
     // Reset del formulari
     newProduct.value = {
       nom: "",
@@ -820,10 +800,10 @@ async function updateProducte() {
       } else if (editProduct.value.imatge) {
         formData.append("imatge", editProduct.value.imatge);
       }
-      await axiosInstance.post(`/productes/${editProduct.value.id}`, formData, {
+      await axios.post(`/vendor/productes/${editProduct.value.id}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
-        },
+        }
       });
       showEditModal.value = false;
       imageFile.value = null;
@@ -838,7 +818,7 @@ async function updateProducte() {
 async function deleteProducte(id: number) {
   try {
     const token = localStorage.getItem("userToken");
-    await axiosInstance.delete(`${API_URL}/productes/${id}`, {
+    await axios.delete(`/vendor/productes/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchProductes();
@@ -854,8 +834,7 @@ async function deleteConfirmedProduct() {
   if (deleteProductId.value !== null) {
     try {
       const token = localStorage.getItem("userToken");
-      await axiosInstance.delete(`${API_URL}/productes/${deleteProductId.value}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await axios.delete(`/vendor/productes/${deleteProductId.value}`, {
       });
       showDeleteModal.value = false;
       fetchProductes();
@@ -902,8 +881,7 @@ async function bulkDelete() {
   const token = localStorage.getItem("userToken");
   for (const id of selectedProducts.value) {
     try {
-      await axiosInstance.delete(`${API_URL}/productes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await axios.delete(`/vendor/productes/${id}`, {
       });
     } catch (error) {
       console.error("Error eliminant producte amb id " + id, error);
@@ -955,8 +933,7 @@ async function bulkUpdateConfirm() {
       // Si no hi ha cap camp a actualitzar (per exemple, si tot és null en el bulk), podem saltar-lo
       if (Object.keys(updateData).length === 0) continue;
 
-      await axiosInstance.patch(`${API_URL}/productes/${id}`, updateData, {
-        headers: { Authorization: `Bearer ${token}` },
+      await axios.patch(`/vendor/productes/${id}`, updateData, {
       });
     } catch (error: any) {
       console.error("Error actualitzant producte amb id " + id, error.response?.data || error);

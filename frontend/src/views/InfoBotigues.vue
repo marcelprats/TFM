@@ -98,6 +98,7 @@
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 
+// Model de botiga amb camps de resum
 interface Botiga {
   id: number
   nom: string
@@ -108,23 +109,22 @@ interface Botiga {
   avg_recollida: number
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
-const token    = localStorage.getItem('userToken')
+// Estat reactiu
+const botigues     = ref<Botiga[]>([])
+const loading      = ref(true)
+const error        = ref<string|null>(null)
+const showFilters  = ref(false)
 
-const botigues      = ref<Botiga[]>([])
-const loading       = ref(true)
-const error         = ref<string|null>(null)
-const showFilters   = ref(false)
+const searchQuery  = ref('')
+const minAmbient   = ref(0)
+const minPersonal  = ref(0)
+const minRecollida = ref(0)
 
-// controls
-const searchQuery   = ref('')
-const minAmbient    = ref(0)
-const minPersonal   = ref(0)
-const minRecollida  = ref(0)
-
+// Filtrat segons controls
 const filteredBotigues = computed(() =>
   botigues.value.filter(b => {
-    if (searchQuery.value && !b.nom.toLowerCase().includes(searchQuery.value.toLowerCase())) return false
+    if (searchQuery.value && !b.nom.toLowerCase().includes(searchQuery.value.toLowerCase()))
+      return false
     if (b.avg_ambient   < minAmbient.value)   return false
     if (b.avg_personal  < minPersonal.value)  return false
     if (b.avg_recollida < minRecollida.value) return false
@@ -132,6 +132,7 @@ const filteredBotigues = computed(() =>
   })
 )
 
+// Reiniciar filtres al valor per defecte
 function resetFilters() {
   searchQuery.value  = ''
   minAmbient.value   = 0
@@ -139,27 +140,32 @@ function resetFilters() {
   minRecollida.value = 0
 }
 
+// Càrrega inicial de dades
 onMounted(async () => {
+  loading.value = true
   try {
-    const res = await axios.get<Botiga[]>(`${API_URL}/botigues`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    // 1. Obtenim la llista de botigues
+    const res = await axios.get<Botiga[]>('/botigues')
     botigues.value = res.data.map(b => ({
       ...b,
       avg_ambient:   0,
       avg_personal:  0,
       avg_recollida: 0
     }))
-    await Promise.all(botigues.value.map(async b => {
-      try {
-        const sum = await axios.get(`${API_URL}/botigues/${b.id}/store-summary`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        b.avg_ambient   = sum.data.ambient?.avg   ?? 0
-        b.avg_personal  = sum.data.personal?.avg  ?? 0
-        b.avg_recollida = sum.data.recollida?.avg ?? 0
-      } catch { /* queda a 0 */ }
-    }))
+
+    // 2. Per cada botiga obtenim el resum de puntuacions
+    await Promise.all(
+      botigues.value.map(async b => {
+        try {
+          const sum = await axios.get(`/botigues/${b.id}/store-summary`)
+          b.avg_ambient   = sum.data.ambient?.avg   ?? 0
+          b.avg_personal  = sum.data.personal?.avg  ?? 0
+          b.avg_recollida = sum.data.recollida?.avg ?? 0
+        } catch {
+          // en cas d'error, es queda a 0
+        }
+      })
+    )
   } catch (e: any) {
     console.error('Error carregant botigues:', e)
     error.value = "No s'han pogut carregar les botigues."
@@ -168,6 +174,7 @@ onMounted(async () => {
   }
 })
 </script>
+
 
 <style scoped>
 /* Contenidor */

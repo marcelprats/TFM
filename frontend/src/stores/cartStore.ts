@@ -1,8 +1,5 @@
-// src/stores/cartStore.ts
 import { defineStore } from 'pinia'
 import axios from 'axios'
-
-const API_URL = 'http://127.0.0.1:8000/api'
 
 export interface CartItem {
   id: number
@@ -20,43 +17,40 @@ export const useCartStore = defineStore('cart', {
     items: [] as CartItem[]
   }),
   getters: {
-    itemCount: (state) => state.items.reduce((sum, i) => sum + i.quantity, 0),
-    totalPrice: (state) => state.items.reduce((sum, i) => sum + i.quantity * i.reserved_price, 0)
+    itemCount: (state) =>
+      state.items.reduce((sum, i) => sum + i.quantity, 0),
+    totalPrice: (state) =>
+      state.items.reduce((sum, i) => sum + i.quantity * i.reserved_price, 0)
   },
   actions: {
     async fetchCart() {
-      const token = localStorage.getItem('userToken')
-      if (!token) {
+      // Si no hi ha token, netegem directament
+      if (!localStorage.getItem('userToken')) {
         this.items = []
         return
       }
       try {
-        const { data } = await axios.get<{ cart_items: CartItem[] }>(
-          `${API_URL}/cart`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+        // Sobreescrivim ja no cal posar baseURL ni headers
+        const { data } = await axios.get<{ cart_items: CartItem[] }>('/cart')
         this.items = data.cart_items
       } catch {
         this.items = []
       }
     },
+
     async addItem(productId: number, quantity: number) {
-      const token = localStorage.getItem('userToken')
-      if (!token) throw new Error('No token')
-      await axios.post(
-        `${API_URL}/cart`,
-        { product_id: productId, quantity },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      if (!localStorage.getItem('userToken')) {
+        throw new Error('No token')
+      }
+      await axios.post('/cart', { product_id: productId, quantity })
       await this.fetchCart()
     },
+
     async removeItem(itemId: number) {
-      const token = localStorage.getItem('userToken')
-      if (!token) throw new Error('No token')
-      await axios.delete(
-        `${API_URL}/cart/${itemId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      if (!localStorage.getItem('userToken')) {
+        throw new Error('No token')
+      }
+      await axios.delete(`/cart/${itemId}`)
       await this.fetchCart()
     }
   }

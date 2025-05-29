@@ -4,11 +4,16 @@
     <div v-else>
       <!-- Product Header -->
       <div class="product-header">
-        <img :src="product.imatge_url || '/img/no-imatge.jpg'" alt="Imatge del producte" class="product-image-header" />
+        <img
+          :src="getImageUrl(product.imatge_url)"
+          alt="Imatge del producte"
+          class="product-image-header"
+        />
         <div class="product-info">
           <h1 class="product-title">{{ product.nom }}</h1>
           <p class="product-summary">
-            Has comprat aquest producte <strong>{{ purchaseCount }}</strong> vegades i has valorat-lo <strong>{{ reviewCount }}</strong> vegades.
+            Has comprat aquest producte <strong>{{ purchaseCount }}</strong> vegades
+            i has valorat-lo <strong>{{ reviewCount }}</strong> vegades.
           </p>
         </div>
       </div>
@@ -17,7 +22,12 @@
       <div v-if="pendingItems.length > 0" class="review-form-container">
         <form @submit.prevent="submitReview" class="review-form">
           <label>ID Item Reserva:</label>
-          <input type="text" v-model="reserveItemId" readonly class="readonly-input full-width" />
+          <input
+            type="text"
+            v-model="reserveItemId"
+            readonly
+            class="readonly-input full-width"
+          />
 
           <label>Puntuació de producte:</label>
           <select v-model.number="rating" class="full-width">
@@ -28,7 +38,13 @@
           <textarea v-model="comment" rows="3" class="full-width"></textarea>
 
           <label>Puja fitxers:</label>
-          <input type="file" multiple accept="image/*,video/*" @change="handleFiles" class="full-width" />
+          <input
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            @change="handleFiles"
+            class="full-width"
+          />
 
           <!-- Valoració de la botiga -->
           <h2>Valora la botiga</h2>
@@ -60,7 +76,8 @@
             </div>
             <p class="comment">{{ rev.comment }}</p>
             <small class="byline">
-              <strong>{{ rev.reviewer_name }}</strong> – {{ formatDate(rev.created_at) }}
+              <strong>{{ rev.reviewer_name }}</strong> –
+              {{ formatDate(rev.created_at) }}
             </small>
           </div>
         </div>
@@ -73,110 +90,135 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import { defineProps, ref, onMounted, computed } from 'vue'
+import axios from 'axios'
+
+// 📌 Agafa la URL del backend injectada per Vite
+const BACKEND = import.meta.env.VITE_BACKEND_URL!
 
 // Props
-const props = defineProps<{ productId: number }>();
+const props = defineProps<{ productId: number }>()
 
 // State
-const loading = ref(true);
-const product = ref<any>(null);
-const orders = ref<any[]>([]);
-const userReviews = ref<any[]>([]);
-const reviewsList = ref<any[]>([]);
+const loading = ref(true)
+const product = ref<any>({})
+const orders = ref<any[]>([])
+const userReviews = ref<any[]>([])
+const reviewsList = ref<any[]>([])
 
-const reserveItemId = ref<string>('');
-const rating = ref(5);
-const comment = ref('');
-const files = ref<File[]>([]);
-const storeAmbient = ref(5);
-const storePersonal = ref(5);
-const storeRecollida = ref(5);
-const error = ref('');
+const reserveItemId = ref<string>('')
+const rating = ref(5)
+const comment = ref('')
+const files = ref<File[]>([])
+const storeAmbient = ref(5)
+const storePersonal = ref(5)
+const storeRecollida = ref(5)
+const error = ref('')
 
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
-axios.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('userToken')}`;
+// Axios ja porta baseURL i Authorization (definits a main.ts)
+axios.defaults.headers.common['Authorization'] =
+  `Bearer ${localStorage.getItem('userToken')}`
 
 // Helpers
 function getReserveItems(order: any): any[] {
-  return order.reserve_items ?? order.reserve?.reserve_items ?? [];
+  return order.reserve_items ?? order.reserve?.reserve_items ?? []
 }
 
-// Computed lists
+// Filtrar ítems per a reviews pendents
 const reserveItems = computed(() =>
   orders.value
     .filter(o => o.status === 'completed')
     .flatMap(o => getReserveItems(o))
-    .filter((ri: any) => ri.product_id === props.productId)
-);
+    .filter(ri => ri.product_id === props.productId)
+)
 
 const pendingItems = computed(() =>
-  reserveItems.value.filter(ri =>
-    !userReviews.value.some(r => r.reserve_item_id === ri.id)
+  reserveItems.value.filter(
+    ri => !userReviews.value.some(r => r.reserve_item_id === ri.id)
   )
-);
+)
 
-const purchaseCount = computed(() => reserveItems.value.length);
+const purchaseCount = computed(() => reserveItems.value.length)
 const reviewCount = computed(() =>
   userReviews.value.filter(r =>
     reserveItems.value.some(ri => ri.id === r.reserve_item_id)
   ).length
-);
+)
 
-// Fetch data
+// Obtenir dades de l'API
 async function fetchData() {
-  loading.value = true;
+  loading.value = true
   try {
     const [prodRes, ordRes, revUserRes, revProdRes] = await Promise.all([
       axios.get(`/productes/${props.productId}`),
       axios.get('/my-orders'),
       axios.get('/my-reviews'),
       axios.get(`/productes/${props.productId}/reviews`)
-    ]);
-    product.value = prodRes.data;
-    orders.value = ordRes.data || [];
-    userReviews.value = revUserRes.data || [];
-    reviewsList.value = revProdRes.data || [];
-    reserveItemId.value = pendingItems.value.length > 0 ? String(pendingItems.value[0].id) : '';
-  } catch (e) {
-    console.error(e);
-    error.value = 'Error carregant dades.';
+    ])
+    product.value = prodRes.data
+    orders.value = ordRes.data || []
+    userReviews.value = revUserRes.data || []
+    reviewsList.value = revProdRes.data || []
+
+    reserveItemId.value =
+      pendingItems.value.length > 0
+        ? String(pendingItems.value[0].id)
+        : ''
+  } catch (e: any) {
+    console.error(e)
+    error.value = 'Error carregant dades.'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 function handleFiles(e: Event) {
-  const t = e.target as HTMLInputElement;
-  files.value = t.files ? Array.from(t.files) : [];
+  const target = e.target as HTMLInputElement
+  files.value = target.files ? Array.from(target.files) : []
 }
 
+// Enviar review
 async function submitReview() {
-  error.value = '';
-  if (!reserveItemId.value) return;
-  const form = new FormData();
-  form.append('reserveItemId', reserveItemId.value);
-  form.append('rating', String(rating.value));
-  form.append('comment', comment.value);
-  form.append('store_ambient', String(storeAmbient.value));
-  form.append('store_personal', String(storePersonal.value));
-  form.append('store_recollida', String(storeRecollida.value));
-  files.value.forEach(f => form.append('files[]', f));
+  if (!reserveItemId.value) return
+  error.value = ''
+  const form = new FormData()
+  form.append('reserveItemId', reserveItemId.value)
+  form.append('rating', String(rating.value))
+  form.append('comment', comment.value)
+  form.append('store_ambient', String(storeAmbient.value))
+  form.append('store_personal', String(storePersonal.value))
+  form.append('store_recollida', String(storeRecollida.value))
+  files.value.forEach(f => form.append('files[]', f))
+
   try {
-    await axios.post('/reviews', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-    await fetchData();
+    await axios.post('/reviews', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    await fetchData()
   } catch (e: any) {
-    error.value = e.response?.data?.error || 'Error enviant review';
+    error.value = e.response?.data?.error || 'Error enviant review'
   }
 }
 
-onMounted(fetchData);
+onMounted(fetchData)
 
-// Format date for display
+// Format de data per a display
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
+
+// Genera la URL completa de la imatge
+function getImageUrl(path: string | null): string {
+  if (!path) return '/img/no-imatge.jpg'
+  // si ja és URL completa, la retornem
+  if (path.startsWith('http')) return path
+  // altrament la prefixem amb BACKEND
+  return `${BACKEND}${path}`
 }
 </script>
 

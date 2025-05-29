@@ -86,10 +86,13 @@ async function handleSubmit() {
   try {
     const res = await axios.post('/contacte', { ...form })
     alert(res.data.message)
-    // Netejar
-    form.name = form.email = form.subject = form.message = ''
+    // Neteja el formulari
+    form.name = ''
+    form.email = ''
+    form.subject = ''
+    form.message = ''
   } catch (err: any) {
-    console.error(err)
+    console.error('Error enviant el formulari de contacte:', err)
     alert('Ho sentim, hi ha hagut un error. Torna-ho a provar més tard.')
   } finally {
     submitting.value = false

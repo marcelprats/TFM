@@ -4,7 +4,8 @@
     
     <!-- Missatge informatiu en cas de tenir un número base (checkout recent) -->
     <p v-if="baseOrderNumber" class="info">
-      Les ordres mostrades corresponen al checkout amb base: <strong>{{ baseOrderNumber }}</strong>
+      Les ordres mostrades corresponen al checkout amb base:
+      <strong>{{ baseOrderNumber }}</strong>
     </p>
     
     <div v-if="filteredOrders.length === 0" class="no-orders">
@@ -12,28 +13,51 @@
     </div>
     
     <div v-else class="orders-list">
-      <div v-for="order in filteredOrders" :key="order.id" class="order-card">
+      <div
+        v-for="order in filteredOrders"
+        :key="order.id"
+        class="order-card"
+      >
         <div class="order-header">
           <h2 class="order-number">Comanda {{ order.order_number }}</h2>
-          <p class="order-date"><strong>Data:</strong> {{ formatDate(order.created_at) }}</p>
-          <p class="order-total"><strong>Total:</strong> {{ formatPrice(order.total_amount) }}</p>
-          <p class="order-status"><strong>Estat:</strong> {{ order.status }}</p>
+          <p class="order-date">
+            <strong>Data:</strong> {{ formatDate(order.created_at) }}
+          </p>
+          <p class="order-total">
+            <strong>Total:</strong> {{ formatPrice(order.total_amount) }}
+          </p>
+          <p class="order-status">
+            <strong>Estat:</strong> {{ order.status }}
+          </p>
         </div>
-        <!-- Si l'ordre té la reserva amb els ítems, es mostren els productes reservats -->
-        <div v-if="order.reserve && order.reserve.reserve_items && order.reserve.reserve_items.length" class="order-products">
+
+        <div
+          v-if="order.reserve?.reserve_items?.length"
+          class="order-products"
+        >
           <h3>Productes</h3>
           <ul>
-            <li v-for="item in order.reserve.reserve_items" :key="item.id">
-              {{ item.product.nom }} – Quantitat: {{ item.quantity }} – Preu Unitari: {{ formatPrice(item.reserved_price) }}
+            <li
+              v-for="item in order.reserve.reserve_items"
+              :key="item.id"
+            >
+              {{ item.product.nom }} – Quantitat: {{ item.quantity }}
+              – Preu Unitari: {{ formatPrice(item.reserved_price) }}
             </li>
           </ul>
         </div>
-        <!-- Accions per veure el tiquet i el resum de la comanda -->
+
         <div class="order-actions">
-          <router-link :to="`/order-confirmation/${order.id}`" class="btn ticket-btn">
+          <router-link
+            :to="`/order-confirmation/${order.id}`"
+            class="btn ticket-btn"
+          >
             Veure Tiquet
           </router-link>
-          <router-link :to="`/order-summary/${order.id}`" class="btn summary-btn">
+          <router-link
+            :to="`/order-summary/${order.id}`"
+            class="btn summary-btn"
+          >
             Veure Resum
           </router-link>
         </div>
@@ -43,57 +67,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
-import { useRoute } from 'vue-router';
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
+import { useRoute } from 'vue-router'
 
-const API_URL = 'http://127.0.0.1:8000/api';
-const orders = ref<any[]>([]);
-const route = useRoute();
+const orders = ref<any[]>([])
+const route = useRoute()
 
 /** Carrega totes les comandes de l'usuari */
 async function loadOrders() {
   try {
-    const token = localStorage.getItem("userToken");
-    const response = await axios.get(`${API_URL}/orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    orders.value = response.data;
+    const response = await axios.get('/orders')
+    orders.value = response.data
   } catch (error) {
-    console.error("Error carregant les comandes:", error);
+    console.error('Error carregant les comandes:', error)
   }
 }
 
-onMounted(() => {
-  loadOrders();
-});
+onMounted(loadOrders)
 
-/** Extreiem el número d'ordre base del query parameter (ex: ?base=ORD-0000000001) */
-const baseOrderNumber = computed(() => {
-  return route.query.base ? route.query.base.toString() : '';
-});
+/** Número d'ordre base passat per query parameter */
+const baseOrderNumber = computed(() =>
+  route.query.base ? String(route.query.base) : ''
+)
 
-/** Si es passa baseOrderNumber, filtrem només les ordres que comencen amb aquest valor.
- *  Si no hi ha aquest valor, es mostren totes.
- */
+/** Filtra per baseOrderNumber o mostra totes */
 const filteredOrders = computed(() => {
-  if (!baseOrderNumber.value) return orders.value;
+  if (!baseOrderNumber.value) return orders.value
   return orders.value.filter(order =>
     order.order_number.startsWith(baseOrderNumber.value)
-  );
-});
+  )
+})
 
-/** Funció per formatar preus */
-function formatPrice(price: number | string): string {
-  const p = typeof price === "number" ? price : parseFloat(price);
-  if (isNaN(p)) return "No disponible";
-  return p.toFixed(2) + " €";
+/** Format de preus */
+function formatPrice(price: number|string): string {
+  const p = typeof price === 'number' ? price : parseFloat(price)
+  return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €'
 }
 
-/** Funció per formatar dates */
+/** Format de dates */
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? '' : d.toLocaleString();
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? '' : d.toLocaleString()
 }
 </script>
 

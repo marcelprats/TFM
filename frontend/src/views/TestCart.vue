@@ -4,11 +4,22 @@
     <form @submit.prevent="handleAddItem">
       <div>
         <label for="productId">Product ID:</label>
-        <input type="number" id="productId" v-model.number="productId" required />
+        <input
+          type="number"
+          id="productId"
+          v-model.number="productId"
+          required
+        />
       </div>
       <div>
         <label for="quantity">Quantitat:</label>
-        <input type="number" id="quantity" v-model.number="quantity" required min="1" />
+        <input
+          type="number"
+          id="quantity"
+          v-model.number="quantity"
+          required
+          min="1"
+        />
       </div>
       <button type="submit">Afegir al Carret</button>
     </form>
@@ -22,43 +33,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import axios from 'axios';
+import { ref } from 'vue'
+import axios from 'axios'
 
-const API_URL = 'http://127.0.0.1:8000/api';
-
-const productId = ref<number>(0);
-const quantity = ref<number>(1);
-const cart = ref<any>(null);
+const productId = ref<number>(0)
+const quantity = ref<number>(1)
+const cart = ref<any>(null)
 
 async function handleAddItem() {
-  const token = localStorage.getItem('userToken');
   try {
-    const response = await axios.post(`${API_URL}/cart`, {
+    await axios.post('/cart', {
       product_id: productId.value,
       quantity: quantity.value,
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    alert('Producte afegit al carret!');
-    console.log('Carret actualitzat:', response.data);
+    })
+    alert('Producte afegit al carret!')
   } catch (error) {
-    console.error('Error afegint al carret:', error);
-    alert('Error afegint al carret');
+    console.error('Error afegint al carret:', error)
+    alert('Error afegint al carret')
   }
 }
 
 async function loadCart() {
-  const token = localStorage.getItem('userToken');
   try {
-    const response = await axios.get(`${API_URL}/cart`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    cart.value = response.data;
-    console.log('Carret carregat:', cart.value);
+    const response = await axios.get('/cart')
+    cart.value = response.data
   } catch (error) {
-    console.error('Error carregant el carret:', error);
-    alert('Error carregant el carret');
+    console.error('Error carregant el carret:', error)
+    alert('Error carregant el carret')
   }
 }
 </script>

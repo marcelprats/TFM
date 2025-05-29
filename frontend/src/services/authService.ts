@@ -1,87 +1,89 @@
+// src/services/authService.ts
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:8000/api";
+// L’arrel del teu Laravel (sense “/api”)
+const ROOT = import.meta.env.VITE_BACKEND_URL || "";
 
-// Registra un nou usuari (comprador)
-export const registerUser = async (name: string, email: string, password: string) => {
-  const response = await axios.post(`${API_URL}/register`, {
+// ─── Registra un nou usuari (comprador) ─────────────────────────
+export const registerUser = async (
+  name: string,
+  email: string,
+  password: string
+) => {
+  const response = await axios.post("/register", { name, email, password });
+  return response.data;
+};
+
+// ─── Registra un nou venedor ────────────────────────────────────
+export const registerVendor = async (
+  name: string,
+  email: string,
+  password: string
+) => {
+  console.log("Dades enviades a /register-vendor:", {
     name,
     email,
     password,
   });
-  return response.data;
-};
-
-// Registra un nou venedor
-export const registerVendor = async (name: string, email: string, password: string) => {
-  console.log("Dades enviades a /register-vendor:", { name, email, password });
   try {
-    const response = await axios.post(`${API_URL}/register-vendor`, {
-      name: String(name),
-      email: String(email),
-      password: String(password),
+    const response = await axios.post("/register-vendor", {
+      name,
+      email,
+      password,
     });
     return response.data;
   } catch (error: any) {
     console.error("Error en el registre:", error.response?.data || error.message);
-    return { success: false, message: error.response?.data?.message || "Error desconegut" };
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error desconegut",
+    };
   }
 };
 
-// Funció comuna per fer login, diferenciant si és comprador o venedor
+// ─── Login (comprador o venedor) ─────────────────────────────────
 export const loginUser = async (
   email: string,
   password: string,
   isVendor: boolean
-): Promise<any> => {
+) => {
   try {
-    const response = await axios.post(`${API_URL}/login`, {
+    // 1) Primer, demana el CSRF cookie perquè Sanctum pugui validar el POST
+    await axios.get(`${ROOT}/sanctum/csrf-cookie`);
+
+    // 2) Ara sí, fes el login (baseURL ja apunta a `${ROOT}/api`)
+    const response = await axios.post("/login", {
       email,
       password,
       is_vendor: isVendor,
     });
 
-    if (response.data && response.data.token) {
-      const token = response.data.token;
-      // Desa el token al localStorage
+    const { token, user, role } = response.data;
+    if (token) {
       localStorage.setItem("userToken", token);
-      // Desa les dades de l'usuari
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      // Desa el tipus d'usuari: "vendor" o "user"
-      localStorage.setItem(
-        "userType",
-        response.data.role || (isVendor ? "vendor" : "user")
-      );
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("userType", role || (isVendor ? "vendor" : "user"));
 
-      // Configura Axios perquè enviï el token
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      // Emetem l'event per notificar els listeners (footer, etc.)
       window.dispatchEvent(new Event("authChange"));
     }
 
-    return response.data.user;
+    return user;
   } catch (error: any) {
     console.error("Error en loginUser:", error.response?.data || error.message);
     throw error;
   }
 };
 
-// Comprova si l'usuari està autenticat
-export const isLoggedIn = () => {
-  return !!localStorage.getItem("userToken");
-};
+// ─── Estats i dades d’usuari ────────────────────────────────────
+export const isLoggedIn = (): boolean => !!localStorage.getItem("userToken");
 
-// Obté les dades de l'usuari autenticat
 export const fetchUser = async () => {
   const token = localStorage.getItem("userToken");
   if (!token) return null;
 
   try {
-    const response = await axios.get(`${API_URL}/user`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
+    const response = await axios.get("/user");
     localStorage.setItem("user", JSON.stringify(response.data));
     return response.data;
   } catch {
@@ -89,35 +91,29 @@ export const fetchUser = async () => {
   }
 };
 
-// Retorna l'usuari si està guardat en localStorage
 export const getUser = () => {
   const user = localStorage.getItem("user");
   return user ? JSON.parse(user) : null;
 };
 
-// Retorna quin tipus d'usuari és
-export const getUserType = () => {
-  return localStorage.getItem("userType") || "user";
-};
+export const getUserType = (): string =>
+  localStorage.getItem("userType") || "user";
 
-// Tanca sessió i elimina el token
 export const logout = () => {
   localStorage.removeItem("userToken");
   localStorage.removeItem("user");
   localStorage.removeItem("userType");
-
-  // Emetem l'event per notificar els listeners
+  delete axios.defaults.headers.common["Authorization"];
   window.dispatchEvent(new Event("authChange"));
 };
 
-// Actualitza les dades de l'usuari
-export async function updateUser(userData: { name: string; email: string }) {
+// ─── Actualitza dades d’usuari ──────────────────────────────────
+export async function updateUser(userData: {
+  name: string;
+  email: string;
+}) {
   try {
-    const token = localStorage.getItem("userToken");
-    const response = await axios.put(`${API_URL}/user`, userData, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
+    const response = await axios.put("/user", userData);
     localStorage.setItem("user", JSON.stringify(response.data));
     return { success: true, user: response.data };
   } catch (error) {
@@ -126,39 +122,35 @@ export async function updateUser(userData: { name: string; email: string }) {
   }
 }
 
-
+// ─── Productes ──────────────────────────────────────────────────
 export const fetchProducts = async () => {
   try {
-    const response = await axios.get(`${API_URL}/productes-tots`);
-
+    const response = await axios.get("/productes-tots");
     if (!Array.isArray(response.data)) {
-      console.error("Error: L'API no retorna una llista de productes", response.data);
+      console.error("L'API no retorna una llista de productes", response.data);
       return [];
     }
-
-    console.log("Productes rebuts:", response.data); // Depuració
-
-    return response.data.map(product => ({
+    return response.data.map((product: any) => ({
       id: product.id,
       name: product.nom,
       description: product.descripcio,
       price: parseFloat(product.preu) || 0,
-      store: product.botiga ? { id: product.botiga.id, name: product.botiga.nom } : null,
-      vendor: product.vendor ? { id: product.vendor.id, name: product.vendor.name } : null
+      store: product.botiga
+        ? { id: product.botiga.id, name: product.botiga.nom }
+        : null,
+      vendor: product.vendor
+        ? { id: product.vendor.id, name: product.vendor.name }
+        : null,
     }));
-    
-
   } catch (error) {
     console.error("Error obtenint productes:", error);
     return [];
   }
 };
 
-
-
 export const fetchProductById = async (id: string) => {
   try {
-    const response = await axios.get(`${API_URL}/productes/${id}`);
+    const response = await axios.get(`/productes/${id}`);
     return response.data;
   } catch (error) {
     console.error("Error obtenint el producte:", error);
@@ -168,7 +160,7 @@ export const fetchProductById = async (id: string) => {
 
 export const fetchVendorById = async (id: string) => {
   try {
-    const response = await axios.get(`${API_URL}/vendors/${id}`);
+    const response = await axios.get(`/vendors/${id}`);
     return response.data;
   } catch (error) {
     console.error("Error obtenint el venedor:", error);

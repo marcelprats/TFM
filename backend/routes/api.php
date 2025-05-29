@@ -19,7 +19,7 @@ use App\Http\Controllers\ReviewsController;
 | RUTES D'AUTENTICACIÓ (Clients i Vendors)
 |--------------------------------------------------------------------------
 */
-Route::post('/register',        [AuthController::class, 'register']);
+Route::post('/register',        [AuthController::class, 'registerUser']);
 Route::post('/register-vendor', [AuthController::class, 'registerVendor']);
 Route::post('/login',           [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
@@ -44,6 +44,9 @@ Route::post('/contacte',        [ContactController::class, 'submit']);
 Route::get('/reviews',          [ReviewsController::class, 'index']);
 Route::get('/productes/{productId}/status', [ReviewsController::class, 'status']);
 Route::get('/productes/{productId}/reviews',   [ReviewsController::class, 'byProduct']);
+Route::get('/productes/{productId}/store-summary', [ReviewsController::class, 'storeSummary']);
+Route::get('/botigues/{botigaId}/store-summary', [ReviewsController::class, 'storeSummary']);
+Route::get('/botigues/{botigaId}/reviews',       [ReviewsController::class, 'byStore']);
 
 /*
 |--------------------------------------------------------------------------

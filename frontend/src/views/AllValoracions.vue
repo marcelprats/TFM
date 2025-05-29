@@ -17,8 +17,17 @@
           </small>
           <div v-if="rev.files && rev.files.length" class="media-gallery">
             <div v-for="(f, idx) in rev.files" :key="idx">
-              <img v-if="f.type.startsWith('image')" :src="f.url" class="media-image" />
-              <video v-else-if="f.type.startsWith('video')" controls class="media-video">
+              <img
+                v-if="f.type.startsWith('image')"
+                :src="f.url"
+                class="media-image"
+                alt="imatge adjunta"
+              />
+              <video
+                v-else-if="f.type.startsWith('video')"
+                controls
+                class="media-video"
+              >
                 <source :src="f.url" :type="f.type" />
               </video>
             </div>
@@ -32,38 +41,43 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-export default defineComponent({
-  name: 'AllValoracions',
-  setup() {
-    const loading = ref(true)
-    const reviews = ref<any[]>([])
+// Estat reactiu
+const loading = ref(true)
+const reviews = ref<any[]>([])
 
-    axios.defaults.baseURL = '/api'
-
-    const fetchAllReviews = async () => {
-      loading.value = true
-      try {
-        const res = await axios.get('/reviews')
-        reviews.value = res.data
-      } catch (e) {
-        console.error('Error carregant totes les valoracions:', e)
-      } finally {
-        loading.value = false
-      }
-    }
-
-    onMounted(fetchAllReviews)
-
-    const formatDate = (dt: string) =>
-      new Date(dt).toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-    return { loading, reviews, formatDate }
+/**
+ * Crida a l'API per recuperar totes les valoracions.
+ * Utilitza axios amb el baseURL definit a main.ts.
+ */
+async function fetchAllReviews() {
+  loading.value = true
+  try {
+    const res = await axios.get('/reviews')
+    reviews.value = res.data
+  } catch (err) {
+    console.error('Error carregant totes les valoracions:', err)
+  } finally {
+    loading.value = false
   }
-})
+}
+
+/**
+ * Dona format a una data ISO a DD/MM/YYYY en català.
+ */
+function formatDate(dt: string): string {
+  return new Date(dt).toLocaleDateString('ca-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+// Quan el component es munta, carreguem les valoracions
+onMounted(fetchAllReviews)
 </script>
 
 <style scoped>

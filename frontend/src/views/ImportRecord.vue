@@ -38,31 +38,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
 
-const route = useRoute();
-const router = useRouter();
-const id = route.params.id;
-const record = ref(null);
-const products = ref<any[]>([]);
-const API_URL = 'http://127.0.0.1:8000/api';
+const route = useRoute()
+const router = useRouter()
+const id = String(route.params.id)
+
+const record = ref<any>(null)
+const products = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/vendor/importacions/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    // Suposem que el controlador API retorna un JSON amb:
-    // { importRecord: {…}, products: [ … ] }
-    record.value = response.data.importRecord;
-    products.value = response.data.products;
+    const response = await axios.get(`/vendor/importacions/${id}`)
+    // Suposem que l'API retorna { importRecord, products }
+    record.value   = response.data.importRecord
+    products.value = response.data.products
   } catch (error) {
-    console.error("Error carregant el registre d'importació", error);
+    console.error('Error carregant el registre d’importació:', error)
   }
-});
+})
 </script>
 
 <style scoped>

@@ -162,27 +162,32 @@ const router = useRouter()
 
 // ─── Stores + mapa ───────────────────────────────────────
 const mapRef = ref<any>(null)
-const filterInput = ref<HTMLInputElement|null>(null)
-const stores = ref<{id:number,nom:string,latitude:number,longitude:number}[]>([])
+const filterInput = ref<HTMLInputElement | null>(null)
+const stores = ref<{ id: number; nom: string; latitude: number; longitude: number }[]>([])
 const filter = ref('')
+
 onMounted(async () => {
   const res = await axios.get('/botigues')
   stores.value = res.data
-  // ajustar bound
-  const coords = stores.value.map(s => [s.latitude, s.longitude] as [number,number])
-  setTimeout(() => mapRef.value?.fitBounds(coords, { padding:[40,40] }), 200)
+  const coords = stores.value.map(s => [s.latitude, s.longitude] as [number, number])
+  setTimeout(() => mapRef.value?.fitBounds(coords, { padding: [40, 40] }), 200)
 })
+
 const filteredStores = computed(() =>
-  stores.value.filter(s => s.nom.toLowerCase().includes(filter.value.toLowerCase()))
+  stores.value.filter(s =>
+    s.nom.toLowerCase().includes(filter.value.toLowerCase())
+  )
 )
+
 const suggestions = computed(() =>
   filter.value
     ? filteredStores.value
-      .sort((a,b)=>a.nom.localeCompare(b.nom))
-      .slice(0,50)
+        .sort((a, b) => a.nom.localeCompare(b.nom))
+        .slice(0, 50)
     : []
 )
-function onSuggestionClick(s:typeof stores.value[0]) {
+
+function onSuggestionClick(s: typeof stores.value[0]) {
   filter.value = ''
   filterInput.value?.classList.add('highlight')
   setTimeout(() => filterInput.value?.classList.remove('highlight'), 800)
@@ -200,27 +205,30 @@ const homeResultsSorted = computed(() => {
   if (!term) return []
   return allProducts.value
     .filter(p => p.nom.toLowerCase().includes(term))
-    .sort((a,b) => a.nom.localeCompare(b.nom))
+    .sort((a, b) => a.nom.localeCompare(b.nom))
 })
 
-function goToProducte(id:number) {
+function goToProducte(id: number) {
   showResults.value = false
   router.push(`/producte/${id}`)
 }
 
 // scroll horitzontal
-const cardsContainer = ref<HTMLElement|null>(null)
-function scroll(dir:number) {
+const cardsContainer = ref<HTMLElement | null>(null)
+function scroll(dir: number) {
   const c = cardsContainer.value
   if (!c) return
-  c.scrollBy({ left: c.clientWidth * 0.8 * dir, behavior:'smooth' })
+  c.scrollBy({ left: c.clientWidth * 0.8 * dir, behavior: 'smooth' })
 }
 
 // utilitats imatge
-const BACKEND_URL = 'http://localhost:8000'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 const DEFAULT_IMAGE = '/img/no-imatge.jpg'
-function getImageSrc(path:string|null) {
-  return path ? (path.startsWith('/') ? BACKEND_URL+path : BACKEND_URL+'/uploads/'+path) : DEFAULT_IMAGE
+function getImageSrc(path: string | null) {
+  if (!path) return DEFAULT_IMAGE
+  return path.startsWith('/')
+    ? BACKEND_URL + path
+    : `${BACKEND_URL}/${path}`
 }
 
 // ─── Últims productes per al carousel ─────────────────────
@@ -228,8 +236,9 @@ const latestProducts = ref<any[]>([])
 onMounted(async () => {
   const res = await axios.get('/productes')
   latestProducts.value = res.data
-    .slice().sort((a,b)=>b.id-a.id)
-    .slice(0,25)
+    .slice()
+    .sort((a, b) => b.id - a.id)
+    .slice(0, 25)
 })
 
 // ─── Control per amagar horitzontal i mostrar vertical ─────

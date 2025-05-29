@@ -11,23 +11,25 @@ import { defineProps, computed } from 'vue'
 
 interface Product {
   nom: string
-  preu?: number|string
-  imatge?: string|null
+  preu?: number | string
+  imatge?: string | null
 }
 
+// URL base per a fitxers pujavăls
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
 const DEFAULT_IMAGE = '/img/no-imatge.jpg'
-const BACKEND_URL   = 'http://localhost:8000'
 
-function getImageSrc(path:string|null|undefined):string {
+function getImageSrc(path: string | null | undefined): string {
   if (!path) return DEFAULT_IMAGE
   if (path.startsWith('/uploads/')) return BACKEND_URL + path
   if (path.startsWith(BACKEND_URL)) return path
   return BACKEND_URL + '/uploads/' + path
 }
 
-const props = defineProps<{ product:Product }>()
-const imageSrc      = computed(() => getImageSrc(props.product.imatge))
-const formattedPrice= computed(() => {
+const props = defineProps<{ product: Product }>()
+
+const imageSrc = computed(() => getImageSrc(props.product.imatge))
+const formattedPrice = computed(() => {
   const n = Number(props.product.preu)
   return isNaN(n) ? '—' : n.toFixed(2) + ' €'
 })

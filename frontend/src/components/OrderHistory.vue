@@ -48,15 +48,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
 import { useRouter } from 'vue-router';
 import FiltersBar from './orders/FiltersBar.vue';
 import MobileOrdersList from './orders/MobileOrdersList.vue';
 import DesktopOrdersTable from './orders/DesktopOrdersTable.vue';
 import Pagination from './orders/Pagination.vue';
+import axios from 'axios';
 
 const router = useRouter();
-const API_URL = 'http://127.0.0.1:8000/api';
 
 const orders = ref<any[]>([]);
 const loading = ref(false);
@@ -79,10 +78,7 @@ window.addEventListener('resize', () => {
 async function loadOrders() {
   loading.value = true;
   try {
-    const token = localStorage.getItem('userToken');
-    const { data } = await axios.get(`${API_URL}/my-orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const { data } = await axios.get('/my-orders');
     orders.value = data;
   } catch {
     error.value = 'Error carregant l’historial de comandes.';
@@ -90,11 +86,12 @@ async function loadOrders() {
     loading.value = false;
   }
 }
+
 onMounted(loadOrders);
 
 const filtered = computed(() =>
   orders.value.filter(order => {
-    const orderNum = order.order_number.toLowerCase();
+    const orderNum = String(order.order_number).toLowerCase();
     const numeric = orderNum.replace(/^ord-/, '');
     const q = searchQuery.value.toLowerCase();
     const bySearch = orderNum.includes(q) || numeric.includes(q);
@@ -117,8 +114,8 @@ const filtered = computed(() =>
 
 const sorted = computed(() =>
   [...filtered.value].sort((a, b) => {
-    let fa = a[sortField.value];
-    let fb = b[sortField.value];
+    let fa: any = a[sortField.value];
+    let fb: any = b[sortField.value];
     if (sortField.value === 'total_amount') {
       fa = parseFloat(fa);
       fb = parseFloat(fb);

@@ -195,8 +195,6 @@ const router = useRouter();
 const emit = defineEmits(['close', 'refresh']);
 const props = defineProps<{ botigues: { id: number; nom: string }[] }>();
 
-const API_URL = 'http://127.0.0.1:8000/api';
-
 const currentStep = ref(1);
 const form = ref({
   botiga_id: '',
@@ -223,9 +221,7 @@ const steps = [
 onMounted(async () => {
   try {
     const token = localStorage.getItem('userToken');
-    const response = await axios.get(`${API_URL}/categories`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await axios.get(`/categories`);
     categories.value = response.data;
   } catch {
     console.warn("No s'han pogut carregar les categories");
@@ -396,9 +392,8 @@ function handleUpload() {
     console.log(key, value);
   }
   const token = localStorage.getItem('userToken');
-  axios.post(`${API_URL}/vendor/import-productes`, formData, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  axios.post(`/vendor/import-productes`, formData, 
+  )
     .then(res => {
       result.value = res.data;
       currentStep.value = 5;

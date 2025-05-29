@@ -7,7 +7,7 @@ const productImage = ref("");
 const storeImage = ref("");
 
 // Funció per comprovar si una imatge existeix
-const imageExists = (url: string) => {
+const imageExists = (url: string): Promise<boolean> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = url;
@@ -17,15 +17,19 @@ const imageExists = (url: string) => {
 };
 
 // Funció per obtenir la imatge del producte
-const getImageUrl = async (productId: number) => {
+const getImageUrl = async (productId: number): Promise<string> => {
   const imagePath = new URL(`/img/img_${productId}.jpg`, import.meta.url).href;
-  return (await imageExists(imagePath)) ? imagePath : new URL(`/img/no-imatge.jpg`, import.meta.url).href;
+  return (await imageExists(imagePath))
+    ? imagePath
+    : new URL(`/img/no-imatge.jpg`, import.meta.url).href;
 };
 
 // Funció per obtenir la imatge de botigues
-const getImagePath = async (imageName: string) => {
+const getImagePath = async (imageName: string): Promise<string> => {
   const imagePath = new URL(`/img/${imageName}`, import.meta.url).href;
-  return (await imageExists(imagePath)) ? imagePath : new URL("/img/no-imatge.jpg", import.meta.url).href;
+  return (await imageExists(imagePath))
+    ? imagePath
+    : new URL("/img/no-imatge.jpg", import.meta.url).href;
 };
 
 // Assignem les imatges correctament quan es carrega la pàgina

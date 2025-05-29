@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import axios from "axios";
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 
-const API_URL = "http://127.0.0.1:8000/api";
-const venedors = ref([]);
+const venedors = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const response = await axios.get(`${API_URL}/vendors`);
-    venedors.value = response.data;
+    const response = await axios.get('/vendors')
+    venedors.value = response.data
   } catch (error) {
-    console.error("Error carregant els venedors:", error);
+    console.error('Error carregant els venedors:', error)
   }
-});
+})
 </script>
+
 
 <template>
   <div class="info-venedors">

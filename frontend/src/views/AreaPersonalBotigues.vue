@@ -1,232 +1,197 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from "vue";
-import { useToast } from 'vue-toastification';
+import { ref, computed, onMounted, nextTick } from "vue";
+import { useToast } from "vue-toastification";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import L from "leaflet";
 import HorarisEditor from "../components/HorarisEditor.vue";
 
-
 const toast = useToast();
-
-const API_URL = "http://127.0.0.1:8000/api/vendor";
-
-const axiosInstance = axios.create({ baseURL: API_URL });
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("userToken");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-const botigues = ref([]);
-const searchQuery = ref("");
 const router = useRouter();
 
-const getDefaultHoraris = () => [
-  { dia: "dilluns", tancat: true, franjes: [] },
-  { dia: "dimarts", tancat: true, franjes: [] },
-  { dia: "dimecres", tancat: true, franjes: [] },
-  { dia: "dijous", tancat: true, franjes: [] },
-  { dia: "divendres", tancat: true, franjes: [] },
-  { dia: "dissabte", tancat: true, franjes: [] },
-  { dia: "diumenge", tancat: true, franjes: [] },
-];
+// Estado
+const botigues = ref<any[]>([]);
+const searchQuery = ref("");
+const deleteBotigaId = ref<number|null>(null);
 
-const showAddModal = ref(false);
-const showEditModal = ref(false);
-const errorMessage = ref("");
+const showAddModal    = ref(false);
+const showEditModal   = ref(false);
+const showDeleteModal = ref(false);
+const errorMessage    = ref("");
+
+// Horaris
+const getDefaultHoraris = () => [
+  { dia: "dilluns",   tancat: true, franjes: [] },
+  { dia: "dimarts",   tancat: true, franjes: [] },
+  { dia: "dimecres",  tancat: true, franjes: [] },
+  { dia: "dijous",    tancat: true, franjes: [] },
+  { dia: "divendres", tancat: true, franjes: [] },
+  { dia: "dissabte",  tancat: true, franjes: [] },
+  { dia: "diumenge",  tancat: true, franjes: [] },
+];
 
 const newBotiga = ref({
   nom: "",
   descripcio: "",
-  latitude: 41.40945396689205,
-  longitude: 2.178125381469727,
+  latitude:  41.40945397,
+  longitude:  2.17812538,
   horaris: getDefaultHoraris(),
 });
 
-const editBotiga = ref(null);
+const editBotiga = ref<any|null>(null);
 
-const formatHoraris = (horarisDB) => {
-  const horaris = getDefaultHoraris();
-  const formatHora = (hora) => hora.slice(0, 5);
-  horarisDB.forEach((h) => {
-    const dia = horaris.find((x) => x.dia === h.dia);
-    if (dia) {
-      dia.tancat = false;
-      dia.franjes.push({
-        obertura: formatHora(h.obertura),
-        tancament: formatHora(h.tancament),
+type HorariDB = { dia:string, obertura:string, tancament:string }[];
+
+function formatHoraris(hdb: HorariDB) {
+  const out = getDefaultHoraris();
+  hdb.forEach(h => {
+    const day = out.find(d => d.dia === h.dia);
+    if (day) {
+      day.tancat = false;
+      day.franjes.push({
+        obertura:  h.obertura.slice(0,5),
+        tancament: h.tancament.slice(0,5),
       });
     }
   });
-  return horaris;
-};
+  return out;
+}
 
-const hores = Array.from({ length: 96 }, (_, i) => {
-  const h = String(Math.floor(i / 4)).padStart(2, "0");
-  const m = String((i % 4) * 15).padStart(2, "0");
-  return `${h}:${m}`;
-});
+// Mapa draggable
+const maps = new Map<string,L.Map>();
+function initMap(id: string, b: any) {
+  nextTick(() => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (maps.has(id)) {
+      maps.get(id)!.remove();
+      maps.delete(id);
+      el.innerHTML = "";
+    }
+    const lat = b.latitude ?? 41.40945;
+    const lng = b.longitude ?? 2.17812;
+    const map = L.map(el).setView([lat,lng],14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    const marker = L.marker([lat,lng],{ draggable:true }).addTo(map);
+    marker.on("dragend", () => {
+      const p = marker.getLatLng();
+      b.latitude  = parseFloat(p.lat.toFixed(8));
+      b.longitude = parseFloat(p.lng.toFixed(8));
+    });
+    setTimeout(() => map.invalidateSize(),200);
+    maps.set(id, map);
+  });
+}
 
-const fetchBotigues = async () => {
-  const res = await axiosInstance.get("/botigues-mes");
-  botigues.value = res.data;
-};
+// CRUD
+async function fetchBotigues() {
+  try {
+    const { data } = await axios.get("/vendor/botigues-mes");
+    botigues.value = data;
+  } catch (e) {
+    console.error("Error carregant botigues:", e);
+    errorMessage.value = "No s'han pogut carregar les botigues.";
+  }
+}
 
 const filteredBotigues = computed(() =>
-  botigues.value.filter((b) =>
+  botigues.value.filter(b =>
     b.nom.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 );
 
-const maps = new Map();
-const initMap = (mapId, botiga) => {
-  nextTick(() => {
-    const el = document.getElementById(mapId);
-    if (!el) return;
-    if (maps.has(mapId)) {
-      maps.get(mapId).remove();
-      maps.delete(mapId);
-      el.innerHTML = "";
-    }
-    const map = L.map(el).setView(
-      [botiga.latitude ?? 41.40945, botiga.longitude ?? 2.17812],
-      14
-    );
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
-    const marker = L.marker(
-      [botiga.latitude ?? 41.40945, botiga.longitude ?? 2.17812],
-      { draggable: true }
-    ).addTo(map);
-    marker.on("dragend", () => {
-      const pos = marker.getLatLng();
-      botiga.latitude = parseFloat(pos.lat.toFixed(8));
-      botiga.longitude = parseFloat(pos.lng.toFixed(8));
-    });
-    setTimeout(() => map.invalidateSize(), 200);
-    maps.set(mapId, map);
-  });
-};
-
-const openEditBotiga = async (botiga) => {
-  editBotiga.value = {
-    ...botiga,
-    latitude: parseFloat(botiga.latitude),
-    longitude: parseFloat(botiga.longitude),
-    horaris: botiga.horaris?.length ? formatHoraris(botiga.horaris) : getDefaultHoraris(),
-  };
-  showEditModal.value = true;
-  await nextTick();
-  initMap("mapEdit", editBotiga.value);
-};
-
-const openAddBotiga = async () => {
+async function openAddBotiga() {
   newBotiga.value = {
-    nom: "",
-    descripcio: "",
-    latitude: 41.40945396689205,
-    longitude: 2.178125381469727,
+    nom: "", descripcio: "",
+    latitude: 41.40945397,
+    longitude: 2.17812538,
     horaris: getDefaultHoraris(),
   };
   showAddModal.value = true;
   await nextTick();
   initMap("mapAdd", newBotiga.value);
-};
+}
 
-const updateBotiga = async () => {
+async function addBotiga() {
   try {
-    const horarisNets = editBotiga.value.horaris
-      .filter(h => !h.tancat || (h.tancat && h.franjes.length > 0)) // només incloem dies vàlids
-      .map(h => ({
-        dia: h.dia,
-        franjes: h.tancat
-          ? [] // tancat = sense franjes
-          : h.franjes.map(f => ({
-              obertura: f.obertura,
-              tancament: f.tancament,
-            }))
-      }));
-
-    const payload = {
-      nom: editBotiga.value.nom,
-      descripcio: editBotiga.value.descripcio,
-      latitude: editBotiga.value.latitude,
-      longitude: editBotiga.value.longitude,
-      horaris: horarisNets
-    };
-
-    await axios.put(`/vendor/botigues/${editBotiga.value.id}`, payload);
-    toast.success('Botiga actualitzada correctament ✅');
-    await fetchBotigues(); // tornar a carregar la llista
-    showEditModal.value = false;
-  } catch (error) {
-    console.error('Error en updateBotiga:', error);
-    toast.error('Error al desar la botiga ❌');
-  }
-};
-
-
-
-const addBotiga = async () => {
-  try {
-    const horarisNets = newBotiga.value.horaris
-      .filter(h => h.franjes.length > 0) // només dies amb franges
-      .map(h => ({
-        dia: h.dia,
-        franjes: h.franjes.map(f => ({
-          obertura: f.obertura,
-          tancament: f.tancament
-        }))
-      }));
-
     const payload = {
       nom: newBotiga.value.nom,
       descripcio: newBotiga.value.descripcio,
       latitude: newBotiga.value.latitude,
       longitude: newBotiga.value.longitude,
-      horaris: horarisNets,
+      horaris: newBotiga.value.horaris
+        .filter(h => h.franjes.length)
+        .map(h=>({ dia: h.dia, franjes: h.franjes }))
     };
-
-    await axiosInstance.post("/botigues", payload);
+    await axios.post("/vendor/botigues", payload);
     toast.success("Botiga afegida correctament ✅");
     showAddModal.value = false;
     await fetchBotigues();
-  } catch (error) {
-    console.error("Error en addBotiga:", error.response?.data || error);
+  } catch (e) {
+    console.error("Error afegint botiga:", e);
     toast.error("Error afegint botiga ❌");
   }
-};
+}
 
+async function openEditBotiga(b: any) {
+  editBotiga.value = {
+    ...b,
+    latitude:  parseFloat(b.latitude),
+    longitude: parseFloat(b.longitude),
+    horaris:   b.horaris?.length ? formatHoraris(b.horaris) : getDefaultHoraris()
+  };
+  showEditModal.value = true;
+  await nextTick();
+  initMap("mapEdit", editBotiga.value);
+}
 
+async function updateBotiga() {
+  if (!editBotiga.value) return;
+  try {
+    const payload = {
+      nom: editBotiga.value.nom,
+      descripcio: editBotiga.value.descripcio,
+      latitude: editBotiga.value.latitude,
+      longitude: editBotiga.value.longitude,
+      horaris: editBotiga.value.horaris
+        .filter((h:any)=>h.franjes.length)
+        .map((h:any)=>({ dia:h.dia, franjes:h.franjes }))
+    };
+    await axios.put(`/vendor/botigues/${editBotiga.value.id}`, payload);
+    toast.success("Botiga actualitzada correctament ✅");
+    showEditModal.value = false;
+    await fetchBotigues();
+  } catch (e) {
+    console.error("Error actualitzant botiga:", e);
+    toast.error("Error al desar la botiga ❌");
+  }
+}
 
-const deleteBotigaId = ref(null);
-const showDeleteModal = ref(false);
-const confirmDeleteBotiga = (id) => {
+function confirmDeleteBotiga(id: number) {
   deleteBotigaId.value = id;
   showDeleteModal.value = true;
-};
-
-const deleteBotiga = async () => {
-  if (deleteBotigaId.value !== null) {
-    try {
-      await axiosInstance.delete(`/botigues/${deleteBotigaId.value}`);
-      showDeleteModal.value = false;
-      fetchBotigues();
-    } catch (error) {
-      errorMessage.value = "Error eliminant botiga.";
-    }
+}
+async function deleteBotiga() {
+  if (deleteBotigaId.value == null) return;
+  try {
+    await axios.delete(`/vendor/botigues/${deleteBotigaId.value}`);
+    showDeleteModal.value = false;
+    await fetchBotigues();
+  } catch (e) {
+    console.error("Error eliminant botiga:", e);
+    errorMessage.value = "Error eliminant botiga.";
   }
-};
+}
 
-const goToProductes = () => {
+// Navegació
+function goToProductes() {
   router.push("/area-personal-productes");
-};
+}
 
 onMounted(fetchBotigues);
 </script>
-
 
 <template>
   <div class="container">

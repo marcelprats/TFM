@@ -60,9 +60,6 @@ const error = ref('');
 const orders = ref<Order[]>([]);
 const reviews = ref<Review[]>([]);
 
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
-axios.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('userToken')}`;
-
 async function fetchData() {
   try {
     const [ordRes, revRes] = await Promise.all([

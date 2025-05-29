@@ -287,9 +287,8 @@ import { useRouter } from 'vue-router'
 import { QrcodeStream } from 'vue3-qrcode-reader'
 
 const router = useRouter()
-const API_URL = 'http://127.0.0.1:8000/api'
 
-// Global state
+// Estats globals
 const showMessageModal = ref(false)
 const messageModalText = ref('')
 const errorMessage = ref('')
@@ -299,23 +298,23 @@ window.addEventListener('resize', () => {
   isMobile.value = window.innerWidth < 768
 })
 
-// Filter state
+// Filtres
 const stores = ref<any[]>([])
 const selectedStoreId = ref('')
 const searchOrderNumber = ref('')
 const showFilters = ref(false)
-const filterStatus = ref('')
+const filterStatus = ref<'pending'|'reserved'|'completed'|'cancelled'|''>('')
 const startDate = ref('')
 const endDate = ref('')
 
-// Orders state
+// Comandes
 const orders = ref<any[]>([])
 const sortField = ref<'order_number'|'total_amount'|'status'|'created_at'>('created_at')
 const sortDirection = ref<'asc'|'desc'>('desc')
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
-// Modals for update & deliver
+// Modals
 const showUpdateModal = ref(false)
 const updateModalOrder = ref<any>(null)
 const selectedAction = ref<'reserve'|'cancel'>('reserve')
@@ -325,11 +324,12 @@ const confirmedProducts = ref<number[]>([])
 const showDeliverModal = ref(false)
 const deliverModalOrder = ref<any>(null)
 
-// Helpers
+// Helpers de format
 function formatPrice(price: number|string) {
   const p = typeof price === 'number' ? price : parseFloat(price as string)
   return isNaN(p) ? 'No disponible' : p.toFixed(2) + ' €'
 }
+
 function changeSort(field: typeof sortField.value) {
   if (sortField.value === field) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -338,12 +338,15 @@ function changeSort(field: typeof sortField.value) {
     sortDirection.value = 'asc'
   }
 }
+
 function getReserveItems(o: any) {
   return o.reserve?.reserve_items || []
 }
 function getLimitedReserveItems(o: any) {
   return getReserveItems(o).slice(0,2)
 }
+
+// Data computada per ordenar i filtrar
 const sortedOrders = computed(() => {
   let f = [...orders.value]
   if (selectedStoreId.value) {
@@ -372,6 +375,7 @@ const sortedOrders = computed(() => {
     return sortDirection.value === 'asc' ? aV - bV : bV - aV
   })
 })
+
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(sortedOrders.value.length / itemsPerPage.value))
 )
@@ -379,12 +383,14 @@ const paginatedOrders = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
   return sortedOrders.value.slice(start, start + itemsPerPage.value)
 })
+
 function prevPage() {
   if (currentPage.value > 1) currentPage.value--
 }
 function nextPage() {
   if (currentPage.value < totalPages.value) currentPage.value++
 }
+
 const badgeClass = (s: string) =>
   ({
     pending: 'badge-pending',
@@ -393,11 +399,11 @@ const badgeClass = (s: string) =>
     cancelled: 'badge-cancelled'
   }[s] || '')
 
-// Loading data
+// Funcions per comunicar amb l'API
 async function loadStores() {
   try {
     const token = localStorage.getItem('userToken')
-    const res = await axios.get(`${API_URL}/botigues-mes`, {
+    const res = await axios.get('/botigues-mes', {
       headers: { Authorization: `Bearer ${token}` }
     })
     stores.value = res.data
@@ -406,11 +412,12 @@ async function loadStores() {
     showMessageModal.value = true
   }
 }
+
 async function loadOrders() {
   loading.value = true
   try {
     const token = localStorage.getItem('userToken')
-    const res = await axios.get(`${API_URL}/vendor/orders`, {
+    const res = await axios.get('/vendor/orders', {
       headers: { Authorization: `Bearer ${token}` }
     })
     orders.value = res.data
@@ -421,7 +428,6 @@ async function loadOrders() {
   }
 }
 
-// Filters
 function toggleFilters() {
   showFilters.value = !showFilters.value
 }
@@ -463,7 +469,7 @@ function onInit(p: Promise<any>) {
   })
 }
 
-// Update status
+// Modals d'actualització i entrega
 function openUpdateModal(o: any) {
   updateModalOrder.value = o
   selectedAction.value = 'reserve'
@@ -473,6 +479,7 @@ function openUpdateModal(o: any) {
 function closeUpdateModal() {
   showUpdateModal.value = false
 }
+
 async function saveOrderStatus() {
   if (selectedAction.value === 'cancel' && !selectedCancelReason.value) {
     messageModalText.value = 'Selecciona motiu de cancel·lació.'
@@ -489,7 +496,7 @@ async function saveOrderStatus() {
   try {
     const token = localStorage.getItem('userToken')
     await axios.put(
-      `${API_URL}/orders/${updateModalOrder.value.id}`,
+      `/orders/${updateModalOrder.value.id}`,
       {
         status,
         cancellation_reason: selectedCancelReason.value || null,
@@ -498,7 +505,6 @@ async function saveOrderStatus() {
       },
       { headers: { Authorization: `Bearer ${token}` } }
     )
-    // Update local state
     updateModalOrder.value.status = status
     const idx = orders.value.findIndex(o => o.id === updateModalOrder.value.id)
     if (idx !== -1) orders.value[idx].status = status
@@ -512,7 +518,6 @@ async function saveOrderStatus() {
   }
 }
 
-// Deliver order
 function openDeliverModal(o: any) {
   deliverModalOrder.value = o
   showDeliverModal.value = true
@@ -520,15 +525,15 @@ function openDeliverModal(o: any) {
 function closeDeliverModal() {
   showDeliverModal.value = false
 }
+
 async function deliverOrder() {
   try {
     const token = localStorage.getItem('userToken')
     await axios.put(
-      `${API_URL}/orders/${deliverModalOrder.value.id}`,
+      `/orders/${deliverModalOrder.value.id}`,
       { status: 'completed' },
       { headers: { Authorization: `Bearer ${token}` } }
     )
-    // Update local state
     deliverModalOrder.value.status = 'completed'
     const idx = orders.value.findIndex(o => o.id === deliverModalOrder.value.id)
     if (idx !== -1) orders.value[idx].status = 'completed'

@@ -191,10 +191,6 @@ import axios from 'axios'
 import { useCartStore } from '../stores/cartStore'
 import { useToast } from 'vue-toastification'
 
-const API_URL       = axios.defaults.baseURL || 'http://127.0.0.1:8000/api'
-const BACKEND_URL   = API_URL.replace(/\/api\/?$/, '')
-const DEFAULT_IMAGE = '/img/no-imatge.jpg'
-
 const router    = useRouter()
 const toast     = useToast()
 const cartStore = useCartStore()
@@ -234,19 +230,16 @@ function calcShopTotal(items: any[]) {
 function allSelected(sid: string) {
   return groupedCartItems.value[sid].every(i => i.selected)
 }
-function getImageSrc(path: string|null|undefined): string {
-  if (!path) return DEFAULT_IMAGE
-  if (path.startsWith('/uploads/')) return BACKEND_URL + path
-  if (path.startsWith(BACKEND_URL)) return path
-  return BACKEND_URL + '/uploads/' + path
-}
 
-// Server & handlers (igual que abans)...
+// Server & handlers
 async function updateCartItem(item: any) {
-  const token = localStorage.getItem('userToken')
-  await axios.put(`${API_URL}/cart/${item.id}`, { quantity: item.quantity, selected: item.selected }, { headers: { Authorization: `Bearer ${token}` } })
+  await axios.put(`/cart/${item.id}`, {
+    quantity: item.quantity,
+    selected: item.selected
+  })
   await cartStore.fetchCart()
 }
+
 async function toggleSelectGroup(sid: string, items: any[]) {
   const all = allSelected(sid)
   for (const i of items) {
@@ -254,47 +247,79 @@ async function toggleSelectGroup(sid: string, items: any[]) {
     await updateCartItem(i)
   }
 }
+
 function onQuantityChange(item: any) {
-  if (item.quantity > item.product.stock) { toast.error('No hi ha tant stock!'); item.quantity = item.product.stock }
+  if (item.quantity > item.product.stock) {
+    toast.error('No hi ha tant stock!')
+    item.quantity = item.product.stock
+  }
   updateCartItem(item)
 }
-function increaseQuantity(item: any) { if (item.quantity < item.product.stock) { item.quantity++; updateCartItem(item) } else toast.error('Has arribat al màxim!') }
-function decreaseQuantity(item: any) { if (item.quantity > 1) { item.quantity--; updateCartItem(item) } }
-function openClearModal(sid: string) { modalShopId.value = sid; showClearModal.value = true }
-function closeClearModal() { showClearModal.value = false; modalShopId.value = '' }
+function increaseQuantity(item: any) {
+  if (item.quantity < item.product.stock) {
+    item.quantity++
+    updateCartItem(item)
+  } else toast.error('Has arribat al màxim!')
+}
+function decreaseQuantity(item: any) {
+  if (item.quantity > 1) {
+    item.quantity--
+    updateCartItem(item)
+  }
+}
+
+function openClearModal(sid: string) {
+  modalShopId.value = sid
+  showClearModal.value = true
+}
+function closeClearModal() {
+  showClearModal.value = false
+  modalShopId.value = ''
+}
 async function clearCartGroup(sid: string) {
-  const token = localStorage.getItem('userToken')
   for (const i of groupedCartItems.value[sid]) {
-    await axios.delete(`${API_URL}/cart/${i.id}`, { headers: { Authorization: `Bearer ${token}` } })
+    await axios.delete(`/cart/${i.id}`)
   }
   await cartStore.fetchCart()
   closeClearModal()
 }
-function openClearAllModal() { showClearAllModal.value = true }
-function closeClearAllModal() { showClearAllModal.value = false }
+
+function openClearAllModal() {
+  showClearAllModal.value = true
+}
+function closeClearAllModal() {
+  showClearAllModal.value = false
+}
 async function clearAllCart() {
-  const token = localStorage.getItem('userToken')
   for (const i of cartStore.items) {
-    await axios.delete(`${API_URL}/cart/${i.id}`, { headers: { Authorization: `Bearer ${token}` } })
+    await axios.delete(`/cart/${i.id}`)
   }
   await cartStore.fetchCart()
   closeClearAllModal()
 }
+
 function confirmSingleDelete(id: number) {
   itemToDelete = id
   singleDeleteItemName.value = cartStore.items.find(i => i.id === id)?.product.nom || ''
   showSingleDeleteModal.value = true
 }
-function closeSingleDeleteModal() { showSingleDeleteModal.value = false; itemToDelete = null }
+function closeSingleDeleteModal() {
+  showSingleDeleteModal.value = false
+  itemToDelete = null
+}
 async function deleteSingleItem() {
   if (!itemToDelete) return
-  const token = localStorage.getItem('userToken')
-  await axios.delete(`${API_URL}/cart/${itemToDelete}`, { headers: { Authorization: `Bearer ${token}` } })
+  await axios.delete(`/cart/${itemToDelete}`)
   await cartStore.fetchCart()
   closeSingleDeleteModal()
 }
-function checkoutTotal() { router.push('/checkout?all=true') }
-function goToProduct(id: number) { router.push(`/producte/${id}`) }
+
+function checkoutTotal() {
+  router.push('/checkout?all=true')
+}
+function goToProduct(id: number) {
+  router.push(`/producte/${id}`)
+}
 </script>
 
 <style scoped>

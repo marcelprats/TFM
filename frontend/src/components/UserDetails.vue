@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+const { user, role } = defineProps<{
   user: { name: string; email: string } | null;
   role: string;
 }>();
