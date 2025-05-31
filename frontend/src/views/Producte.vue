@@ -1,3 +1,4 @@
+<!-- name=src/views/Producte.vue -->
 <template>
   <div class="product-page">
     <template v-if="product">
@@ -191,8 +192,6 @@ interface Product {
   vendor?: { id: number; name: string }
 }
 
-const API_URL     = 'http://127.0.0.1:8000/api'
-const BACKEND_URL = 'http://127.0.0.1:8000'
 const route       = useRoute()
 const router      = useRouter()
 const cartStore   = useCartStore()
@@ -228,7 +227,7 @@ async function loadProduct() {
 
   if (product.value?.botiga) {
     const { data } = await axios.get<Store>(
-      `${API_URL}/botigues/${product.value.botiga.id}`
+      `/botigues/${product.value.botiga.id}`
     )
     storeData.value = data
     await nextTick()
@@ -303,6 +302,7 @@ const formattedPrice = computed(()=>product.value?`${(+product.value.preu).toFix
 
 // Imatge robusta: mostra /storage/uploads/imatge.jpg si cal
 function getImageSrc(path:string|null){
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
   if(!path) return '/img/no-imatge.jpg'
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   if (path.startsWith('uploads/')) return BACKEND_URL + '/storage/' + path
@@ -328,7 +328,7 @@ async function increaseQuantity(){
 async function updateCartQuantity(){
   if(!cartItem.value) return
   const tok = localStorage.getItem('userToken')!
-  await axios.put(`${API_URL}/cart/${cartItem.value.id}`, { quantity: quantity.value }, {
+  await axios.put(`/cart/${cartItem.value.id}`, { quantity: quantity.value }, {
     headers: { Authorization: `Bearer ${tok}` }
   })
   await cartStore.fetchCart()
