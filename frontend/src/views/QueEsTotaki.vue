@@ -460,7 +460,7 @@ onMounted(() => {
   .hero-img { width: 80px; min-width: 45px; }
   .about-content article, .accordion { padding: 1rem 0.4rem; border-radius: 9px; }
   .benefits-grid, .steps-grid { flex-direction: column; gap: 0.8rem; }
-  .step-card { min-width: 0; }
+  .step-card { min-width: 0;   flex: 0 1 auto;  height: auto; }
   .panel-btn-row { margin-top: 0.5rem;}
   .btn-secondary, .btn-big { font-size: 0.98rem; padding: 0.9rem 1.1rem; }
 }
