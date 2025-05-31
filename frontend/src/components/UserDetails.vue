@@ -21,13 +21,27 @@ const { user, role } = defineProps<{
 
 <style scoped>
 .user-details {
+  max-width: 420px;
+  background: #fafbfc;
+  margin: 40px auto;
+  padding: 32px 24px 24px 24px;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   text-align: center;
   color: #444;
 }
 .user-details h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #212c3a;
   margin-bottom: 20px;
 }
 .user-details p {
-  margin: 5px 0;
+  margin: 12px 0;
+  font-size: 1.08rem;
+  color: #222;
+}
+.user-details strong {
+  color: #28a745;
 }
 </style>

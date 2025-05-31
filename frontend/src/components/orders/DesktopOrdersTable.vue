@@ -77,49 +77,53 @@ function badgeClass(status: string) {
 .orders-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 12px;
+  margin-top: 16px;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
 }
 .orders-table th,
 .orders-table td {
   border: 1px solid #e0e0e0;
-  padding: 10px 12px;
+  padding: 12px 14px;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 1.03rem;
 }
 .orders-table th {
   background-color: #f7f7f7;
   cursor: pointer;
   user-select: none;
+  font-weight: 700;
+  color: #222;
 }
 .orders-table th span {
-  margin-left: 4px;
-  font-size: 0.8rem;
+  margin-left: 6px;
+  font-size: 0.92rem;
 }
-
-/* Estil verd per als botons com al mòbil */
 .action-btn {
-  padding: 4px 8px;
+  padding: 7px 13px;
   border: none;
   border-radius: 4px;
   background-color: #28a745;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 1.01rem;
+  font-weight: 600;
   cursor: pointer;
-  margin: 4px !important;
+  margin: 3px !important;
   transition: background-color 0.2s;
 }
 .action-btn:hover {
   background-color: #218838;
 }
-
 .badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 0.90rem;
   color: #fff;
   text-transform: capitalize;
+  font-weight: 500;
 }
-.badge-pending   { background-color: #ffc107; }
+.badge-pending   { background-color: #ffc107; color: #333; }
 .badge-reserved  { background-color: #17a2b8; }
 .badge-completed { background-color: #28a745; }
 .badge-cancelled { background-color: #dc3545; }

@@ -4,15 +4,9 @@
       <!-- ─── Encabezado del producto ─────────────────────────────────── -->
       <div class="product-header">
         <!-- Columna imagen (clicable para lightbox) -->
-        <div
-          class="column image-col"
-          @click="openImage(getImageSrc(product.imatge))"
-        >
+        <div class="column image-col" @click="openImage(getImageSrc(product.imatge))">
           <div class="image-container">
-            <img
-              :src="getImageSrc(product.imatge)"
-              :alt="product.nom"
-            />
+            <img :src="getImageSrc(product.imatge)" :alt="product.nom" />
           </div>
         </div>
 
@@ -31,9 +25,9 @@
             </router-link>
             <span v-else>No disponible</span>
           </p>
+
           <p class="stock">
-            <strong>Stock disponible:</strong>
-            {{ product.stock ?? "No disponible" }}
+            <strong>Stock disponible:</strong> {{ product.stock ?? "No disponible" }}
           </p>
         </div>
 
@@ -84,14 +78,8 @@
         <p>{{ product.descripcio }}</p>
       </div>
 
-      <!-- ─── Secció Valoracions ───────────────────────────────────────── -->
-      <div class="description-section">
-        <h2>Valoracions</h2>
-        <Valoracions :productId="product.id" />
-      </div>
-
-      <!-- ─── Secció Info Botiga ─────────────────────────────────────── -->
-      <div class="shop-info" v-if="storeData">
+      <!-- ─── Secció Info Botiga (millorada) ────────────────────────── -->
+      <div class="shop-info-card" v-if="storeData">
         <h2>Informació de {{ product.botiga?.nom }}</h2>
         <div class="shop-info-grid">
           <!-- Mini-mapa + botó -->
@@ -122,10 +110,7 @@
       </div>
 
       <!-- Productes relacionats -->
-      <div
-        class="related-products-container"
-        v-if="relatedProducts.length"
-      >
+      <div class="related-products-container" v-if="relatedProducts.length">
         <h2>Productes que et poden interessar</h2>
         <div class="related-grid">
           <div
@@ -136,24 +121,24 @@
           >
             <img
               :src="getImageSrc(related.imatge)"
-              :alt="related.nom ?? related.name"
+              :alt="related.nom"
               class="related-image"
             />
             <div class="related-info">
               <h3 class="related-name">
-                {{ related.nom ?? related.name ?? "No disponible" }}
+                {{ (related as any).nom ?? (related as any).name ?? "No disponible" }}
               </h3>
               <p class="related-price">
                 <strong>Preu:</strong>
                 {{
-                  isNaN(+((related.preu as any) || (related as any).price))
+                  isNaN(+((related as any).preu ?? (related as any).price))
                     ? "No disponible"
-                    : (+((related.preu as any) || (related as any).price)).toFixed(2) + " €"
+                    : (+((related as any).preu ?? (related as any).price)).toFixed(2) + " €"
                 }}
               </p>
               <p class="related-store">
                 <strong>Botiga: </strong>
-                {{ related.botiga?.nom ?? (related as any).store?.name ?? "N/A" }}
+                {{ (related as any).botiga?.nom ?? (related as any).store?.name ?? "No disponible" }}
               </p>
             </div>
           </div>
@@ -161,10 +146,7 @@
       </div>
 
       <!-- ─── Últims Productes (Carousel) ────────────────────────────── -->
-      <section
-        class="latest-products-container"
-        v-if="latestProducts.length"
-      >
+      <section class="latest-products-container" v-if="latestProducts.length">
         <ProductCarousel :products="latestProducts" />
       </section>
     </template>
@@ -174,11 +156,7 @@
     </template>
 
     <!-- ─── Lightbox per a imatge ───────────────────────────────────── -->
-    <div
-      v-if="showImageModal"
-      class="image-modal"
-      @click.self="closeImage"
-    >
+    <div v-if="showImageModal" class="image-modal" @click.self="closeImage">
       <button class="close-btn" @click="closeImage">&times;</button>
       <img :src="modalImageSrc" class="modal-img" />
     </div>
@@ -193,7 +171,6 @@ import L from 'leaflet'
 import { fetchProductById, fetchProducts } from '../services/authService'
 import { useCartStore } from '../stores/cartStore'
 import ProductCarousel from '../components/ProductCarousel.vue'
-import Valoracions from '../components/Valoracions.vue'
 
 interface Store {
   id: number
@@ -214,44 +191,44 @@ interface Product {
   vendor?: { id: number; name: string }
 }
 
-// 1) Agafem la BACKEND URL des de l'entorn
-const BACKEND = import.meta.env.VITE_BACKEND_URL!
+const API_URL     = 'http://127.0.0.1:8000/api'
+const BACKEND_URL = 'http://127.0.0.1:8000'
+const route       = useRoute()
+const router      = useRouter()
+const cartStore   = useCartStore()
 
-const route = useRoute()
-const router = useRouter()
-const cartStore = useCartStore()
-
-const product = ref<Product|null>(null)
-const allProducts = ref<Product[]>([])
+// Producte i estat
+const product         = ref<Product|null>(null)
+const allProducts     = ref<Product[]>([])
 const relatedProducts = ref<Product[]>([])
-const quantity = ref(1)
+const quantity        = ref(1)
 const addSuccessMessage = ref('')
 
-const storeData = ref<Store|null>(null)
-const miniMapRef = ref<HTMLDivElement|null>(null)
-const diesSetmana = [
-  "Dilluns","Dimarts","Dimecres","Dijous",
-  "Divendres","Dissabte","Diumenge"
-]
-
+// Botiga + mapa
+const storeData    = ref<Store|null>(null)
+const miniMapRef   = ref<HTMLDivElement|null>(null)
+const diesSetmana  = ["Dilluns","Dimarts","Dimecres","Dijous","Divendres","Dissabte","Diumenge"]
 const horarisPerDia = computed<Record<string,string>>(() => {
   if (!storeData.value) return {}
-  return storeData.value.horaris.reduce((out, h) => {
-    const dia = h.dia.charAt(0).toUpperCase() + h.dia.slice(1)
-    const slot = `${h.obertura.slice(0,5)}–${h.tancament.slice(0,5)}`
-    out[dia] = out[dia] ? out[dia] + ', ' + slot : slot
-    return out
-  }, {} as Record<string,string>)
+  const out: Record<string,string> = {}
+  for (const d of diesSetmana) {
+    out[d] = storeData.value.horaris
+      .filter(h => h.dia.toLowerCase()===d.toLowerCase())
+      .map(h=>`${h.obertura.slice(0,5)}–${h.tancament.slice(0,5)}`)
+      .join(', ')
+  }
+  return out
 })
 
+// Carrega producte + botiga + mapa + related + carousel
 async function loadProduct() {
   addSuccessMessage.value = ''
-  product.value = await fetchProductById(route.params.id as string)
+  product.value     = await fetchProductById(route.params.id as string)
   allProducts.value = await fetchProducts()
 
   if (product.value?.botiga) {
     const { data } = await axios.get<Store>(
-      `/botigues/${product.value.botiga.id}`
+      `${API_URL}/botigues/${product.value.botiga.id}`
     )
     storeData.value = data
     await nextTick()
@@ -262,8 +239,43 @@ async function loadProduct() {
   await cartStore.fetchCart()
 }
 
-function initMiniMap() { /* ... sense canvis ... */ }
-function updateRelatedProducts() { /* ... */ }
+function initMiniMap() {
+  if (!storeData.value || !miniMapRef.value) return
+  const { latitude: lat, longitude: lng, nom } = storeData.value
+  const map = L.map(miniMapRef.value, {
+    zoomControl: false,
+    attributionControl: false
+  }).setView([lat, lng], 15)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map)
+
+  const marker = L.marker([lat, lng]).addTo(map)
+  marker.bindPopup(`
+    <strong>${nom}</strong><br>
+    <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}','_blank')" 
+      class="btn-maps"
+    >📍 Com arribar</button>
+  `).openPopup()
+
+  setTimeout(() => map.invalidateSize(), 300)
+}
+
+function updateRelatedProducts() {
+  if (!product.value) return
+  const id   = product.value.id
+  const same = allProducts.value.filter(
+    p => p.id !== id && p.botiga?.id === product.value!.botiga?.id
+  )
+  const others = allProducts.value
+    .filter(p => p.id !== id && p.botiga?.id !== product.value!.botiga?.id)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 4 - same.length)
+  relatedProducts.value = [...same, ...others]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 4)
+}
 
 const latestProducts = computed(() =>
   [...allProducts.value]
@@ -271,9 +283,9 @@ const latestProducts = computed(() =>
     .slice(0,25)
     .map(p=>({
       id: p.id,
-      nom: p.nom,
-      preu: p.preu,
-      imatge: p.imatge
+      nom: (p as any).nom ?? (p as any).name,
+      preu: (p as any).preu ?? (p as any).price,
+      imatge: (p as any).imatge ?? (p as any).image ?? null
     }))
 )
 
@@ -283,40 +295,60 @@ const cartItem = computed(() =>
 const inCart = computed(()=>!!cartItem.value)
 watch(cartItem, item=> quantity.value = item?.quantity ?? 1)
 
-const showImageModal = ref(false)
-const modalImageSrc = ref('')
+const showImageModal = ref(false), modalImageSrc = ref('')
+function openImage(src:string){ modalImageSrc.value = src; showImageModal.value = true }
+function closeImage(){ showImageModal.value = false; modalImageSrc.value = '' }
 
-function openImage(src: string){
-  modalImageSrc.value = src
-  showImageModal.value = true
+const formattedPrice = computed(()=>product.value?`${(+product.value.preu).toFixed(2)} €`:'—')
+
+// Imatge robusta: mostra /storage/uploads/imatge.jpg si cal
+function getImageSrc(path:string|null){
+  if(!path) return '/img/no-imatge.jpg'
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  if (path.startsWith('uploads/')) return BACKEND_URL + '/storage/' + path
+  if (path.startsWith('/uploads/')) return BACKEND_URL + '/storage/' + path.substring(1)
+  return BACKEND_URL + path
 }
-function closeImage(){
-  showImageModal.value = false
-  modalImageSrc.value = ''
-}
-
-const formattedPrice = computed(()=>
-  product.value
-    ? `${(+product.value.preu).toFixed(2)} €`
-    : '—'
-)
-
-// 2) Prefixar imatges amb BACKEND
-function getImageSrc(path: string|null): string {
-  if (!path) return '/img/no-imatge.jpg'
-  return path.startsWith('http')
-    ? path
-    : `${BACKEND}${path}`
-}
-
-function goToProduct(id: number){ router.push(`/producte/${id}`) }
+function goToProduct(id:number){ router.push(`/producte/${id}`) }
 function goToCart(){ router.push('/cart') }
 
-async function decreaseQuantity(){ /* ... */ }
-async function increaseQuantity(){ /* ... */ }
-async function handleAddItem(){ /* ... */ }
-async function removeCartItem(){ /* ... */ }
-async function updateCartQuantity(){ /* ... */ }
+async function decreaseQuantity(){
+  if(!inCart.value){ if(quantity.value>1) quantity.value-- }
+  else {
+    if(quantity.value>1){ quantity.value--; await updateCartQuantity() }
+    else await removeCartItem()
+  }
+}
+async function increaseQuantity(){
+  if(product.value && quantity.value < (product.value.stock||Infinity)){
+    quantity.value++
+    if(inCart.value) await updateCartQuantity()
+  }
+}
+async function updateCartQuantity(){
+  if(!cartItem.value) return
+  const tok = localStorage.getItem('userToken')!
+  await axios.put(`${API_URL}/cart/${cartItem.value.id}`, { quantity: quantity.value }, {
+    headers: { Authorization: `Bearer ${tok}` }
+  })
+  await cartStore.fetchCart()
+  addSuccessMessage.value = 'Quantitat actualitzada!'
+  setTimeout(() => addSuccessMessage.value = '', 2000)
+}
+async function handleAddItem(){
+  if(!product.value) return
+  await cartStore.addItem(product.value.id, quantity.value)
+  await cartStore.fetchCart()
+  addSuccessMessage.value = 'Producte afegit al carro!'
+  setTimeout(() => addSuccessMessage.value = '', 2000)
+}
+async function removeCartItem(){
+  if(!cartItem.value) return
+  await cartStore.removeItem(cartItem.value.id)
+  await cartStore.fetchCart()
+  addSuccessMessage.value = 'Producte eliminat del carro'
+  setTimeout(() => addSuccessMessage.value = '', 2000)
+}
 
 onMounted(loadProduct)
 watch(()=>route.params.id, loadProduct)
@@ -405,36 +437,85 @@ watch(()=>route.params.id, loadProduct)
   font-size: 22px; color: #333; margin-bottom: 12px;
 }
 
-/* ─── Info Botiga ──────────────────────────────────────────────── */
-.shop-info {
-  width: 100%; max-width: 1100px;
-  margin: 2rem auto; padding: 24px;
+/* ─── Info Botiga Millorada ────────────────────────────────────── */
+.shop-info-card {
+  background: #fafbfc;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.06);
+  border-radius: 18px;
+  padding: 34px 24px 24px 24px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto 32px auto;
+}
+.shop-info-card h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #212c3a;
+  margin-bottom: 2rem;
+  text-align: center;
 }
 .shop-info-grid {
-  display: flex; gap: 24px;
-  flex-wrap: wrap; align-items: flex-start;
-}
-.hours-col { flex: 1; min-width: 280px; display: flex; flex-direction: column; }
-.shop-hours {
-  width: 100%; border-collapse: collapse;
-  display: block; overflow-y: auto;
-}
-.shop-hours th, .shop-hours td {
-  border: 1px solid #ddd; padding: 8px; text-align: left;
-}
-.shop-hours th { background: #f4f4f4; }
-.map-col { flex: 1; min-width: 280px; display: flex; flex-direction: column; }
-.shop-mini-map {
-  width: 100%; aspect-ratio: 4 / 3;
-  min-height: 200px; border-radius: 8px; overflow: hidden;
-}
-.more-info-btn {
-  margin-top: 1rem; align-self: flex-start;
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
 }
 
-/* Botó dins del popup de Leaflet */
-.btn-maps,
+.map-col, .hours-col {
+  width: 100%;
+  max-width: 420px;
+}
+
+.shop-mini-map {
+  width: 100%;
+  aspect-ratio: 4/3;
+  min-height: 220px;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.shop-hours {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+.shop-hours th, .shop-hours td {
+  border: 1px solid #d0d0d0;
+  padding: 12px 18px;
+  text-align: left;
+  font-size: 1.13rem;
+}
+.shop-hours th {
+  background: #f4f4f4;
+  font-weight: bold;
+}
+
 .more-info-btn {
+  margin-top: 8px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: #42b983;
+  color: white;
+  border: none;
+  padding: 13px 0;
+  font-size: 1.18rem;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  text-decoration: none;
+  font-weight: 600;
+}
+.more-info-btn:hover {
+  background: #368c6e;
+}
+.btn-maps {
   background-color: #42b983;
   color: white;
   border: none;
@@ -442,11 +523,32 @@ watch(()=>route.params.id, loadProduct)
   font-size: 18px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  margin-top: 8px;
+  transition: background-color 0.3s;
 }
-.btn-maps:hover,
-.more-info-btn:hover {
+.btn-maps:hover {
   background-color: #368c6e;
+}
+/* Responsive per mòbil */
+@media (max-width: 900px) {
+  .shop-info-card {
+    padding: 14px 2px;
+    max-width: 98vw;
+  }
+  .shop-info-grid {
+    flex-direction: column;
+    gap: 0;
+  }
+  .map-col, .hours-col {
+    max-width: 98vw;
+    margin-bottom: 16px;
+  }
+  .shop-mini-map {
+    min-height: 140px;
+  }
+  .shop-hours th, .shop-hours td {
+    padding: 8px 6px;
+  }
 }
 
 /* ─── Relacionats ───────────────────────────────────────────────── */
@@ -498,18 +600,6 @@ watch(()=>route.params.id, loadProduct)
   .product-header { flex-direction: column; }
   .related-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
-  .shop-info-grid {
-    flex-direction: column;
-  }
-  .hours-col,
-  .map-col {
-    flex: 1 1 100%;
-  }
-  .shop-mini-map {
-    height: 250px;  /* quasi quadrat */
-    width: 100%;
-    margin: 0 auto;
   }
 }
 </style>

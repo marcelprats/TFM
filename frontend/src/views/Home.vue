@@ -11,7 +11,7 @@
         </button>
       </div>
       <picture>
-        <source media="(min-width: 768px)" srcset="/img/hero-image-d.png" />
+        <source media="(min-width: 768px)" srcset="/img/hero-i.png" />
         <img src="/img/hero-image-m.png" alt="Descobreix els comerços locals" class="hero-image" />
       </picture>
     </section>
@@ -83,7 +83,7 @@
             Trobats: {{ homeResultsSorted.length }}
           </div>
 
-          <!-- Horitzontal desktop (amagat en vola de cerca) -->
+          <!-- Horitzontal desktop (amagat en cerca activa) -->
           <div v-if="showResults && homeResultsSorted.length" class="search-results-desktop">
             <button class="scroll-btn left" @click="scroll(-1)">
               <i class="fa-solid fa-chevron-left"></i>
@@ -150,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import StoresMap from '../components/MapaBotigues.vue'
@@ -160,25 +160,26 @@ import { useProducts } from '../composables/useProducts'
 
 const router = useRouter()
 
-// ─── Stores + mapa ───────────────────────────────────────
+// Stores + mapa
 const mapRef = ref<any>(null)
 const filterInput = ref<HTMLInputElement | null>(null)
 const stores = ref<{ id: number; nom: string; latitude: number; longitude: number }[]>([])
 const filter = ref('')
 
-onMounted(async () => {
-  const res = await axios.get('/botigues')
-  stores.value = res.data
-  const coords = stores.value.map(s => [s.latitude, s.longitude] as [number, number])
-  setTimeout(() => mapRef.value?.fitBounds(coords, { padding: [40, 40] }), 200)
-})
+// Últims productes per al carousel
+const latestProducts = ref<any[]>([])
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+const DEFAULT_IMAGE = '/img/no-imatge.jpg'
+
+// Productes live search
+const { products: allProducts, loading: loadingProducts } = useProducts()
+const homeQuery = ref('')
 
 const filteredStores = computed(() =>
   stores.value.filter(s =>
     s.nom.toLowerCase().includes(filter.value.toLowerCase())
   )
 )
-
 const suggestions = computed(() =>
   filter.value
     ? filteredStores.value
@@ -194,12 +195,6 @@ function onSuggestionClick(s: typeof stores.value[0]) {
   setTimeout(() => mapRef.value?.zoomToStore(s), 100)
 }
 
-// ─── Cerca live de productes ─────────────────────────────
-const { products: allProducts, loading: loadingProducts } = useProducts()
-const homeQuery = ref('')
-const showResults = ref(false)
-watch(homeQuery, q => (showResults.value = q.trim().length > 0))
-
 const homeResultsSorted = computed(() => {
   const term = homeQuery.value.trim().toLowerCase()
   if (!term) return []
@@ -209,11 +204,10 @@ const homeResultsSorted = computed(() => {
 })
 
 function goToProducte(id: number) {
-  showResults.value = false
   router.push(`/producte/${id}`)
 }
 
-// scroll horitzontal
+// Scroll horitzontal (desktop cards)
 const cardsContainer = ref<HTMLElement | null>(null)
 function scroll(dir: number) {
   const c = cardsContainer.value
@@ -222,8 +216,6 @@ function scroll(dir: number) {
 }
 
 // utilitats imatge
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-const DEFAULT_IMAGE = '/img/no-imatge.jpg'
 function getImageSrc(path: string | null) {
   if (!path) return DEFAULT_IMAGE
   return path.startsWith('/')
@@ -231,24 +223,32 @@ function getImageSrc(path: string | null) {
     : `${BACKEND_URL}/${path}`
 }
 
-// ─── Últims productes per al carousel ─────────────────────
-const latestProducts = ref<any[]>([])
+// Carrega botigues i productes en paral·lel
 onMounted(async () => {
-  const res = await axios.get('/productes')
-  latestProducts.value = res.data
+  const [storesRes, productsRes] = await Promise.all([
+    axios.get('/botigues'),
+    axios.get('/productes')
+  ])
+  stores.value = storesRes.data
+  latestProducts.value = productsRes.data
     .slice()
     .sort((a, b) => b.id - a.id)
     .slice(0, 25)
+  // Fit bounds només si hi ha botigues
+  if (stores.value.length) {
+    const coords = stores.value.map(s => [s.latitude, s.longitude] as [number, number])
+    setTimeout(() => mapRef.value?.fitBounds(coords, { padding: [40, 40] }), 200)
+  }
 })
 
-// ─── Control per amagar horitzontal i mostrar vertical ─────
+// Control per amagar horitzontal i mostrar vertical
+const showResults = computed(() => homeQuery.value.trim().length > 0)
 const searchActive = computed(
   () => showResults.value && homeResultsSorted.value.length > 0
 )
 </script>
 
 <style scoped>
-/* ─── General ───────────────────────────────────────────────────── */
 .home-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -259,7 +259,6 @@ const searchActive = computed(
   color: #6b7280;
   padding: 2rem 0;
 }
-
 /* ─── Hero ──────────────────────────────────────────────────────── */
 .home-hero {
   display: flex;
@@ -300,6 +299,10 @@ const searchActive = computed(
 .hero-image {
   width: 100%;
   height: auto;
+}
+/* Amaga la hero image en mòbil */
+@media (max-width: 767px) {
+  .hero-image { display: none; }
 }
 @media(min-width:768px) {
   .home-hero { flex-direction: row; }
@@ -404,7 +407,6 @@ const searchActive = computed(
 .home-search-reviews .col {
   flex: 1;
 }
-/* Quan la cerca live està activa, amagem el carrusel horitzontal i mostrem la llista mòbil */
 .home-search-reviews.search-active .search-results-desktop {
   display: none !important;
 }

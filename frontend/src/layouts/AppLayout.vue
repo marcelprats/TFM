@@ -27,8 +27,10 @@ import Footer        from '../components/Footer.vue'
 const route = useRoute()
 
 const headerComponent = computed(() => {
-  if (route.path === '/') return PreHomeHeader
-  if (route.path === '/home') return HomeHeader
+  // Accedeix explícitament a route.path perquè sigui reactiu
+  const path = route.path
+  if (path === '/') return PreHomeHeader
+  if (path === '/home') return HomeHeader
   return MainHeader
 })
 </script>

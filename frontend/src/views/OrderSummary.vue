@@ -174,34 +174,37 @@ function closeQRModal() {
 .order-summary-container {
   max-width: 800px;
   margin: 40px auto;
-  padding: 20px;
-  background-color: #f7f7f7;
-  border-radius: 8px;
-  font-family: 'Roboto', sans-serif;
+  padding: 28px 18px 22px 18px;
+  background-color: #fafbfc;
+  border-radius: 16px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #333;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 20px;
-  color: #444;
+  margin-bottom: 24px;
+  color: #212c3a;
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .summary-card {
   background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
 }
 
 .summary-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #ececec;
   padding-bottom: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .summary-header .header-item {
@@ -212,25 +215,42 @@ h1 {
 
 .summary-header .label {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   color: #666;
 }
 
 .summary-header .value {
   font-weight: 500;
-  font-size: 14px;
-  color: #333;
+  font-size: 15px;
+  color: #212c3a;
+}
+
+.qr-btn {
+  background-color: #42b983;
+  color: #fff;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 5px;
+  font-size: 0.97rem;
+  margin-left: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.18s;
+}
+.qr-btn:hover {
+  background-color: #368c6e;
 }
 
 .summary-body {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  gap: 12px;
 }
 
 .summary-body .info {
-  flex: 1 1 45%;
+  flex: 1 1 42%;
   margin-bottom: 10px;
 }
 
@@ -246,67 +266,84 @@ h1 {
   color: #333;
 }
 
-/* Canvia el color del missatge de pagament a un to més neutre */
 .payment-message {
   width: 100%;
   margin-top: 10px;
   font-weight: 600;
-  font-size: 16px;
-  color: #333;
+  font-size: 15px;
+  color: #007bff;
   text-align: center;
+  background: #eaf9f2;
+  border-radius: 6px;
+  padding: 7px 0;
 }
 
 .summary-products {
-  margin-top: 20px;
+  margin-top: 18px;
 }
 
 .summary-products h2 {
   margin-bottom: 10px;
-  font-size: 18px;
+  font-size: 1.18rem;
   color: #444;
   text-align: left;
+  font-weight: 600;
 }
 
 .summary-products table {
   width: 100%;
   border-collapse: collapse;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 0.5px 2px rgba(0,0,0,0.04);
 }
 
 .summary-products th,
 .summary-products td {
-  border: 1px solid #ddd;
-  padding: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 10px 7px;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .summary-products th {
   background-color: #f0f0f0;
+  font-weight: 700;
 }
+
+.product-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+}
+.product-link:hover { text-decoration: underline; }
 
 .summary-actions {
   display: flex;
   justify-content: space-between;
-  margin-top: 20px;
+  margin-top: 24px;
   flex-wrap: wrap;
+  gap: 10px;
 }
 
 .summary-actions .btn {
   padding: 10px 20px;
-  font-size: 14px;
+  font-size: 1rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  margin: 5px;
+  margin: 4px 0;
   text-decoration: none;
   text-align: center;
+  font-weight: 600;
+  transition: background 0.18s;
 }
 
 .view-ticket-btn {
   background-color: #007bff;
   color: #fff;
 }
-
 .view-ticket-btn:hover {
   background-color: #0056b3;
 }
@@ -315,66 +352,89 @@ h1 {
   background-color: #28a745;
   color: #fff;
 }
-
 .download-btn:hover {
   background-color: #218838;
 }
 
 .shop-link {
   text-transform: uppercase;
-  color: #007bff;
+  color: #42b983;
   text-decoration: none;
+  font-weight: 500;
 }
-
-.shop-link:hover {
-  text-decoration: underline;
-}
+.shop-link:hover { text-decoration: underline; }
 
 .error-message {
-  color: red;
+  color: #e53935;
   font-weight: bold;
   text-align: center;
   margin-bottom: 20px;
 }
 
-/* Modal QR */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background-color: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
-
 .modal-content.qr-modal {
   background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 400px;
-  width: 90%;
+  padding: 24px 18px 15px 18px;
+  border-radius: 10px;
+  max-width: 380px;
+  width: 92vw;
   text-align: center;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.06);
 }
-
 .qr-code-image {
   max-width: 100%;
   height: auto;
-  margin-bottom: 10px;
+  margin: 12px 0 16px 0;
 }
-
 .close-modal-btn {
-  background-color: #dc3545;
+  background-color: #e53935;
   color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  padding: 9px 20px;
+  cursor: pointer;
+  margin-top: 9px;
+}
+.close-modal-btn:hover {
+  background-color: #c62828;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .order-summary-container {
-    padding: 15px;
+    padding: 10px 2vw;
+    max-width: 99vw;
+  }
+  .summary-card {
+    padding: 10px 4vw;
+  }
+  .summary-header {
+    flex-direction: column;
+    gap: 9px;
+    align-items: flex-start;
+  }
+  .summary-body {
+    flex-direction: column;
+    gap: 0;
+  }
+  .summary-products th,
+  .summary-products td {
+    padding: 7px 2px;
+    font-size: 14px;
+  }
+  .modal-content.qr-modal {
+    max-width: 98vw;
+    padding: 12px 2vw 8px 2vw;
   }
 }
 </style>

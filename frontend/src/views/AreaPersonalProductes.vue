@@ -542,8 +542,7 @@ async function fetchProductes() {
   try {
     const token = localStorage.getItem("userToken");
     if (!token) return;
-    const response = await axios.get(`/vendor/productes`, {
-    });
+    const response = await axios.get(`/vendor/productes`, {});
     productes.value = response.data.map((prod: any) => ({
       ...prod,
       preu: Number(prod.preu),
@@ -562,8 +561,7 @@ async function fetchProductes() {
 async function fetchBotigues() {
   try {
     const token = localStorage.getItem("userToken");
-    const response = await axios.get(`/vendor/botigues-mes`, {
-    });
+    const response = await axios.get(`/vendor/botigues-mes`, {});
     botigues.value = response.data;
   } catch (error) {
     console.error("Error carregant botigues:", error);
@@ -574,8 +572,7 @@ async function fetchCategories() {
   try {
     const token = localStorage.getItem("userToken");
     if (!token) return;
-    const response = await axios.get(`/vendor/categories`, {
-    });
+    const response = await axios.get(`/vendor/categories`, {});
     categories.value = response.data;
   } catch (error) {
     console.error("Error carregant categories:", error);
@@ -681,9 +678,7 @@ function sortProducts(column: string) {
 function toggleFiltersPanel() {
   filtersPanelVisible.value = !filtersPanelVisible.value;
 }
-function applyFilters() {
-  // La lògica de filtratge ja s'aplica a sortedProducts
-}
+function applyFilters() {}
 function clearFilters() {
   columnFilters.value.nom = [];
   columnFilters.value.preu = { min: preuMin.value, max: preuMax.value };
@@ -742,11 +737,11 @@ async function addProducte() {
     } else if (newProduct.value.imatge) {
       formData.append("imatge", newProduct.value.imatge);
     }
-    await axios.post(`/productes`, formData, {
+    // 👇👇 CORRECTE: POST A /vendor/productes
+    await axios.post(`/vendor/productes`, formData, {
       headers: { "Content-Type": "multipart/form-data" }
     });
 
-    // Reset del formulari
     newProduct.value = {
       nom: "",
       descripcio: "",
@@ -797,8 +792,6 @@ async function updateProducte() {
       formData.append("botiga_id", editProduct.value.botiga_id ? editProduct.value.botiga_id.toString() : "");
       if (imageFile.value) {
         formData.append("imatge", imageFile.value);
-      } else if (editProduct.value.imatge) {
-        formData.append("imatge", editProduct.value.imatge);
       }
       await axios.post(`/vendor/productes/${editProduct.value.id}`, formData, {
         headers: {

@@ -1,226 +1,228 @@
+<script setup lang="ts">
+import { ref, onMounted, nextTick, computed } from "vue";
+import axios from "axios";
+import { useRoute } from "vue-router";
+import L from "leaflet";
+import 'leaflet/dist/leaflet.css'
+
+const API_URL = "http://127.0.0.1:8000/api";
+const route = useRoute();
+const botiga = ref(null);
+const productes = ref([]);
+const horaris = ref([]);
+const mapRef = ref(null);
+const loading = ref(true);
+const errorMessage = ref("");
+
+// NOVES: Valoracions
+const summary = ref({
+  ambient: 0,
+  personal: 0,
+  recollida: 0,
+});
+
+const diesSetmana = ["Dilluns", "Dimarts", "Dimecres", "Dijous", "Divendres", "Dissabte", "Diumenge"];
+const hores = Array.from({ length: 24 }, (_, i) => i);
+
+const showModal = ref(false);
+
+const getHourSegment = (dia, hora, segment) => {
+  const franges = horaris.value.filter(h => h.dia.toLowerCase() === dia.toLowerCase());
+  const minInSegment = hora * 60 + segment * 15;
+  const maxInSegment = minInSegment + 15;
+
+  return franges.some(h => {
+    const o = parseInt(h.obertura.slice(0, 2)) * 60 + parseInt(h.obertura.slice(3, 5));
+    const t = parseInt(h.tancament.slice(0, 2)) * 60 + parseInt(h.tancament.slice(3, 5));
+    return minInSegment < t && maxInSegment > o;
+  });
+};
+
+
+// 📌 Carregar botiga, valoracions i horaris
+const fetchBotiga = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/botigues/${route.params.id}`);
+    botiga.value = response.data;
+    productes.value = response.data.productes || [];
+    horaris.value = response.data.horaris || [];
+    // Carrega valoracions
+    const summaryRes = await axios.get(`${API_URL}/botigues/${route.params.id}/store-summary`);
+    summary.value.ambient = summaryRes.data.ambient?.avg ?? 0;
+    summary.value.personal = summaryRes.data.personal?.avg ?? 0;
+    summary.value.recollida = summaryRes.data.recollida?.avg ?? 0;
+    loading.value = false;
+    await nextTick();
+    initMap();
+  } catch (error) {
+    errorMessage.value = "Error carregant la botiga.";
+    console.error("❌ Error carregant botiga:", error);
+    loading.value = false;
+  }
+};
+
+// 📌 Agrupar horaris per dia
+const horarisPerDia = computed(() => {
+  const result = {};
+  diesSetmana.forEach((dia) => {
+    result[dia] = horaris.value
+      .filter((h) => h.dia.toLowerCase() === dia.toLowerCase())
+      .map((h) => `${h.obertura.slice(0, 5)} - ${h.tancament.slice(0, 5)}`)
+      .join(", ");
+  });
+  return result;
+});
+
+// 📌 Inicialitzar mapa amb "Com arribar"
+const initMap = () => {
+  if (!botiga.value || !mapRef.value) return;
+  const lat = botiga.value.latitude;
+  const lng = botiga.value.longitude;
+  if (!lat || !lng) return;
+
+  const map = L.map(mapRef.value).setView([lat, lng], 14);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
+
+  const marker = L.marker([lat, lng]).addTo(map);
+  marker.bindPopup(`
+    <b>${botiga.value.nom}</b><br>
+    <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}')" 
+    class="btn-maps">📍 Com arribar</button>
+  `).openPopup();
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 400);
+};
+
+// Funció per pintar estrelles (valoració)
+function renderStars(value) {
+  if (!value || value <= 0) return "-";
+  const fullStars = Math.floor(value);
+  const halfStar = value - fullStars >= 0.5;
+  let stars = "★".repeat(fullStars);
+  if (halfStar) stars += "½";
+  stars = stars.padEnd(5, "☆");
+  return `${value.toFixed(2)} ${stars}`;
+}
+
+// 📌 Carregar dades
+onMounted(() => {
+  fetchBotiga();
+});
+</script>
+
 <template>
   <div class="botiga-container">
     <div v-if="loading" class="loading">🔄 Carregant botiga...</div>
     <div v-else-if="errorMessage" class="error">{{ errorMessage }}</div>
-    <div v-else>
+    <div v-else-if="botiga">
       <h1 class="botiga-nom">{{ botiga.nom }}</h1>
 
+      <!-- 📍 Dues columnes -->
       <div class="grid-layout">
-        <!-- Columna esquerra: resum i descripció -->
+        <!-- 🏪 Info + Mapa -->
         <div class="col-left">
-          <section class="store-summary">
-            <h2>Valoracions</h2>
-            <ul>
-              <li>Ambient: {{ summary.ambient > 0 ? summary.ambient.toFixed(2) + '★' : '-' }}</li>
-              <li>Personal: {{ summary.personal > 0 ? summary.personal.toFixed(2) + '★' : '-' }}</li>
-              <li>Recollida: {{ summary.recollida > 0 ? summary.recollida.toFixed(2) + '★' : '-' }}</li>
-            </ul>
-          </section>
+              <!-- ⭐ Valoracions -->
+      <section class="store-summary">
+        <h2>Valoracions</h2>
+        <ul>
+          <li>
+            Ambient: 
+            <span class="stars">{{ renderStars(summary.ambient) }}</span>
+          </li>
+          <li>
+            Personal:
+            <span class="stars">{{ renderStars(summary.personal) }}</span>
+          </li>
+          <li>
+            Recollida:
+            <span class="stars">{{ renderStars(summary.recollida) }}</span>
+          </li>
+        </ul>
+      </section>
+              <h2>Descripció</h2>
 
-          <h2>Descripció</h2>
           <p class="botiga-desc">{{ botiga.descripcio }}</p>
         </div>
 
-        <!-- Columna dreta: mapa i horaris -->
+        <!-- 🕒 Horaris -->
         <div class="col-right">
           <h2 class="section-title">📍 Direcció</h2>
           <div class="map-container">
-            <div
-              v-if="botiga.latitude && botiga.longitude"
-              ref="mapRef"
-              class="mapa"
-            ></div>
+            <div v-if="botiga.latitude && botiga.longitude" ref="mapRef" class="mapa"></div>
             <div v-else class="no-mapa">⚠️ No hi ha coordenades disponibles.</div>
           </div>
-
           <h2 class="section-title">
             ⏰ Horari
-            <button class="graella-btn" @click="showModal = true">
-              🗓️ Format Graella
-            </button>
+            <button class="graella-btn" @click="showModal = true">🗓️ Format Graella</button>
           </h2>
+
           <table class="horari-taula">
-            <thead>
-              <tr><th>Dia</th><th>Horari</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="dia in diesSetmana" :key="dia">
-                <td class="dia">{{ dia }}</td>
-                <td class="horari">{{ horarisPerDia[dia] || 'Tancat' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Productes -->
-      <h2 class="section-title">🛒 Productes disponibles</h2>
-      <div v-if="productes.length" class="producte-grid">
-        <router-link
-          v-for="p in productes"
-          :key="p.id"
-          :to="`/producte/${p.id}`"
-          class="producte-card"
-        >
-          <img
-            :src="getImageSrc(p.imatge)"
-            class="producte-img"
-            alt="Imatge producte"
-          />
-          <div class="producte-info">
-            <h3>{{ p.nom }}</h3>
-            <p class="preu">{{ p.preu }} €</p>
-          </div>
-        </router-link>
-      </div>
-      <p v-else class="no-productes">
-        ❌ Aquesta botiga encara no té productes.
-      </p>
-
-      <!-- Modal horari graella -->
-      <div
-        class="modal-backdrop"
-        v-if="showModal"
-        @click.self="showModal = false"
-      >
-        <div class="modal-graella">
-          <h3>Horari en format graella</h3>
-          <button class="close-btn" @click="showModal = false">
-            Tancar
-          </button>
-          <table class="horari-taula-graella">
             <thead>
               <tr>
                 <th>Dia</th>
-                <th v-for="h in hores" :key="h" colspan="4">{{ h }}h</th>
                 <th>Horari</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="dia in diesSetmana" :key="dia">
                 <td class="dia">{{ dia }}</td>
-                <td v-for="hora in hores" :key="hora" colspan="4">
-                  <div
-                    v-for="seg in 4"
-                    :key="seg"
-                    class="hour-segment"
-                    :class="{ open: getHourSegment(dia, hora, seg - 1) }"
-                  />
-                </td>
-                <td class="horari">{{ horarisPerDia[dia] || 'Tancat' }}</td>
+                <td class="horari">{{ horarisPerDia[dia] || "Tancat" }}</td>
               </tr>
             </tbody>
           </table>
+
+          <!-- 📊 Modal Graella -->
+          <div class="modal-backdrop" v-if="showModal" @click.self="showModal = false">
+            <div class="modal-graella">
+              <h3>Horari en format graella</h3>
+              <button class="close-btn" @click="showModal = false">Tancar</button>
+              <table class="horari-taula-graella">
+                <thead>
+                  <tr>
+                    <th>Dia</th>
+                    <th v-for="hora in hores" :key="hora" colspan="4">{{ hora }}h</th>
+                    <th>Horari</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="dia in diesSetmana" :key="dia">
+                    <td class="dia">{{ dia }}</td>
+                    <td v-for="hora in hores" :key="hora" colspan="4">
+                      <div class="hour-segment" v-for="seg in 4" :key="seg" :class="{ open: getHourSegment(dia, hora, seg - 1) }"></div>
+                    </td>
+                    <td class="horari">{{ horarisPerDia[dia] || "Tancat" }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
+      </div>
+
+      <div class="section-productes">
+        <!-- 🛒 Productes -->
+        <h2 class="section-title">🛒 Productes disponibles</h2>
+        <div v-if="productes.length > 0" class="producte-grid">
+          <router-link v-for="producte in productes" :key="producte.id" :to="`/producte/${producte.id}`" class="producte-card">
+            <img :src="producte.imatge ? `/img/${producte.imatge}` : '/img/no-imatge.jpg'" class="producte-img" />
+            <div class="producte-info">
+              <h3>{{ producte.nom }}</h3>
+              <p class="preu">{{ producte.preu }} €</p>
+            </div>
+          </router-link>
+      </div>
+      <p v-else class="no-productes">❌ Aquesta botiga encara no té productes.</p>
       </div>
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import axios from 'axios'
-import L from 'leaflet'
-
-// Reactivity
-const route = useRoute()
-const botiga = ref<any>(null)
-const summary = ref({ ambient: 0, personal: 0, recollida: 0 })
-const productes = ref<any[]>([])
-const horaris = ref<any[]>([])
-const mapRef = ref<HTMLElement | null>(null)
-const loading = ref(true)
-const errorMessage = ref('')
-const showModal = ref(false)
-
-// Consts
-const diesSetmana = ['Dilluns','Dimarts','Dimecres','Dijous','Divendres','Dissabte','Diumenge']
-const hores = Array.from({ length: 24 }, (_, i) => i)
-
-// Computed: agrupa horaris per dia en text
-const horarisPerDia = computed<Record<string,string>>(() => {
-  const out: Record<string,string> = {}
-  for (const dia of diesSetmana) {
-    const franjes = horaris.value
-      .filter(h => h.dia.toLowerCase() === dia.toLowerCase())
-      .map(h => `${h.obertura.slice(0,5)} - ${h.tancament.slice(0,5)}`)
-    out[dia] = franjes.join(', ')
-  }
-  return out
-})
-
-// Comprova si un segment de 15 min està obert
-function getHourSegment(dia: string, hora: number, seg: number): boolean {
-  const minSeg = hora * 60 + seg * 15
-  const maxSeg = minSeg + 15
-  return horaris.value.some(h => {
-    const o = parseInt(h.obertura.slice(0,2))*60 + parseInt(h.obertura.slice(3,5))
-    const t = parseInt(h.tancament.slice(0,2))*60 + parseInt(h.tancament.slice(3,5))
-    return minSeg < t && maxSeg > o
-  })
-}
-
-// Retorna URL completa de la imatge
-function getImageSrc(path: string|null): string {
-  const base = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
-  if (!path) return '/img/no-imatge.jpg'
-  return path.startsWith('/') ? base + path : base + '/uploads/' + path
-}
-
-// Inicialitza el mapa Leaflet
-function initMap() {
-  if (!botiga.value || !mapRef.value) return
-  const { latitude: lat, longitude: lng } = botiga.value
-  if (!lat || !lng) return
-
-  const map = L.map(mapRef.value).setView([lat, lng], 14)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map)
-
-  L.marker([lat, lng])
-    .addTo(map)
-    .bindPopup(`<b>${botiga.value.nom}</b>`)
-    .openPopup()
-
-  setTimeout(() => map.invalidateSize(), 300)
-}
-
-// Carrega dades de la botiga i del seu resum
-async function fetchBotiga() {
-  loading.value = true
-  try {
-    const id = route.params.id
-    const [bRes, sRes] = await Promise.all([
-      axios.get(`/botigues/${id}`),
-      axios.get(`/botigues/${id}/store-summary`)
-    ])
-    botiga.value = bRes.data
-    summary.value.ambient   = sRes.data.ambient?.avg   ?? 0
-    summary.value.personal  = sRes.data.personal?.avg  ?? 0
-    summary.value.recollida = sRes.data.recollida?.avg ?? 0
-    productes.value = bRes.data.productes  || []
-    horaris.value   = bRes.data.horaris    || []
-    await nextTick()
-    initMap()
-  } catch (e) {
-    console.error('Error carregant la botiga:', e)
-    errorMessage.value = 'No s’ha pogut carregar la botiga.'
-  } finally {
-    loading.value = false
-  }
-}
-onMounted(fetchBotiga)
-</script>
-
 <style scoped>
-/* Disseny vertical amb dues columnes */
-
-.botiga-container {
-  padding: 20px;
-}
-
+/* 🔹 Disseny vertical amb dues columnes */
 .grid-layout {
   display: flex;
   flex-direction: row;
@@ -242,6 +244,26 @@ onMounted(fetchBotiga)
   width: 100%;
   height: 250px;
   border-radius: 10px;
+}
+
+/* ⭐ Valoracions */
+.store-summary {
+  margin-bottom: 20px;
+}
+.store-summary ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.store-summary li {
+  margin-bottom: 4px;
+  font-size: 1.15em;
+}
+.stars {
+  font-family: "Arial", "Helvetica Neue", Arial, Helvetica, sans-serif;
+  color: #ffb300;
+  margin-left: 4px;
+  letter-spacing: 1px;
 }
 
 /* 🕒 Taula d'horaris */
@@ -273,7 +295,7 @@ onMounted(fetchBotiga)
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
-  margin-top: 20px;
+  margin: 20px;
 }
 
 .producte-card {

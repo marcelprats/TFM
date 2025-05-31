@@ -84,7 +84,7 @@
       </div>
     </div>
 
-    <!-- Mobile (i desktop if vols cards): cards agrupades per botiga -->
+    <!-- Mobile (i desktop si vols cards): cards agrupades per botiga -->
     <div class="cards-view mobile-only">
       <div v-for="(items, shopId) in groupedCartItems" :key="shopId" class="shop-cards">
         <div class="shop-header cards-header">
@@ -195,6 +195,19 @@ const router    = useRouter()
 const toast     = useToast()
 const cartStore = useCartStore()
 
+// 👇 FUNCIO PER MOSTRAR IMATGES
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+const DEFAULT_IMAGE = '/img/no-imatge.jpg'
+
+function getImageSrc(path: string | null) {
+  if (!path) return DEFAULT_IMAGE
+  // Si ja és una URL absoluta (http, https), retorna-la directament
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  // Si és una ruta relativa però NO comença per '/', afegeix '/'
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  return BACKEND_URL + cleanPath
+}
+
 // Modals & state
 const showClearModal        = ref(false)
 const showClearAllModal     = ref(false)
@@ -203,7 +216,14 @@ const modalShopId           = ref<string>('')
 const singleDeleteItemName  = ref<string>('')
 let itemToDelete: number | null = null
 
-onMounted(() => cartStore.fetchCart())
+onMounted(() => {
+  cartStore.fetchCart().then(() => {
+    // Mostra totes les imatges dels productes carregats al carro
+    cartStore.items.forEach(item => {
+      console.log('imatge:', item.product.imatge)
+    })
+  })
+})
 
 // Computed
 const hasItems = computed(() => cartStore.items.length > 0)

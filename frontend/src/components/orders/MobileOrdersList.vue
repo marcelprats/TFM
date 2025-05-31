@@ -92,88 +92,84 @@ function badgeClass(status: string) {
 .mobile-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .order-card {
   background: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 18px 16px 12px 16px;
   transition: box-shadow 0.2s;
 }
-
 .order-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
 }
-
 .card-row {
   display: flex;
   gap: 16px;
   border-bottom: 1px solid #eee;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
 }
-
-.order-summary-col {
-  flex: 1;
-}
-
-.order-products-col {
-  flex: 2;
-}
-
+.order-summary-col { flex: 1; }
+.order-products-col { flex: 2; }
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 8px;
 }
-
 .product-card {
-  background: #f5f5f5;
-  border-radius: 4px;
-  padding: 6px;
-  font-size: 0.85rem;
+  background: #eaf9f2;
+  border-radius: 5px;
+  padding: 7px 2px;
+  font-size: 0.97rem;
   text-align: center;
+  color: #212c3a;
+  font-weight: 500;
 }
-
 .more-products {
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   color: #555;
   text-align: center;
+  font-style: italic;
+  opacity: 0.8;
 }
-
+.no-products {
+  color: #888;
+  font-size: 0.91rem;
+  text-align: center;
+}
 .order-actions {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 14px;
+  margin-top: 10px;
 }
-
 .action-btn {
-  padding: 8px 14px;
+  padding: 9px 16px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   background-color: #28a745;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 1.01rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
 }
-
 .action-btn:hover {
   background-color: #218838;
 }
-
 .badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 0.85rem;
   color: #fff;
   text-transform: capitalize;
+  margin-bottom: 4px;
+  display: inline-block;
 }
-
-.badge-pending   { background-color: #ffc107; }
+.badge-pending   { background-color: #ffc107; color: #333; }
 .badge-reserved  { background-color: #17a2b8; }
 .badge-completed { background-color: #28a745; }
 .badge-cancelled { background-color: #dc3545; }

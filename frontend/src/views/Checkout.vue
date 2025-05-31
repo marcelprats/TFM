@@ -385,26 +385,81 @@ function goToProduct(id: number) {
 
 
 <style scoped>
-/* (Els teus estils es mantenen sense canvis) */
 .checkout-container {
-  max-width: 600px;
-  margin: 30px auto;
-  padding: 20px;
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 28px 24px 18px 24px;
+  background: #fafbfc;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.checkout-container h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #212c3a;
+  margin-bottom: 20px;
   text-align: center;
 }
 
+.global-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 16px 0 14px 0;
+}
+
+.clear-all-btn,
+.clear-group-btn,
+.trash-btn {
+  background-color: #e53935;
+  color: #fff;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 15px;
+  transition: background 0.2s;
+}
+.clear-all-btn:hover,
+.clear-group-btn:hover,
+.trash-btn:hover {
+  background-color: #c62828;
+}
+
 .financial-summary {
-  margin: 10px 0;
-  font-size: 16px;
+  margin: 18px 0 18px 0;
+  font-size: 17px;
+  background: #eaf9f2;
+  border-radius: 7px;
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
 }
 
 .order-summary {
-  margin-bottom: 20px;
+  margin-bottom: 26px;
+  width: 100%;
+}
+
+.order-summary h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #2d2d2d;
+  margin: 18px 0 12px 0;
+  text-align: left;
 }
 
 .shop-group {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
+  background: #f7f7f9;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  padding: 12px 0 20px 0;
 }
 
 .shop-header {
@@ -412,127 +467,119 @@ function goToProduct(id: number) {
   justify-content: space-between;
   align-items: center;
   background-color: #f2f2f2;
-  padding: 10px 15px;
-  border-radius: 4px;
+  padding: 12px 22px;
+  border-radius: 7px;
   margin-bottom: 10px;
 }
 .shop-header .shop-name {
-  color: #000; /* "Botiga:" en negre */
-  font-size: 16px;
+  color: #222;
+  font-size: 17px;
 }
 .shop-header .shop-totals {
   text-align: right;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 .shop-header .shop-total,
 .shop-header .shop-deposit {
   font-size: 16px;
   color: #333;
+  line-height: 1.2;
 }
 
 .summary-table {
-  width: 100%;
+  width: 96%;
+  margin: 0 auto;
   border-collapse: collapse;
-  margin: 10px 0;
+  margin-top: 10px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0.5px 2px rgba(0,0,0,0.05);
 }
 .summary-table th,
 .summary-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 10px 6px;
   text-align: center;
+  font-size: 15px;
 }
 .summary-table th {
   background-color: #42b983;
   color: #fff;
+  font-weight: 600;
+}
+.summary-table tr:hover td {
+  background: #f4f7ff;
 }
 
-/* Botons globals */
-.global-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin: 20px 0;
-}
-.clear-all-btn,
-.clear-group-btn,
-.trash-btn {
-  background-color: #d9534f;
-  color: #fff;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-.clear-all-btn:hover,
-.clear-group-btn:hover,
-.trash-btn:hover {
-  background-color: #c9302c;
-}
-.checkout-all-btn,
 .checkout-btn {
-  background-color: #28a745;
+  margin-top: 30px;
+  background-color: #42b983;
   color: #fff;
-  padding: 8px 14px;
+  padding: 13px 0;
   border: none;
-  border-radius: 4px;
+  border-radius: 7px;
+  font-size: 1.17rem;
+  width: 100%;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background-color 0.2s;
 }
-.checkout-all-btn:hover,
 .checkout-btn:hover {
-  background-color: #218838;
+  background-color: #368c6e;
 }
 
 /* Barra de progress */
 .progress-container {
-  margin: 20px 0;
+  margin: 22px 0 18px 0;
 }
 .progress-bar {
   display: flex;
-  height: 20px;
+  height: 22px;
   width: 100%;
-  background-color: #eee;
-  border-radius: 10px;
+  background-color: #e0e0e0;
+  border-radius: 12px;
   overflow: hidden;
 }
 .progress-deposit {
-  background-color: #28a745;
+  background-color: #42b983;
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width 0.3s;
 }
 .progress-remainder {
   background-color: #ffc107;
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width 0.3s;
 }
 .progress-labels {
   display: flex;
   justify-content: space-between;
   font-size: 14px;
-  margin-top: 5px;
+  margin-top: 6px;
+  color: #333;
 }
 
 /* Secció de condicions */
 .terms {
-  margin: 20px 0;
+  margin: 22px 0 0 0;
   text-align: left;
   position: relative;
+  font-size: 15px;
 }
 .terms input[type="checkbox"].error {
   outline: 2px solid red;
 }
 .error-message {
-  color: red;
+  color: #e53935;
   font-size: 14px;
-  margin-top: 5px;
+  margin-top: 6px;
   text-align: left;
 }
 .obligatory-msg {
-  font-size: 12px;
-  color: red;
+  font-size: 13px;
+  color: #e53935;
   margin-left: 5px;
 }
 
@@ -541,9 +588,9 @@ function goToProduct(id: number) {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0,0,0,0.5);
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0,0,0,0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -551,14 +598,14 @@ function goToProduct(id: number) {
 }
 .modal-content {
   background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 80vh;
+  padding: 26px 20px 18px 20px;
+  border-radius: 10px;
+  max-width: 540px;
+  width: 94vw;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  animation: modalFadeIn 0.3s ease;
+  animation: modalFadeIn 0.3s;
 }
 @keyframes modalFadeIn {
   from { opacity: 0; transform: translateY(-20px); }
@@ -571,56 +618,72 @@ function goToProduct(id: number) {
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  margin: 20px 0;
+  margin: 16px 0 14px 0;
   text-align: left;
-  border-top: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-  padding: 10px;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  padding: 10px 2px;
   color: #555;
+  font-size: 15px;
 }
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 18px;
 }
 .btn.modal-accept-btn {
-  background-color: #28a745;
+  background-color: #42b983;
   color: #fff;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  font-weight: 600;
+  transition: background 0.2s;
 }
 .btn.modal-accept-btn:hover {
-  background-color: #218838;
+  background-color: #368c6e;
 }
-.btn.modal-cancel-btn {
-  background-color: #d9534f;
+.btn.modal-cancel-btn, .btn.modal-close-btn {
+  background-color: #e53935;
   color: #fff;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  font-weight: 600;
+  transition: background 0.2s;
 }
-.btn.modal-cancel-btn:hover {
-  background-color: #c9302c;
+.btn.modal-cancel-btn:hover, .btn.modal-close-btn:hover {
+  background-color: #c62828;
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .checkout-container {
-    padding: 15px;
+    padding: 12px 2vw;
+    max-width: 99vw;
   }
-  .financial-summary,
-  .progress-labels {
-    font-size: 14px;
+  .order-summary {
+    margin-bottom: 12px;
+  }
+  .shop-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 10px;
   }
   .summary-table th,
   .summary-table td {
-    padding: 6px;
+    padding: 7px 2px;
+    font-size: 14px;
   }
-}
-</style>
+  .modal-content {
+    max-width: 98vw;
+    padding: 14px 2vw 10px 2vw;
+  }
+  .modal-body {
+    font-size: 14px;
+  }
+}</style>
