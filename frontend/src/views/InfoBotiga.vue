@@ -53,12 +53,12 @@ const getHourSegment = (dia, hora, segment) => {
 // 📌 Carregar botiga, valoracions i horaris
 const fetchBotiga = async () => {
   try {
-    const response = await axios.get(`/api/botigues/${route.params.id}`);
+    const response = await axios.get(`/botigues/${route.params.id}`);
     botiga.value = response.data;
     productes.value = response.data.productes || [];
     horaris.value = response.data.horaris || [];
     // Carrega valoracions
-    const summaryRes = await axios.get(`/api/botigues/${route.params.id}/store-summary`);
+    const summaryRes = await axios.get(`/botigues/${route.params.id}/store-summary`);
     summary.value.ambient = summaryRes.data.ambient?.avg ?? 0;
     summary.value.personal = summaryRes.data.personal?.avg ?? 0;
     summary.value.recollida = summaryRes.data.recollida?.avg ?? 0;

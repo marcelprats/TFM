@@ -1,4 +1,3 @@
-<!-- name=src/views/Producte.vue -->
 <template>
   <div class="product-page">
     <template v-if="product">
@@ -26,7 +25,6 @@
             </router-link>
             <span v-else>No disponible</span>
           </p>
-
           <p class="stock">
             <strong>Stock disponible:</strong> {{ product.stock ?? "No disponible" }}
           </p>
@@ -161,6 +159,19 @@
       <button class="close-btn" @click="closeImage">&times;</button>
       <img :src="modalImageSrc" class="modal-img" />
     </div>
+
+    <!-- ─── MODAL D'AVÍS LOGIN ──────────────────────────────────────── -->
+    <div v-if="showLoginModal" class="modal-overlay" @click.self="closeLoginModal">
+      <div class="modal-content">
+        <button class="modal-x" @click="closeLoginModal" aria-label="Tanca">&times;</button>
+        <span class="modal-icon">🔒</span>
+        <p>Has d'iniciar sessió o registrar-te per afegir productes al carro.</p>
+        <div class="button-group">
+          <button @click="goToRegister" class="modal-btn register-btn">Registrar-se</button>
+          <button @click="goToLogin" class="modal-btn login-btn">Inicia sessió</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -229,6 +240,23 @@ const horarisPerDia = computed<Record<string,string>>(() => {
   }
   return out
 })
+
+// MODAL LOGIN
+const showLoginModal = ref(false)
+function isLoggedIn() {
+  return !!localStorage.getItem('userToken')
+}
+function goToLogin() {
+  showLoginModal.value = false
+  router.push('/login')
+}
+function goToRegister() {
+  showLoginModal.value = false
+  router.push('/registre?mode=comprador')
+}
+function closeLoginModal() {
+  showLoginModal.value = false
+}
 
 // Carrega producte + botiga + mapa + related + carousel
 async function loadProduct() {
@@ -347,6 +375,10 @@ async function updateCartQuantity(){
   setTimeout(() => addSuccessMessage.value = '', 2000)
 }
 async function handleAddItem(){
+  if(!isLoggedIn()){
+    showLoginModal.value = true
+    return
+  }
   if(!product.value) return
   await cartStore.addItem(product.value.id, quantity.value)
   await cartStore.fetchCart()
@@ -605,6 +637,75 @@ watch(()=>route.params.id, loadProduct)
   background: transparent; border: none;
   font-size: 2rem; color: white; cursor: pointer; line-height: 1;
 }
+
+/* ─── MODAL D'AVÍS LOGIN ───────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000;
+}
+.modal-content {
+  background: white;
+  padding: 2rem 1.5rem;
+  border-radius: 14px;
+  max-width: 90vw;
+  box-shadow: 0 2px 32px rgba(0,0,0,0.13);
+  text-align: center;
+  min-width: 260px;
+  position: relative;
+}
+.modal-x {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  font-size: 2rem;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s;
+}
+.modal-x:hover {
+  color: #e53935;
+}
+.modal-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 8px;
+}
+.button-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.2rem;
+}
+.modal-btn {
+  height: 44px;
+  min-width: 150px;
+  padding: 0 1.6em;
+  font-size: 1rem;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  transition: background .2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.register-btn {
+  background: #1976d2; color: white;
+}
+.register-btn:hover { background: #145ea8; }
+.login-btn {
+  background: #42b983; color: white;
+}
+.login-btn:hover { background: #368c6e; }
+.close-btn {
+  background: #e53935; color: white;
+}
+.close-btn:hover { background: #c62828; }
 
 /* ─── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {

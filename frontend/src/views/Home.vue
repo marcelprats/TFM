@@ -5,15 +5,17 @@
     <section class="home-hero">
       <div class="hero-content">
         <h1>Descobreix el <span>gust</span> del teu barri</h1>
-        <p>Explora productes de comerços locals i recolza la teva comunitat.</p>
+        <p>Explora productes de comerços locals i dona suport a la teva comunitat.</p>
         <button @click="router.push('/botiga')" class="hero-button">
           Comença ara
         </button>
       </div>
-      <picture>
-        <source media="(min-width: 768px)" srcset="/img/hero-i.png" />
-        <img src="/img/hero-image-m.png" alt="Descobreix els comerços locals" class="hero-image" />
-      </picture>
+      <router-link to="/about" style="display: contents">
+        <picture>
+          <source media="(min-width: 768px)" srcset="/img/hero-i.png" />
+          <img src="/img/hero-image-m.png" alt="Descobreix els comerços locals" class="hero-image" style="cursor:pointer" />
+        </picture>
+      </router-link>
     </section>
 
     <!-- Cercador + Mapa -->
