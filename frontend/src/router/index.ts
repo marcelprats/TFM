@@ -81,12 +81,6 @@ const routes: RouteRecordRaw[] = [
     props: (route: RouteLocationNormalized) => ({
       botigaId: Number(route.params.botigaId)
     })
-  },
-
-  {
-    path: '/cart-test',
-    name: 'CartTest',
-    component: () => import('../views/TestCart.vue')
   }
 ]
 
