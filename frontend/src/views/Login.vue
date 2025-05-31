@@ -6,13 +6,14 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 const email = ref("");
 const password = ref("");
-const isVendor = ref(false); // Per defecte és comprador
+const isVendor = ref(false);
 const errorMessage = ref("");
+const showPassword = ref(false);
 
 const handleLogin = async () => {
   errorMessage.value = "";
   try {
-    const user = await loginUser(email.value, password.value, isVendor.value);
+    await loginUser(email.value, password.value, isVendor.value);
     router.push("/home");
   } catch (error) {
     errorMessage.value = "Credencials incorrectes";
@@ -25,9 +26,33 @@ const handleLogin = async () => {
     <h1>Iniciar Sessió</h1>
     <form @submit.prevent="handleLogin">
       <input type="email" v-model="email" placeholder="Email" required autocomplete="username" />
-      <input type="password" v-model="password" placeholder="Contrasenya" required autocomplete="current-password" />
 
-      <!-- Switch modern i bonic -->
+      <div class="password-wrapper">
+        <input
+          :type="showPassword ? 'text' : 'password'"
+          v-model="password"
+          placeholder="Contrasenya"
+          required
+          autocomplete="current-password"
+        />
+        <button
+          type="button"
+          class="toggle-eye"
+          @click="showPassword = !showPassword"
+          :aria-label="showPassword ? 'Oculta contrasenya' : 'Mostra contrasenya'"
+          tabindex="-1"
+        >
+          <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="24" height="24">
+            <path stroke="#333" stroke-width="2" d="M3 12s3.6-6 9-6 9 6 9 6-3.6 6-9 6-9-6-9-6Z"/>
+            <circle cx="12" cy="12" r="3" stroke="#333" stroke-width="2"/>
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="24" height="24">
+            <path stroke="#333" stroke-width="2" d="M3 12s3.6-6 9-6a8.96 8.96 0 0 1 4.04.97m3.51 2.81C19.5 10.5 21 12 21 12s-3.6 6-9 6a8.96 8.96 0 0 1-4.04-.97M4.49 9.19C4.5 9.5 3 12 3 12s3.6 6 9 6c1.59 0 3.09-.32 4.46-.91"/>
+            <path stroke="#333" stroke-width="2" d="M3 3l18 18"/>
+          </svg>
+        </button>
+      </div>
+
       <div class="switch-container">
         <span :class="['role-label', !isVendor && 'active']">Comprador</span>
         <label class="switch">
@@ -40,7 +65,6 @@ const handleLogin = async () => {
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
       <button type="submit" class="auth-button">Entrar</button>
     </form>
-
     <p>
       No tens compte?
       <router-link to="/register">Registra't</router-link>
@@ -57,7 +81,6 @@ const handleLogin = async () => {
   text-align: center;
   background: #fff;
   border-radius: 18px;
-  /* border i shadow eliminats per aspecte més net */
 }
 
 h1 {
@@ -69,10 +92,11 @@ h1 {
 }
 
 input[type="email"],
-input[type="password"] {
+.password-wrapper input[type="password"],
+.password-wrapper input[type="text"] {
   width: 100%;
   box-sizing: border-box;
-  padding: 13px 14px;
+  padding: 13px 44px 13px 14px; /* més espai per l'ull */
   margin: 10px 0;
   background: #fff9cc;
   border: none;
@@ -81,9 +105,38 @@ input[type="password"] {
   transition: box-shadow .2s;
   outline: none;
 }
+
 input[type="email"]:focus,
-input[type="password"]:focus {
+.password-wrapper input:focus {
   box-shadow: 0 0 0 2px #42b98355;
+}
+
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.toggle-eye {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+  height: 32px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-eye svg {
+  width: 22px;
+  height: 22px;
 }
 
 .auth-button {
@@ -115,7 +168,6 @@ input[type="password"]:focus {
   user-select: none;
 }
 
-/* Etiquetes actives/desactives */
 .role-label {
   font-size: 1.08rem;
   color: #aaa;
@@ -126,7 +178,6 @@ input[type="password"]:focus {
   color: #42b983;
 }
 
-/* SWITCH bonic */
 .switch {
   position: relative;
   display: inline-block;

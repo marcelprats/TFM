@@ -12,7 +12,11 @@
         <tr v-for="(horari, index) in horaris" :key="index">
           <td>{{ capitalize(horari.dia) }}</td>
           <td>
-            <input type="checkbox" v-model="horari.tancat" @change="toggleTancat(horari)" />
+            <input
+              type="checkbox"
+              :checked="horari.tancat"
+              @change="toggleTancat(index)"
+            />
           </td>
           <td>
             <div v-if="horari.tancat">🔒 Tancat</div>
@@ -22,16 +26,24 @@
                 :key="i"
                 class="franja"
               >
-                <select v-model="franja.obertura" class="hour-select">
+                <select
+                  :value="franja.obertura"
+                  @change="updateFranja(index, i, 'obertura', $event.target.value)"
+                  class="hour-select"
+                >
                   <option v-for="h in hores" :key="'o' + h" :value="h">{{ h }}</option>
                 </select>
                 <span>-</span>
-                <select v-model="franja.tancament" class="hour-select">
+                <select
+                  :value="franja.tancament"
+                  @change="updateFranja(index, i, 'tancament', $event.target.value)"
+                  class="hour-select"
+                >
                   <option v-for="h in hores" :key="'t' + h" :value="h">{{ h }}</option>
                 </select>
-                <button @click="eliminarFranja(horari, i)" class="delete-btn">❌</button>
+                <button @click="eliminarFranja(index, i)" class="delete-btn">❌</button>
               </div>
-              <button @click="afegirFranja(horari)" class="add-btn">➕ Afegir franja</button>
+              <button @click="afegirFranja(index)" class="add-btn">➕ Afegir franja</button>
             </div>
           </td>
         </tr>
@@ -43,75 +55,70 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
 
-// 1) Defineix el `prop` de `horaris`
 const props = defineProps<{
   horaris: { dia: string; tancat: boolean; franjes: { obertura: string; tancament: string }[] }[]
 }>()
 
-// 2) Defineix l’`emit` perquè funcioni `v-model:horaris`
 const emit = defineEmits<{
   (e: 'update:horaris', value: typeof props.horaris): void
 }>()
 
-// Resta de lògica d’hores i utilitats
 const hores = Array.from({ length: 24 * 4 }, (_, i) => {
   const h = Math.floor(i / 4).toString().padStart(2, "0")
   const m = (i % 4 * 15).toString().padStart(2, "0")
   return `${h}:${m}`
 })
 
-const capitalize = (text: string) =>
-  text.charAt(0).toUpperCase() + text.slice(1)
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
-// 3) Funció per afegir una franja sense mutar la `prop`
-const afegirFranja = (horari: typeof props.horaris[0]) => {
-  const out = props.horaris.map(h =>
-    h === horari
-      ? {
-          ...h,
-          franjes: h.franjes.length
-            ? [
-                ...h.franjes,
-                {
-                  obertura: h.franjes[h.franjes.length - 1].tancament,
-                  tancament: "00:00"
-                }
-              ]
-            : [{ obertura: "09:00", tancament: "13:00" }]
-        }
-      : h
-  )
-  emit('update:horaris', out)
+// NOVA: Còpia profunda
+function deepCopy(obj: any) {
+  return JSON.parse(JSON.stringify(obj))
 }
 
-// 4) Funció per eliminar una franja sense mutar la `prop`
-const eliminarFranja = (horari: typeof props.horaris[0], index: number) => {
-  const out = props.horaris.map(h =>
-    h === horari
-      ? { ...h, franjes: h.franjes.filter((_, i) => i !== index) }
-      : h
-  )
-  emit('update:horaris', out)
+// Alterna tancat/obert per un dia
+function toggleTancat(index: number) {
+  const copy = deepCopy(props.horaris)
+  copy[index].tancat = !copy[index].tancat
+  // Si ara està obert, inicialitza franja
+  if (!copy[index].tancat && copy[index].franjes.length === 0) {
+    copy[index].franjes.push({ obertura: "09:00", tancament: "13:00" })
+  }
+  // Si ara està tancat, esborra franges
+  if (copy[index].tancat) {
+    copy[index].franjes = []
+  }
+  emit('update:horaris', copy)
 }
 
-// 5) Funció per alternar tancat/obert sense mutar la `prop`
-const toggleTancat = (horari: typeof props.horaris[0]) => {
-  const out = props.horaris.map(h =>
-    h === horari
-      ? {
-          ...h,
-          tancat: !h.tancat,
-          franjes: h.tancat
-            ? [{ obertura: "09:00", tancament: "13:00" }]
-            : []
-        }
-      : h
-  )
-  emit('update:horaris', out)
+// Afegeix franja a un dia
+function afegirFranja(index: number) {
+  const copy = deepCopy(props.horaris)
+  const last = copy[index].franjes[copy[index].franjes.length - 1]
+  copy[index].franjes.push({
+    obertura: last ? last.tancament : "09:00",
+    tancament: "13:00"
+  })
+  emit('update:horaris', copy)
+}
+
+// Elimina franja d'un dia
+function eliminarFranja(index: number, i: number) {
+  const copy = deepCopy(props.horaris)
+  copy[index].franjes.splice(i, 1)
+  emit('update:horaris', copy)
+}
+
+// Actualitza una franja (obertura/tancament)
+function updateFranja(index: number, i: number, field: "obertura" | "tancament", value: string) {
+  const copy = deepCopy(props.horaris)
+  copy[index].franjes[i][field] = value
+  emit('update:horaris', copy)
 }
 </script>
 
 <style scoped>
+/* El teu mateix css */
 .horaris-container {
   padding: 0 16px;
 }

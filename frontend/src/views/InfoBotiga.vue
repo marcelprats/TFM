@@ -245,6 +245,10 @@ onMounted(() => {
   flex: 1;
 }
 
+.botiga-container {
+  margin: 10px
+ }
+
 /* 📍 Mapa */
 .map-container {
   width: 100%;
