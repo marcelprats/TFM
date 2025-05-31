@@ -252,7 +252,7 @@ function goToLogin() {
 }
 function goToRegister() {
   showLoginModal.value = false
-  router.push('/registre?mode=comprador')
+  router.push('/register?mode=comprador')
 }
 function closeLoginModal() {
   showLoginModal.value = false
