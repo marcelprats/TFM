@@ -5,7 +5,18 @@ import { useRoute } from "vue-router";
 import L from "leaflet";
 import 'leaflet/dist/leaflet.css'
 
-const API_URL = "http://127.0.0.1:8000/api";
+// Fix icona marker Leaflet (important per Vite)
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow
+})
+
 const route = useRoute();
 const botiga = ref(null);
 const productes = ref([]);
@@ -42,12 +53,12 @@ const getHourSegment = (dia, hora, segment) => {
 // 📌 Carregar botiga, valoracions i horaris
 const fetchBotiga = async () => {
   try {
-    const response = await axios.get(`${API_URL}/botigues/${route.params.id}`);
+    const response = await axios.get(`/api/botigues/${route.params.id}`);
     botiga.value = response.data;
     productes.value = response.data.productes || [];
     horaris.value = response.data.horaris || [];
     // Carrega valoracions
-    const summaryRes = await axios.get(`${API_URL}/botigues/${route.params.id}/store-summary`);
+    const summaryRes = await axios.get(`/api/botigues/${route.params.id}/store-summary`);
     summary.value.ambient = summaryRes.data.ambient?.avg ?? 0;
     summary.value.personal = summaryRes.data.personal?.avg ?? 0;
     summary.value.recollida = summaryRes.data.recollida?.avg ?? 0;

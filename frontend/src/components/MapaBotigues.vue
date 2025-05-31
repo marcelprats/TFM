@@ -1,12 +1,23 @@
-<!-- src/components/MapaBotigues.vue -->
 <template>
   <div ref="mapContainer" class="leaflet-container map-full"></div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, onBeforeUnmount, defineExpose } from 'vue'
+import { ref, onMounted, watch, nextTick, defineExpose } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+
+// Fix per a les icones de marker a Leaflet en Vite/Webpack
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow
+})
 
 interface Store { id: number; nom: string; latitude: number; longitude: number; }
 
@@ -17,7 +28,6 @@ let map: L.Map
 let markersLayer: L.LayerGroup
 const markersMap = new Map<number, L.Marker>()
 
-// Encara tots els marcadors en els límits actuals
 function fitMarkersBounds() {
   const latlngs: L.LatLngExpression[] = []
   props.stores.forEach(s => {
@@ -28,6 +38,25 @@ function fitMarkersBounds() {
   if (map && latlngs.length) {
     map.fitBounds(L.latLngBounds(latlngs), { padding: [40, 40] })
   }
+}
+
+function addMarkers() {
+  markersLayer.clearLayers()
+  markersMap.clear()
+
+  props.stores.forEach(s => {
+    if (s.latitude != null && s.longitude != null) {
+      const marker = L.marker([s.latitude, s.longitude]).addTo(markersLayer)
+      marker.bindPopup(
+        `<b><a href="/info-botiga/${s.id}" target="_blank">${s.nom}</a></b>`
+      )
+      marker.on('click', () => {
+        map.flyTo([s.latitude, s.longitude], 16, { animate: true, duration: 0.7 })
+        marker.openPopup()
+      })
+      markersMap.set(s.id, marker)
+    }
+  })
 }
 
 onMounted(() => {
@@ -52,24 +81,6 @@ watch(() => props.stores, async () => {
   fitMarkersBounds()
 })
 
-function addMarkers() {
-  markersLayer.clearLayers()
-  markersMap.clear()
-
-  props.stores.forEach(s => {
-    const marker = L.marker([s.latitude, s.longitude]).addTo(markersLayer)
-    marker.bindPopup(
-      `<b><a href="/info-botiga/${s.id}" target="_blank">${s.nom}</a></b>`
-    )
-    marker.on('click', () => {
-      map.flyTo([s.latitude, s.longitude], 16, { animate: true, duration: 0.7 })
-      marker.openPopup()
-    })
-    markersMap.set(s.id, marker)
-  })
-}
-
-// Exposem al component pare el que necessitem usar-hi
 defineExpose({
   zoomToStore(store: Store) {
     const m = markersMap.get(store.id)
@@ -81,7 +92,6 @@ defineExpose({
   setInitialView(latlng: [number, number], zoom: number) {
     if (map) map.setView(latlng, zoom)
   },
-  // <-- Afegeix aquest mètode:
   fitBounds(bounds: [number, number][]) {
     if (map && bounds.length) {
       map.fitBounds(bounds, { padding: [40, 40] })
@@ -95,9 +105,11 @@ defineExpose({
   width: 100%;
   height: 100%;
   flex: 1;
+  min-height: 300px;
 }
 .leaflet-container {
   width: 100%;
   height: 100%;
+  min-height: 300px;
 }
 </style>
