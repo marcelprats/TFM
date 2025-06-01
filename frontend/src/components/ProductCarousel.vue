@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref, onMounted, onBeforeUnmount } from 'vue'
+import { defineProps, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import ProducteCard from './ProducteCard.vue'
 
@@ -62,33 +62,52 @@ interface Product {
 
 const props = defineProps<{ products: Product[] }>()
 const products = props.products
-const track = ref<HTMLDivElement|null>(null)
+const track = ref<HTMLDivElement | null>(null)
 let autoInterval: ReturnType<typeof setInterval> | null = null
 const router = useRouter()
+const currentIdx = ref(0)
+let isUserScrolling = false
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null
 
-/** Mou un sol slide en la direcció indicada */
-function scrollByOne(direction: 1|-1) {
+function scrollToIdx(idx: number, opts: ScrollToOptions = { behavior: 'smooth' }) {
   if (!track.value) return
-  const slide = track.value.querySelector<HTMLElement>('.carousel-slide')
+  const slides = track.value.querySelectorAll<HTMLElement>('.carousel-slide')
+  const slide = slides[idx]
   if (!slide) return
-  const style = getComputedStyle(slide)
-  const gap = parseFloat(style.marginRight)
-  const width = slide.clientWidth + gap
-  track.value.scrollBy({ left: direction * width, behavior: 'smooth' })
+  const offsetLeft = slide.offsetLeft
+  track.value.scrollTo({ left: offsetLeft, behavior: opts.behavior })
+  currentIdx.value = idx
+}
+
+/**
+ * Mou un sol slide en la direcció indicada i actualitza l'índex
+ */
+function scrollByOne(direction: 1 | -1) {
+  if (!track.value) return
+  const slides = track.value.querySelectorAll<HTMLElement>('.carousel-slide')
+  if (!slides.length) return
+  let nextIdx = currentIdx.value + direction
+  if (nextIdx >= slides.length || nextIdx < 0) {
+    scrollToIdx(0)
+    return
+  }
+  scrollToIdx(nextIdx)
 }
 
 function goNext() { scrollByOne(1) }
 function goPrev() { scrollByOne(-1) }
 
-/** Navega a la pàgina del producte */
 function goToProduct(id: number) {
   router.push(`/producte/${id}`)
 }
 
-/** Auto-scroll cada 3s, es para al passar el ratolí per sobre */
 function startAuto() {
   stopAuto()
-  autoInterval = setInterval(() => scrollByOne(1), 3000)
+  autoInterval = setInterval(() => {
+    // Sempre calcula l'índex visible actual
+    updateCurrentIdxFromScroll()
+    scrollByOne(1)
+  }, 3000)
 }
 function stopAuto() {
   if (autoInterval) {
@@ -97,8 +116,65 @@ function stopAuto() {
   }
 }
 
-onMounted(() => startAuto())
-onBeforeUnmount(() => stopAuto())
+/**
+ * Calcula a quin index està actualment la vista del carousel
+ */
+function updateCurrentIdxFromScroll() {
+  if (!track.value) return
+  const slides = track.value.querySelectorAll<HTMLElement>('.carousel-slide')
+  let minDiff = Infinity
+  let idx = 0
+  slides.forEach((slide, i) => {
+    const diff = Math.abs(track.value!.scrollLeft - slide.offsetLeft)
+    if (diff < minDiff) {
+      minDiff = diff
+      idx = i
+    }
+  })
+  currentIdx.value = idx
+}
+
+/**
+ * Quan l'usuari fa scroll manual, atura autoscroll i actualitza index després
+ */
+function onTrackScroll() {
+  if (!isUserScrolling) {
+    stopAuto()
+    isUserScrolling = true
+  }
+  if (scrollTimeout) clearTimeout(scrollTimeout)
+  // Espera a que pari d'arrossegar per actualitzar index i reactivar auto
+  scrollTimeout = setTimeout(() => {
+    updateCurrentIdxFromScroll()
+    isUserScrolling = false
+    startAuto()
+  }, 300)
+}
+
+/**
+ * Quan passa el ratolí per sobre, atura auto, quan surt, reactivació i ajusta a la posició
+ */
+function onPointerEnter() {
+  stopAuto()
+}
+function onPointerLeave() {
+  updateCurrentIdxFromScroll()
+  startAuto()
+}
+
+onMounted(() => {
+  nextTick(() => scrollToIdx(0))
+  if (track.value) {
+    track.value.addEventListener('scroll', onTrackScroll)
+  }
+  startAuto()
+})
+onBeforeUnmount(() => {
+  stopAuto()
+  if (track.value) {
+    track.value.removeEventListener('scroll', onTrackScroll)
+  }
+})
 </script>
 
 <style scoped>

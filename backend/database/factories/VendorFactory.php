@@ -12,9 +12,9 @@ class VendorFactory extends Factory
     public function definition()
     {
         return [
-            'name'     => $this->faker->company,
-            'email'    => $this->faker->unique()->safeEmail,
-            'password' => 'password', // Laravel ho convertirà a hash automàticament
+            'name' => $this->faker->company,
+            'email' => $this->faker->unique()->safeEmail,
+            'password' => bcrypt('password'),
         ];
     }
 }

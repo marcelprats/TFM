@@ -12,12 +12,17 @@ class CategoriaFactory extends Factory
 
     public function definition()
     {
-        $name = $this->faker->unique()->word();
-
         return [
-            'nom'       => ucfirst($name),
-            'slug'      => Str::slug($name),
-            'parent_id' => null,  // o $this->faker->numberBetween(1, 5) per subcategories
+            'nom' => $this->faker->word,
+            'descripcio' => $this->faker->sentence,
+            'preu' => $this->faker->randomFloat(2, 10, 100),
+            'stock' => $this->faker->numberBetween(1, 50),
+            'imatge' => null,
+            'vendor_id' => null,      // assignarem al seeder
+            'botiga_id' => null,      // assignarem al seeder
+            'categoria' => null,      // assignarem al seeder
+            'subcategoria' => null,   // assignarem al seeder
+            'importacio_id' => null,
         ];
     }
 }

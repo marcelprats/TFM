@@ -13,12 +13,12 @@ class BotigaFactory extends Factory
     public function definition()
     {
         return [
-            'nom'        => $this->faker->company . ' Store',
-            'descripcio'=> $this->faker->sentence,
-            'vendor_id'  => Vendor::factory(),
-            'address'    => $this->faker->address,
-            'latitude'   => $this->faker->latitude,
-            'longitude'  => $this->faker->longitude,
+            'nom' => $this->faker->company . ' Store',
+            'descripcio' => $this->faker->sentence,
+            'vendor_id' => null, // assignarem al seeder
+            'address' => $this->faker->address,
+            'latitude' => $this->faker->latitude,
+            'longitude' => $this->faker->longitude,
         ];
     }
 }

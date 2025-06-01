@@ -5,62 +5,96 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Vendor;
-use App\Models\Categoria;
 use App\Models\Botiga;
 use App\Models\Producte;
+use App\Models\Categoria;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // 1. Usuari de prova
-        User::factory()->create([
-            'name'     => 'Usuari Demo',
-            'email'    => 'user@example.com',
-            'password' => bcrypt('password123'),
-        ]);
+        // 1. 5 VENEDORS
+        $venedors = collect();
+        for ($i = 1; $i <= 5; $i++) {
+            $venedors->push(Vendor::create([
+                'name'     => "Venedor $i",
+                'email'    => "venedor$i@totaki.com",
+                'password' => bcrypt('password'),
+            ]));
+        }
 
-        // 2. Venedor de prova
-        $vendor = Vendor::factory()->create([
-            'name'     => 'Venedor Demo',
-            'email'    => 'vendor@example.com',
-            'password' => bcrypt('password123'),
-        ]);
+        // 2. 5 COMPRADORS (USUARIS)
+        $compradors = collect();
+        for ($i = 1; $i <= 5; $i++) {
+            $compradors->push(User::create([
+                'name'     => "Comprador $i",
+                'email'    => "comprador$i@totaki.com",
+                'password' => bcrypt('password'),
+            ]));
+        }
 
-        // 3. Categories i subcategories
-        $categories = Categoria::factory(5)->create();
-        // Afegim subcategories a la primera categoria
-        Categoria::factory(3)->state([
-            'parent_id' => $categories->first()->id,
-        ])->create();
+        // 3. 5 CATEGORIES + 2 SUBCATEGORIES PER CADA UNA
+        $categories = collect();
+        $subcategories = collect();
+        for ($i = 1; $i <= 5; $i++) {
+            $cat = Categoria::create([
+                'nom' => "Categoria $i",
+                'slug' => "categoria-$i",
+                'parent_id' => null,
+            ]);
+            $categories->push($cat);
 
-        // 4. Botigues: dues botigues pel venedor
-        $botiga1 = Botiga::factory()->create([
-            'nom'        => 'Botiga Central',
-            'vendor_id'  => $vendor->id,
-            'address'    => 'C/ Central, 1, Barcelona',
-            'latitude'   => 41.3851,
-            'longitude'  => 2.1734,
-        ]);
+            // 2 subcategories per categoria
+            for ($j = 1; $j <= 2; $j++) {
+                $sub = Categoria::create([
+                    'nom' => "Sub $i.$j",
+                    'slug' => "sub-$i-$j",
+                    'parent_id' => $cat->id,
+                ]);
+                $subcategories->push($sub);
+            }
+        }
 
-        $botiga2 = Botiga::factory()->create([
-            'nom'        => 'Botiga Mar',
-            'vendor_id'  => $vendor->id,
-            'address'    => 'Passeig Marítim, 10, Barcelona',
-            'latitude'   => 41.3902,
-            'longitude'  => 2.1860,
-        ]);
+        // 4. 9 BOTIGUES (van rotant venedors)
+        $botigues = collect();
+        for ($i = 1; $i <= 9; $i++) {
+            $lat = mt_rand(41350000, 41450000) / 1e6; // 41.350000 a 41.450000
+            $lng = mt_rand(2100000, 2220000) / 1e6;   // 2.100000 a 2.220000
 
-        // 5. Productes: 5 productes per botiga
-        foreach ([$botiga1, $botiga2] as $botiga) {
-            Producte::factory(5)->state([
-                'vendor_id' => $vendor->id,
-                'botiga_id' => $botiga->id,
-                'categoria' => $categories->random()->id,
-            ])->create();
+            $botigues->push(Botiga::create([
+                'nom'        => "Botiga $i",
+                'descripcio' => "Descripció botiga $i",
+                'vendor_id'  => $venedors[($i-1)%5]->id,
+                'address'    => "Adreça botiga $i",
+                'latitude'   => $lat,
+                'longitude'  => $lng,
+            ]));
+        }
+
+        // 5. 50 PRODUCTES REPARTITS ENTRE LES 9 BOTIGUES, CATEGORIES I SUBCATEGORIES
+        $productesPerBotiga = [7, 6, 5, 9, 3, 8, 2, 6, 4]; // suma: 50
+        $prodNum = 1;
+        foreach ($botigues as $idx => $botiga) {
+            for ($j = 1; $j <= $productesPerBotiga[$idx]; $j++) {
+                // assignem categoria i subcategòria de manera cíclica
+                $categoria = $categories[($prodNum-1) % $categories->count()];
+                $subsCat = $subcategories->where('parent_id', $categoria->id)->values();
+                $subcategoria = $subsCat[($j-1) % $subsCat->count()];
+
+                Producte::create([
+                    'nom'          => "Producte $prodNum",
+                    'descripcio'   => "Descripció del producte $prodNum",
+                    'preu'         => rand(10, 100),
+                    'stock'        => rand(1, 20),
+                    'vendor_id'    => $botiga->vendor_id,
+                    'botiga_id'    => $botiga->id,
+                    'categoria'    => $categoria->id,
+                    'subcategoria' => $subcategoria->id,
+                    'imatge'       => null,
+                    'importacio_id'=> null,
+                ]);
+                $prodNum++;
+            }
         }
     }
 }

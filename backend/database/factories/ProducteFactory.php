@@ -14,17 +14,16 @@ class ProducteFactory extends Factory
     public function definition()
     {
         return [
-            'nom'           => ucfirst($this->faker->word),
-            'descripcio'    => $this->faker->sentence,
-            'preu'          => $this->faker->randomFloat(2, 1, 100),
-            'stock'         => $this->faker->numberBetween(0, 50),
-            'imatge'        => null,
-            // Per defecte enllaça a un vendor i a una botiga nous
-            'vendor_id'     => Vendor::factory(),
-            'botiga_id'     => Botiga::factory(),
+            'nom' => $this->faker->word,
+            'descripcio' => $this->faker->sentence,
+            'preu' => $this->faker->randomFloat(2, 10, 100),
+            'stock' => $this->faker->numberBetween(1, 50),
+            'imatge' => null,
+            'vendor_id' => null,      // assignarem al seeder
+            'botiga_id' => null,      // assignarem al seeder
+            'categoria' => null,      // assignarem al seeder
+            'subcategoria' => null,   // assignarem al seeder
             'importacio_id' => null,
-            'created_at'    => now(),
-            'updated_at'    => now(),
         ];
     }
 }
