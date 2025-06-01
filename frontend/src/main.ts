@@ -1,4 +1,3 @@
-// main.ts
 import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
@@ -13,15 +12,15 @@ import "vue-multiselect/dist/vue-multiselect.css";
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 
-// 🔧 BASE URL dinàmica segons l’entorn
+// BASE URL dinàmica segons l’entorn
 const BACKEND = import.meta.env.VITE_BACKEND_URL;
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 
 // Axios global config
 axios.defaults.baseURL = `${BACKEND}${API_BASE}`;
-axios.defaults.withCredentials = true;           // ← Important perquè funcioni Sanctum
-// Només enviem l’Authorization si tenim token
+axios.defaults.withCredentials = true;           
+// Només envia l’Authorization si hi ha token
 const token = localStorage.getItem("userToken");
 if (token) {
   axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;

@@ -1,4 +1,3 @@
-// src/views/UserProfile.vue
 <template>
   <div class="profile-page">
     <aside class="sidebar">

@@ -1,7 +1,6 @@
-// src/services/authService.ts
 import axios from "axios";
 
-// L’arrel del teu Laravel (sense “/api”)
+// L’arrel del Laravel
 const ROOT = import.meta.env.VITE_BACKEND_URL || "";
 
 // ─── Registra un nou usuari (comprador) ─────────────────────────
@@ -51,7 +50,7 @@ export const loginUser = async (
     // 1) Primer, demana el CSRF cookie perquè Sanctum pugui validar el POST
     await axios.get(`${ROOT}/sanctum/csrf-cookie`);
 
-    // 2) Ara sí, fes el login (baseURL ja apunta a `${ROOT}/api`)
+    // 2) Després, fa el login
     const response = await axios.post("/login", {
       email,
       password,

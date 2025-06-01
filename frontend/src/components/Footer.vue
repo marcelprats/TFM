@@ -1,4 +1,3 @@
-<!-- src/components/Footer.vue -->
 <template>
   <footer class="site-footer">
     <div class="footer-inner">

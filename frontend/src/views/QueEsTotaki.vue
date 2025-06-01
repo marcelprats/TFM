@@ -65,7 +65,7 @@
           <div class="step-card">
             <div class="step-number">5</div>
             <div>
-              <strong>Rebs notificació</strong> quan la comanda està preparada al local.
+              <strong>Reps notificació</strong> quan la comanda està preparada al local.
             </div>
           </div>
           <div class="step-card">

@@ -62,26 +62,9 @@ const routes: RouteRecordRaw[] = [
   { path: '/info-botiga/:id',    name: 'InfoBotiga',         component: InfoBotiga },
   { path: '/about',              name: 'QueEsTotaki',        component: QueEsTotaki },
   { path: '/contacte',           name: 'Contacte',           component: Contacte },
-
-  // Rutes de valoracions
-  {
-    path: '/valoracions/:productId',
-    name: 'ValoracionsProduct',
-    component: Valoracions,
-    props: (route: RouteLocationNormalized) => ({
-      productId: Number(route.params.productId)
-    })
-  },
-{ path: '/valoracions', name: 'AllValoracions', component: AllValoracions },
-
-  {
-    path: '/info-botiga/:botigaId/reviews',
-    name: 'StoreReviews',
-    component: StoreReviews,
-    props: (route: RouteLocationNormalized) => ({
-      botigaId: Number(route.params.botigaId)
-    })
-  }
+  { path: '/valoracions/:productId', name: 'ValoracionsProduct', component: Valoracions, props: (route: RouteLocationNormalized) => ({ productId: Number(route.params.productId) }) },
+  { path: '/valoracions',        name: 'AllValoracions',     component: AllValoracions },
+  { path: '/info-botiga/:botigaId/reviews', name: 'StoreReviews', component: StoreReviews, props: (route: RouteLocationNormalized) => ({ botigaId: Number(route.params.botigaId) }) }
 ]
 
 const router = createRouter({
