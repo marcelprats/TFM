@@ -70,13 +70,6 @@
           </div>
         </div>
       </div>
-
-      <!-- ─── Secció Descripció ───────────────────────────────────────── -->
-      <div class="description-section">
-        <h2>Descripció</h2>
-        <p>{{ product.descripcio }}</p>
-      </div>
-
       <!-- ─── Secció Valoracions ──────────────────────────────────────── -->
       <div class="reviews-section" v-if="reviews && reviews.length">
         <h2>Valoracions del producte</h2>
@@ -102,6 +95,13 @@
         <p>Encara no hi ha valoracions per aquest producte.</p>
       </div>
       <!-- ────────────────────────────────────────────────────────────── -->
+
+      <!-- ─── Secció Descripció ───────────────────────────────────────── -->
+      <div class="description-section">
+        <h2>Descripció</h2>
+        <p>{{ product.descripcio }}</p>
+      </div>
+
 
       <!-- ─── Secció Info Botiga (millorada) ────────────────────────── -->
       <div class="shop-info-card" v-if="storeData">
