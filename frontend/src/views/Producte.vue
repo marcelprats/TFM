@@ -77,6 +77,32 @@
         <p>{{ product.descripcio }}</p>
       </div>
 
+      <!-- ─── Secció Valoracions ──────────────────────────────────────── -->
+      <div class="reviews-section" v-if="reviews && reviews.length">
+        <h2>Valoracions del producte</h2>
+        <div class="review-list">
+          <div class="review" v-for="review in reviews" :key="review.id">
+            <div class="review-header">
+              <span class="review-user">{{ review.user_name || 'Usuari anònim' }}</span>
+              <span class="review-rating">
+                <i v-for="n in 5" :key="n"
+                   :class="[ 'fa-star', n <= review.rating ? 'fas' : 'far']"
+                   class="fa"></i>
+              </span>
+              <span class="review-date">{{ formatDate(review.created_at) }}</span>
+            </div>
+            <div class="review-body">
+              <p>{{ review.comment }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="reviews-section" v-else>
+        <h2>Valoracions del producte</h2>
+        <p>Encara no hi ha valoracions per aquest producte.</p>
+      </div>
+      <!-- ────────────────────────────────────────────────────────────── -->
+
       <!-- ─── Secció Info Botiga (millorada) ────────────────────────── -->
       <div class="shop-info-card" v-if="storeData">
         <h2>Informació de {{ product.botiga?.nom }}</h2>
@@ -214,6 +240,14 @@ interface Product {
   vendor?: { id: number; name: string }
 }
 
+interface Review {
+  id: number
+  rating: number
+  comment: string
+  user_name?: string
+  created_at: string
+}
+
 const route       = useRoute()
 const router      = useRouter()
 const cartStore   = useCartStore()
@@ -224,6 +258,22 @@ const allProducts     = ref<Product[]>([])
 const relatedProducts = ref<Product[]>([])
 const quantity        = ref(1)
 const addSuccessMessage = ref('')
+
+// Valoracions
+const reviews = ref<Review[]>([])
+
+async function fetchReviews(productId: number) {
+  try {
+    const { data } = await axios.get(`/productes/${productId}/reviews`)
+    reviews.value = data
+  } catch (error) {
+    reviews.value = []
+  }
+}
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('ca-ES', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
 
 // Botiga + mapa
 const storeData    = ref<Store|null>(null)
@@ -275,6 +325,9 @@ async function loadProduct() {
 
   updateRelatedProducts()
   await cartStore.fetchCart()
+
+  // Carrega valoracions
+  if (product.value?.id) fetchReviews(product.value.id)
 }
 
 function initMiniMap() {
@@ -398,6 +451,115 @@ watch(()=>route.params.id, loadProduct)
 </script>
 
 <style scoped>
+/* ─── Valoracions ─────────────────────────────────────────────── */
+.reviews-section {
+  width: 100%;
+  max-width: 1100px;
+  margin: 24px auto 0 auto;
+  padding: 20px 18px 18px 18px;
+  background: #f6f8fa;
+  border-radius: 16px;
+  box-sizing: border-box;
+}
+.reviews-section h2 {
+  font-size: 1.25rem;
+  color: #222;
+  margin-bottom: 16px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0;
+}
+
+.review {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  padding: 15px 18px 13px 18px;
+  border-left: 4px solid #42b983;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  transition: box-shadow 0.15s, transform 0.15s;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 15px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.review-user {
+  font-weight: 600;
+  color: #1976d2;
+  word-break: break-word;
+}
+.review-rating .fa {
+  color: #ffb300;
+  margin-right: 2px;
+  font-size: 1.08em;
+}
+.review-date {
+  font-size: 13px;
+  color: #888;
+}
+.review-body p {
+  margin: 0;
+  color: #222;
+  font-size: 16px;
+  word-break: break-word;
+}
+
+/* Responsive per mòbil */
+@media (max-width: 600px) {
+  .reviews-section {
+    padding: 9px 4px 5px 4px;
+    border-radius: 10px;
+  }
+  .reviews-section h2 {
+    font-size: 1.08rem;
+    margin-bottom: 10px;
+    padding: 0;
+  }
+  .review-list {
+    gap: 8px;
+    padding: 0;
+  }
+  .review {
+    padding: 10px 6px 10px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    max-width: 100%;
+  }
+  .review-header {
+    font-size: 13px;
+    gap: 8px;
+  }
+  .review-body p {
+    font-size: 14px;
+  }
+}
+
+/* Mode grid a desktop (opcional) */
+@media (min-width: 900px) {
+  .review-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+}
+
+/* ─── Header ───────────────────────────────────────────────────── */
 .product-page {
   background: white;
   padding: 50px 20px;
@@ -405,7 +567,6 @@ watch(()=>route.params.id, loadProduct)
   flex-direction: column;
   align-items: center;
 }
-
 /* ─── Header ───────────────────────────────────────────────────── */
 .product-header {
   display: flex;
